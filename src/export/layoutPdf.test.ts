@@ -78,6 +78,7 @@ describe('exportLayoutStagePdf', () => {
     }
 
     const pdfInstance = pdfMocks.pdfInstances[0]
+    const html2CanvasOptions = pdfMocks.html2canvas.mock.calls[0]?.[1]
 
     expect(pdfMocks.html2canvas).toHaveBeenCalledWith(
       stageElement,
@@ -87,6 +88,7 @@ describe('exportLayoutStagePdf', () => {
         width: 1200,
       }),
     )
+    expect(html2CanvasOptions?.scale).toBeCloseTo(2.701, 3)
     expect(pdfInstance?.setDocumentProperties).toHaveBeenCalled()
     expect(pdfInstance?.addImage).toHaveBeenCalledTimes(2)
     expect(pdfInstance?.addPage).toHaveBeenCalledTimes(1)
