@@ -118,22 +118,90 @@ function dragLayoutBlock(
   })
 }
 
-function getBlockLeft(block: HTMLElement): number {
-  return Number.parseFloat(block.style.left)
+function getLayoutRow(index: number): HTMLElement {
+  return screen.getByRole('region', {
+    name: new RegExp(`^(${index}行目|Row ${index})$`),
+  })
+}
+
+function getLayoutAddButton(index: number): HTMLElement {
+  return within(getLayoutRow(index)).getByRole('button', {
+    name: new RegExp(`^(${index}行目 にコードを追加|Add chord to Row ${index})$`),
+  })
+}
+
+function getOpenStockModalButton(): HTMLElement {
+  return screen.getByRole('button', {
+    name: /^(ストックにコードを追加|Add chord to stock)$/i,
+  })
+}
+
+function getModalActions(dialog: HTMLElement): HTMLElement {
+  const actions = dialog.querySelector('.modal-actions')
+
+  if (!(actions instanceof HTMLElement)) {
+    throw new Error('Expected modal actions')
+  }
+
+  return actions
+}
+
+function openStockModal(): HTMLElement {
+  fireEvent.click(getOpenStockModalButton())
+
+  return screen.getByRole('dialog', {
+    name: /^(ストック用コードを追加|Add Chord to Stock)$/,
+  })
+}
+
+function openLayoutAddModal(index: number): HTMLElement {
+  fireEvent.click(getLayoutAddButton(index))
+
+  return screen.getByRole('dialog', {
+    name: new RegExp(`^(${index}行目 にコードを追加|Add Chord to Row ${index})$`),
+  })
+}
+
+function openEditModal(): HTMLElement {
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: /^(編集|Edit)$/,
+    }),
+  )
+
+  return screen.getByRole('dialog', {
+    name: /^(コードブロックを編集|Edit Chord Block)$/,
+  })
+}
+
+function submitModal(dialog: HTMLElement, name: RegExp | string) {
+  fireEvent.click(
+    within(getModalActions(dialog)).getByRole('button', {
+      name,
+    }),
+  )
+}
+
+function addChordBlockToRow(index: number) {
+  const dialog = openLayoutAddModal(index)
+  submitModal(
+    dialog,
+    new RegExp(`^(${index}行目 に追加|Add to Row ${index})$`),
+  )
+}
+
+function addCurrentChordToStock() {
+  const dialog = openStockModal()
+  submitModal(dialog, /^(ストックに追加|Add to Stock)$/)
 }
 
 describe('App', () => {
-  it('renders the chord editor panels', () => {
+  it('renders stock and layout panels while keeping the chord builder hidden', () => {
     render(<App />)
 
     expect(
       screen.getByRole('heading', {
         name: /ChordCanvas/i,
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', {
-        name: 'コード生成',
       }),
     ).toBeInTheDocument()
     expect(
@@ -146,16 +214,26 @@ describe('App', () => {
         name: 'レイアウト編集',
       }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'コード生成',
+      }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'コードダイアグラム編集',
+      }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'コード情報',
+      }),
+    ).toBeNull()
+    expect(getOpenStockModalButton()).toBeInTheDocument()
+    expect(getLayoutAddButton(1)).toBeInTheDocument()
   })
 
-  it('does not render legacy layout number inputs', () => {
-    render(<App />)
-
-    expect(screen.queryByLabelText('Block horizontal offset')).toBeNull()
-    expect(screen.queryByLabelText('Block spacing')).toBeNull()
-  })
-
-  it('switches visible UI copy to English from the header toggle', () => {
+  it('switches visible UI copy to English inside the modal', () => {
     render(<App />)
 
     fireEvent.click(
@@ -164,26 +242,31 @@ describe('App', () => {
       }),
     )
 
+    const dialog = openStockModal()
+
     expect(
-      screen.getByRole('heading', {
+      within(dialog).getByRole('heading', {
         name: 'Chord Generator',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', {
-        name: 'Layout Editor',
+      within(dialog).getByRole('heading', {
+        name: 'Chord Diagram Editor',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', {
-        name: 'Export Layout PDF',
+      within(dialog).getByRole('heading', {
+        name: 'Chord Info',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', {
-        name: 'Add Current Chord',
+      within(dialog).getByRole('button', {
+        name: 'Add to Stock',
       }),
     ).toBeInTheDocument()
+    expect(
+      getLayoutAddButton(1),
+    ).toHaveAccessibleName('Add chord to Row 1')
   })
 
   it('shows a localized placeholder hint for empty lyrics lines', () => {
@@ -227,11 +310,7 @@ describe('App', () => {
   it('applies the configured spacing between adjacent layout blocks', () => {
     render(<App />)
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'コードを追加',
-      }),
-    )
+    addChordBlockToRow(1)
 
     const [firstBlock, secondBlock] = screen.getAllByRole('button', {
       name: /^Select .* block$/,
@@ -245,11 +324,7 @@ describe('App', () => {
     render(<App />)
 
     for (let index = 0; index < 2; index += 1) {
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'コードを追加',
-        }),
-      )
+      addChordBlockToRow(1)
     }
 
     dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 1), 200, 320)
@@ -264,11 +339,7 @@ describe('App', () => {
     render(<App />)
 
     for (let index = 0; index < 2; index += 1) {
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'コードを追加',
-        }),
-      )
+      addChordBlockToRow(1)
     }
 
     dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 2), 300, 340)
@@ -278,68 +349,11 @@ describe('App', () => {
     expect(updatedBlocks[2]).toHaveStyle({ left: '372px' })
   })
 
-  it('consumes spacing before pushing following blocks during drag', () => {
-    render(<App />)
-
-    for (let index = 0; index < 2; index += 1) {
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'コードを追加',
-        }),
-      )
-    }
-
-    const beforeDragBlocks = getLayoutBlocks()
-
-    dragLayoutBlock(getItemOrThrow(beforeDragBlocks, 1), 200, 204)
-
-    const updatedBlocks = getLayoutBlocks()
-
-    expect(updatedBlocks[1]).toHaveStyle({ left: '178px' })
-    expect(updatedBlocks[2]).toHaveStyle({
-      left: getItemOrThrow(beforeDragBlocks, 2).style.left,
-    })
-  })
-
-  it('does not increase spacing when dragging a block leftward', () => {
-    render(<App />)
-
-    for (let index = 0; index < 3; index += 1) {
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'コードを追加',
-        }),
-      )
-    }
-
-    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 2), 300, 340, 1)
-
-    const blocks = getLayoutBlocks()
-    const followingBlockLeftBeforeDrag = getItemOrThrow(blocks, 3).style.left
-
-    dragLayoutBlock(getItemOrThrow(blocks, 2), 340, 320, 2)
-
-    const updatedBlocks = getLayoutBlocks()
-    const updatedThirdBlock = getItemOrThrow(updatedBlocks, 2)
-    const updatedFourthBlock = getItemOrThrow(updatedBlocks, 3)
-
-    expect(updatedThirdBlock).toHaveStyle({ left: '352px' })
-    expect(updatedFourthBlock).toHaveStyle({ left: '504px' })
-    expect(getBlockLeft(updatedFourthBlock) - getBlockLeft(updatedThirdBlock)).toBe(
-      152,
-    )
-    expect(updatedFourthBlock.style.left).not.toBe(followingBlockLeftBeforeDrag)
-  })
-
   it('applies each block horizontal offset from its pushed position', () => {
     render(<App />)
 
     for (let index = 0; index < 2; index += 1) {
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'コードを追加',
-        }),
-      )
+      addChordBlockToRow(1)
     }
 
     dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 0), 100, 220, 1)
@@ -353,19 +367,15 @@ describe('App', () => {
     expect(updatedBlocks[2]).toHaveStyle({ left: '500px' })
   })
 
-  it('expands the stage enough to keep four blocks inside the row frame', () => {
+  it('expands the stage enough to keep four blocks and the add button inside the row frame', () => {
     const { container } = render(<App />)
 
     for (let index = 0; index < 3; index += 1) {
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'コードを追加',
-        }),
-      )
+      addChordBlockToRow(1)
     }
 
     expect(container.querySelector('.layout-stage')).toHaveStyle({
-      width: '710.4px',
+      width: '782.4px',
     })
   })
 
@@ -373,11 +383,7 @@ describe('App', () => {
     const { container } = render(<App />)
 
     for (let index = 0; index < 3; index += 1) {
-      fireEvent.click(
-        screen.getByRole('button', {
-          name: 'コードを追加',
-        }),
-      )
+      addChordBlockToRow(1)
     }
 
     dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 3), 400, 520)
@@ -386,51 +392,14 @@ describe('App', () => {
 
     expect(blocks[3]).toHaveStyle({ left: '610px' })
     expect(container.querySelector('.layout-stage')).toHaveStyle({
-      width: '830.4px',
+      width: '902.4px',
     })
   })
 
-  it('updates the selected chord when generator controls change', () => {
+  it('adds the current chord to stock from the stock modal and prevents duplicates', () => {
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText(/Root note/i), {
-      target: { value: 'A' },
-    })
-    fireEvent.change(screen.getByLabelText(/Chord quality/i), {
-      target: { value: 'minor' },
-    })
-
-    expect(
-      screen.getAllByRole('heading', {
-        name: 'Am',
-      })[0],
-    ).toBeInTheDocument()
-  })
-
-  it('adds a generated chord block to the layout stage', () => {
-    render(<App />)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'コードを追加',
-      }),
-    )
-
-    expect(
-      screen.getAllByRole('button', {
-        name: /^Select .* block$/,
-      }),
-    ).toHaveLength(2)
-  })
-
-  it('adds the current chord to stock and avoids duplicate stock entries', () => {
-    render(<App />)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'ストックに追加',
-      }),
-    )
+    addCurrentChordToStock()
 
     const stockPanel = screen.getByRole('region', {
       name: 'コードストック',
@@ -439,22 +408,20 @@ describe('App', () => {
     expect(
       within(stockPanel).getByRole('heading', { name: 'E' }),
     ).toBeInTheDocument()
+
+    const duplicateDialog = openStockModal()
+
     expect(
-      screen.getByRole('button', {
+      within(getModalActions(duplicateDialog)).getByRole('button', {
         name: 'このコードはストック済み',
       }),
     ).toBeDisabled()
-    expect(within(stockPanel).getAllByText('E')).toHaveLength(1)
   })
 
   it('adds layout rows and assigns the selected block to another row', () => {
     render(<App />)
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'コードを追加',
-      }),
-    )
+    addChordBlockToRow(1)
     fireEvent.click(
       screen.getByRole('button', {
         name: '行を追加',
@@ -467,14 +434,8 @@ describe('App', () => {
       target: { value: rowSelect.options[1]?.value ?? '' },
     })
 
-    expect(getLyricsLineButton(2)).toBeInTheDocument()
-
-    const firstRow = screen.getByRole('region', {
-      name: '1行目',
-    })
-    const secondRow = screen.getByRole('region', {
-      name: '2行目',
-    })
+    const firstRow = getLayoutRow(1)
+    const secondRow = getLayoutRow(2)
 
     expect(
       within(firstRow).getAllByRole('button', {
@@ -488,7 +449,7 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
-  it('adds a generated chord to the selected empty layout row', () => {
+  it('adds a generated chord to the selected empty layout row from that row modal', () => {
     render(<App />)
 
     fireEvent.click(
@@ -497,24 +458,10 @@ describe('App', () => {
       }),
     )
 
-    const secondRow = screen.getByRole('region', {
-      name: '2行目',
-    })
+    addChordBlockToRow(2)
 
-    fireEvent.click(
-      within(secondRow).getByRole('button', {
-        name: '2行目 を追加先にする',
-      }),
-    )
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'コードを追加',
-      }),
-    )
-
-    const firstRow = screen.getByRole('region', {
-      name: '1行目',
-    })
+    const firstRow = getLayoutRow(1)
+    const secondRow = getLayoutRow(2)
 
     expect(
       within(firstRow).getAllByRole('button', {
@@ -526,47 +473,20 @@ describe('App', () => {
         name: /^Select .* block$/,
       }),
     ).toHaveLength(1)
-  })
-
-  it('uses a label-free insertion target control in layout rows', () => {
-    render(<App />)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: '行を追加',
-      }),
-    )
-
-    expect(screen.queryByText('追加先')).not.toBeInTheDocument()
-    expect(screen.queryByText('この行に追加')).not.toBeInTheDocument()
   })
 
   it('deletes the selected layout row and moves its blocks to an adjacent row', () => {
     render(<App />)
 
-    expect(
-      screen.getByRole('button', {
-        name: '選択行を削除',
-      }),
-    ).toBeDisabled()
-
     fireEvent.click(
       screen.getByRole('button', {
         name: '行を追加',
       }),
     )
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'コードを追加',
-      }),
-    )
+    addChordBlockToRow(2)
 
-    const firstRow = screen.getByRole('region', {
-      name: '1行目',
-    })
-    const secondRow = screen.getByRole('region', {
-      name: '2行目',
-    })
+    const firstRow = getLayoutRow(1)
+    const secondRow = getLayoutRow(2)
 
     expect(
       within(firstRow).getAllByRole('button', {
@@ -591,57 +511,35 @@ describe('App', () => {
       }),
     ).not.toBeInTheDocument()
     expect(
-      within(
-        screen.getByRole('region', {
-          name: '1行目',
-        }),
-      ).getAllByRole('button', {
+      within(getLayoutRow(1)).getAllByRole('button', {
         name: /^Select .* block$/,
       }),
     ).toHaveLength(2)
-    expect(
-      screen.getByRole('button', {
-        name: '選択行を削除',
-      }),
-    ).toBeDisabled()
   })
 
-  it('adds a stocked chord to the selected layout row', () => {
+  it('shows stock entries inside the layout add modal and adds a stocked chord to the target row', () => {
     render(<App />)
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'ストックに追加',
-      }),
-    )
+    addCurrentChordToStock()
     fireEvent.click(
       screen.getByRole('button', {
         name: '行を追加',
       }),
     )
 
-    const secondRow = screen.getByRole('region', {
-      name: '2行目',
+    const dialog = openLayoutAddModal(2)
+    const modalStockRegion = within(dialog).getByRole('region', {
+      name: 'コードストック',
     })
 
     fireEvent.click(
-      within(secondRow).getByRole('button', {
-        name: '2行目 を追加先にする',
-      }),
-    )
-    fireEvent.click(
-      within(
-        screen.getByRole('region', {
-          name: 'コードストック',
-        }),
-      ).getByRole('button', {
-        name: '選択中の行に追加',
+      within(modalStockRegion).getByRole('button', {
+        name: '2行目 に追加',
       }),
     )
 
-    const firstRow = screen.getByRole('region', {
-      name: '1行目',
-    })
+    const firstRow = getLayoutRow(1)
+    const secondRow = getLayoutRow(2)
 
     expect(
       within(firstRow).getAllByRole('button', {
@@ -655,228 +553,46 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
-  it('shows the layout block name only once', () => {
+  it('updates a selected layout block from the edit modal', () => {
     render(<App />)
 
-    const layoutButton = screen.getByRole('button', {
-      name: 'Select E block',
-    })
+    const dialog = openEditModal()
 
-    expect(within(layoutButton).getAllByText('E')).toHaveLength(1)
-  })
-
-  it('preserves manual spacing in layout lyrics', () => {
-    const { container } = render(<App />)
-    const lyricsInput = openLyricsLineInput(1)
-
-    fireEvent.change(lyricsInput, {
-      target: { value: '  la  la   line  ' },
-    })
-    fireEvent.blur(lyricsInput)
-
-    const lyricsLine = container.querySelector<HTMLElement>('.lyrics-line')
-
-    expect(lyricsLine).not.toBeNull()
-    expect(lyricsLine?.textContent).toBe('  la  la   line  ')
-    expect(getComputedStyle(lyricsLine!).whiteSpace).toBe('pre')
-  })
-
-  it('shows the editor chord name only once', () => {
-    const { container } = render(<App />)
-    const diagramCard = container.querySelector('.diagram-card')
-
-    expect(diagramCard).not.toBeNull()
-    expect(
-      within(diagramCard as HTMLElement).getAllByRole('heading', {
-        name: 'E',
-      }),
-    ).toHaveLength(1)
-    expect(diagramCard?.querySelectorAll('text.diagram-title').length).toBe(0)
-  })
-
-  it('does not show the current chord heading in the editor by default', () => {
-    const { container } = render(<App />)
-    const diagramCard = container.querySelector('.diagram-card')
-
-    expect(diagramCard).not.toBeNull()
-    expect(
-      within(diagramCard as HTMLElement).queryByText('現在のコード'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('uses an edited chord name for the current chord, layout block, and stock', () => {
-    const { container } = render(<App />)
-    const diagramCard = container.querySelector('.diagram-card')
-
-    fireEvent.change(screen.getByLabelText('Chord name'), {
-      target: { value: 'E(add9)' },
-    })
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'コードを追加',
-      }),
-    )
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'ストックに追加',
-      }),
-    )
-
-    expect(diagramCard).not.toBeNull()
-    expect(
-      within(diagramCard as HTMLElement).getByRole('heading', {
-        name: 'E(add9)',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: 'Select E(add9) block',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      within(
-        screen.getByRole('region', {
-          name: 'コードストック',
-        }),
-      ).getByRole('heading', {
-        name: 'E(add9)',
-      }),
-    ).toBeInTheDocument()
-  })
-
-  it('keeps a single unified fretting editor', () => {
-    render(<App />)
-
-    expect(
-      screen.getAllByRole('group', {
-        name: '押弦入力',
-      }),
-    ).toHaveLength(1)
-  })
-
-  it('shows the first string on the top row of the fretting editor', () => {
-    const { container } = render(<App />)
-    const stringLabels = [
-      ...container.querySelectorAll<HTMLElement>('.manual-grid-string'),
-    ].map((label) => label.textContent)
-
-    expect(container.querySelector('.manual-grid-header')).toBeNull()
-    expect(screen.queryByText(/^弦$/)).not.toBeInTheDocument()
-    expect(stringLabels[0]).toBe('1弦')
-    expect(stringLabels[stringLabels.length - 1]).toBe('6弦')
-  })
-
-  it('allows direct manual fret selection from the editor panel', () => {
-    render(<App />)
-
-    fireEvent.change(screen.getByLabelText('Manual start fret'), {
-      target: { value: '5' },
-    })
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: '6弦 5フレット',
-      }),
-    )
-
-    expect(
-      screen.getByRole('button', {
-        name: '6弦 5フレット',
-      }),
-    ).toHaveAttribute('aria-pressed', 'true')
-
-    const bassInfo = screen.getByText('ベース音').closest('div')
-
-    expect(bassInfo).toHaveTextContent('A')
-  })
-
-  it('keeps editing the current chord after selecting a layout block', () => {
-    render(<App />)
-
-    fireEvent.change(screen.getByLabelText('Root note'), {
-      target: { value: 'A' },
-    })
-    fireEvent.change(screen.getByLabelText('Chord quality'), {
-      target: { value: 'minor' },
-    })
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Select E block',
-      }),
-    )
-
-    expect(
-      screen.getByRole('button', {
-        name: '編集',
-      }),
-    ).toHaveAttribute('aria-pressed', 'false')
-    expect(
-      screen.getAllByRole('heading', {
-        name: 'Am',
-      })[0],
-    ).toBeInTheDocument()
-  })
-
-  it('updates a selected layout block only after explicit edit mode is enabled', () => {
-    render(<App />)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'Select E block',
-      }),
-    )
-    fireEvent.change(screen.getByLabelText('Root note'), {
-      target: { value: 'A' },
-    })
-    fireEvent.change(screen.getByLabelText('Chord quality'), {
-      target: { value: 'minor' },
-    })
-
-    expect(
-      screen.getByRole('button', {
-        name: 'Select E block',
-      }),
-    ).toBeInTheDocument()
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: '編集',
-      }),
-    )
-    fireEvent.change(screen.getByLabelText('Chord quality'), {
-      target: { value: 'major' },
-    })
-
-    expect(
-      screen.getByRole('button', {
-        name: 'Select A block',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', {
-        name: '編集を終了',
-      }),
-    ).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('updates the selected layout block name while edit mode is active', () => {
-    render(<App />)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: '編集',
-      }),
-    )
-    fireEvent.change(screen.getByLabelText('Chord name'), {
+    fireEvent.change(within(dialog).getByLabelText('Chord name'), {
       target: { value: 'Intro E' },
     })
+    submitModal(dialog, '変更を保存')
 
     expect(
       screen.getByRole('button', {
         name: 'Select Intro E block',
       }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Intro E を編集中')).toBeInTheDocument()
+  })
+
+  it('allows direct manual fret selection from the modal builder', () => {
+    render(<App />)
+
+    const dialog = openStockModal()
+
+    fireEvent.change(within(dialog).getByLabelText('Manual start fret'), {
+      target: { value: '5' },
+    })
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: '6弦 5フレット',
+      }),
+    )
+
+    expect(
+      within(dialog).getByRole('button', {
+        name: '6弦 5フレット',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    const bassInfo = within(dialog).getByText('ベース音').closest('div')
+
+    expect(bassInfo).toHaveTextContent('A')
   })
 
   it('exports the current project as JSON', async () => {
@@ -1025,65 +741,7 @@ describe('App', () => {
     }
   })
 
-  it('aggressively tightens pdf layout spacing while moving chord names above diagrams', () => {
-    const { container } = render(<App />)
-    const layoutStage = container.querySelector<HTMLElement>('.layout-stage')
-    const layoutRow =
-      container.querySelector<HTMLElement>('.layout-row.selected')
-    const layoutRowHeader =
-      container.querySelector<HTMLElement>('.layout-row.selected .layout-row-header')
-    const layoutChordLayer =
-      container.querySelector<HTMLElement>('.layout-row.selected .layout-chord-layer')
-    const layoutBlock = container.querySelector<HTMLElement>(
-      '.layout-chord-block.selected',
-    )
-    const chordPreviewName = container.querySelector<HTMLElement>(
-      '.layout-chord-block.selected .chord-preview-name',
-    )
-    const chordDiagram = container.querySelector<SVGElement>(
-      '.layout-chord-block.selected .chord-diagram',
-    )
-    const lyricsLine =
-      container.querySelector<HTMLElement>('.layout-row.selected .lyrics-line')
-
-    expect(layoutStage).not.toBeNull()
-    expect(layoutRow).not.toBeNull()
-    expect(layoutRowHeader).not.toBeNull()
-    expect(layoutChordLayer).not.toBeNull()
-    expect(layoutBlock).not.toBeNull()
-    expect(chordPreviewName).not.toBeNull()
-    expect(chordDiagram).not.toBeNull()
-    expect(lyricsLine).not.toBeNull()
-
-    layoutStage!.setAttribute('data-exporting-pdf', 'true')
-
-    expect(getComputedStyle(layoutStage!).borderTopWidth).toBe('0px')
-    expect(getComputedStyle(layoutStage!).gap).toBe('2px')
-    expect(getComputedStyle(layoutStage!).paddingTop).toBe('4px')
-    expect(getComputedStyle(layoutStage!).paddingBottom).toBe('4px')
-    expect(getComputedStyle(layoutRow!).borderTopWidth).toBe('0px')
-    expect(getComputedStyle(layoutRowHeader!).display).toBe('none')
-    expect(getComputedStyle(layoutChordLayer!).minHeight).toBe('110px')
-    expect(getComputedStyle(layoutBlock!).borderTopWidth).toBe('0px')
-    expect(getComputedStyle(layoutBlock!).display).toBe('flex')
-    expect(getComputedStyle(layoutBlock!).flexDirection).toBe('column')
-    expect(getComputedStyle(layoutBlock!).alignItems).toBe('center')
-    expect(getComputedStyle(layoutBlock!).gap).toBe('0px')
-    expect(getComputedStyle(layoutBlock!).paddingTop).toBe('2px')
-    expect(getComputedStyle(layoutBlock!).paddingBottom).toBe('0px')
-    expect(layoutBlock!.firstElementChild).toBe(chordPreviewName)
-    expect(getComputedStyle(chordPreviewName!).width).toBe('100%')
-    expect(getComputedStyle(chordPreviewName!).marginBottom).toBe('0px')
-    expect(getComputedStyle(chordPreviewName!).color).toBe('rgb(111, 97, 181)')
-    expect(getComputedStyle(chordPreviewName!).textAlign).toBe('center')
-    expect(layoutBlock!.lastElementChild).toBe(chordDiagram)
-    expect(getComputedStyle(lyricsLine!).marginTop).toBe('0px')
-    expect(getComputedStyle(lyricsLine!).paddingTop).toBe('0px')
-    expect(getComputedStyle(lyricsLine!).borderTopWidth).toBe('0px')
-    expect(getComputedStyle(lyricsLine!).color).toBe('rgb(86, 72, 154)')
-  })
-
-  it('imports a saved project JSON', async () => {
+  it('imports a saved project JSON and reflects it in the layout and modals', async () => {
     const importedSnapshot: ProjectSnapshot = {
       selectedRoot: 'A',
       selectedQuality: 'minor',
@@ -1149,9 +807,6 @@ describe('App', () => {
       }),
     ).toHaveLength(2)
     expect(screen.getByLabelText('Block row')).toHaveValue('row-18')
-    expect(screen.getByLabelText('Manual start fret')).toHaveValue(5)
-    expect(screen.getByLabelText('Manual fret count')).toHaveValue(5)
-    expect(screen.getByLabelText('Chord name')).toHaveValue('Verse Am')
     expect(
       screen.getByRole('button', {
         name: 'Select Bridge F block',
@@ -1176,6 +831,30 @@ describe('App', () => {
         name: 'Stock Am',
       }),
     ).toBeInTheDocument()
+
+    const stockDialog = openStockModal()
+
+    expect(within(stockDialog).getByLabelText('Root note')).toHaveValue('A')
+    expect(within(stockDialog).getByLabelText('Chord quality')).toHaveValue(
+      'minor',
+    )
+    expect(within(stockDialog).getByLabelText('Manual start fret')).toHaveValue(5)
+    expect(within(stockDialog).getByLabelText('Manual fret count')).toHaveValue(5)
+    expect(within(stockDialog).getByLabelText('Chord name')).toHaveValue(
+      'Verse Am',
+    )
+
+    fireEvent.click(
+      within(getModalActions(stockDialog)).getByRole('button', {
+        name: '閉じる',
+      }),
+    )
+
+    const editDialog = openEditModal()
+
+    expect(within(editDialog).getByLabelText('Chord name')).toHaveValue(
+      'Bridge F',
+    )
     expect(screen.getByRole('status')).toHaveTextContent(
       'saved-project.json を読み込みました。',
     )

@@ -1,6 +1,6 @@
 export type Locale = 'ja' | 'en'
 
-interface UiText {
+export interface UiText {
   languageToggleGroupLabel: string
   languageJa: string
   languageEn: string
@@ -38,10 +38,13 @@ interface UiText {
   uniqueNotes: string
   playedNotes: string
   stockHeading: string
+  openStockAddModal: string
   addToSelectedRow: string
+  addToRow: (rowLabel: string) => string
   delete: string
   stockEmpty: string
   layoutHeading: string
+  openLayoutAddModal: (rowLabel: string) => string
   addRow: string
   deleteSelectedRow: string
   lyricsLineLabel: (index: number) => string
@@ -53,9 +56,14 @@ interface UiText {
   moveLeft: string
   moveRight: string
   selectedChordRow: string
+  saveChordChanges: string
   layoutDragHint: string
   layoutRowLabel: (index: number) => string
   setInsertionTargetAria: (rowLabel: string) => string
+  chordBuilderModalTitle: string
+  layoutAddModalTitle: (rowLabel: string) => string
+  layoutEditModalTitle: string
+  modalClose: string
   alreadyStockedFeedback: (name: string) => string
   addedToStockFeedback: (name: string) => string
   removedFromStockFeedback: (name: string) => string
@@ -108,11 +116,14 @@ export const UI_TEXT: Record<Locale, UiText> = {
     uniqueNotes: 'ユニーク音',
     playedNotes: '発音音',
     stockHeading: 'コードストック',
+    openStockAddModal: 'ストックにコードを追加',
     addToSelectedRow: '選択中の行に追加',
+    addToRow: (rowLabel) => `${rowLabel} に追加`,
     delete: '削除',
     stockEmpty:
       'ストックはまだ空です。繰り返し使うコードを追加できます。',
     layoutHeading: 'レイアウト編集',
+    openLayoutAddModal: (rowLabel) => `${rowLabel} にコードを追加`,
     addRow: '行を追加',
     deleteSelectedRow: '選択行を削除',
     lyricsLineLabel: (index) => `歌詞 ${index + 1} 行`,
@@ -124,10 +135,15 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: '左へ',
     moveRight: '右へ',
     selectedChordRow: '配置行',
+    saveChordChanges: '変更を保存',
     layoutDragHint:
       'コードブロックを左右にドラッグすると、その位置に合わせて横へ移動できます。',
     layoutRowLabel: (index) => `${index + 1}行目`,
     setInsertionTargetAria: (rowLabel) => `${rowLabel} を追加先にする`,
+    chordBuilderModalTitle: 'ストック用コードを追加',
+    layoutAddModalTitle: (rowLabel) => `${rowLabel} にコードを追加`,
+    layoutEditModalTitle: 'コードブロックを編集',
+    modalClose: '閉じる',
     alreadyStockedFeedback: (name) => `${name} はすでにストック済みです。`,
     addedToStockFeedback: (name) => `${name} をストックに追加しました。`,
     removedFromStockFeedback: (name) =>
@@ -181,11 +197,14 @@ export const UI_TEXT: Record<Locale, UiText> = {
     uniqueNotes: 'Unique Notes',
     playedNotes: 'Played Notes',
     stockHeading: 'Chord Stock',
+    openStockAddModal: 'Add chord to stock',
     addToSelectedRow: 'Add to Selected Row',
+    addToRow: (rowLabel) => `Add to ${rowLabel}`,
     delete: 'Delete',
     stockEmpty:
       'Chord stock is empty. Add chords you use repeatedly.',
     layoutHeading: 'Layout Editor',
+    openLayoutAddModal: (rowLabel) => `Add chord to ${rowLabel}`,
     addRow: 'Add Row',
     deleteSelectedRow: 'Delete Selected Row',
     lyricsLineLabel: (index) => `Lyrics line ${index + 1}`,
@@ -197,11 +216,16 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: 'Move Left',
     moveRight: 'Move Right',
     selectedChordRow: 'Row',
+    saveChordChanges: 'Save Changes',
     layoutDragHint:
       'Drag a chord block left or right to slide it horizontally in the row.',
     layoutRowLabel: (index) => `Row ${index + 1}`,
     setInsertionTargetAria: (rowLabel) =>
       `Set ${rowLabel} as the insertion target`,
+    chordBuilderModalTitle: 'Add Chord to Stock',
+    layoutAddModalTitle: (rowLabel) => `Add Chord to ${rowLabel}`,
+    layoutEditModalTitle: 'Edit Chord Block',
+    modalClose: 'Close',
     alreadyStockedFeedback: (name) => `${name} is already in stock.`,
     addedToStockFeedback: (name) => `Added ${name} to stock.`,
     removedFromStockFeedback: (name) => `Removed ${name} from stock.`,

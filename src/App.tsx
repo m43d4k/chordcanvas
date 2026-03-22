@@ -4,14 +4,11 @@ import type {
   ChangeEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react'
+import ChordComposer from './components/ChordComposer'
 import ChordDiagram from './components/ChordDiagram'
 import { exportLayoutStagePdf, LAYOUT_PDF_FILE_NAME } from './export/layoutPdf'
 import {
-  CHORD_QUALITIES,
-  CHORD_QUALITY_LABELS,
   MINIMUM_DIAGRAM_FRET_COUNT,
-  PITCH_CLASSES,
-  type ChordForm,
   type ChordQuality,
   type Fretting,
   type PitchClassName,
@@ -39,6 +36,7 @@ const LAYOUT_SLOT_WIDTH = LAYOUT_BLOCK_WIDTH
 const LAYOUT_STAGE_MIN_WIDTH = 640
 const LAYOUT_STAGE_PADDING_INLINE = 16
 const LAYOUT_ROW_PADDING_INLINE = 15.2
+const LAYOUT_ADD_BUTTON_WIDTH = 72
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
@@ -57,6 +55,32 @@ interface LayoutBlockDragState {
   startClientX: number
   startXOffset: number
 }
+
+interface ChordDraftState {
+  selectedRoot: PitchClassName
+  selectedQuality: ChordQuality
+  selectedFormId: string
+  fretting: Fretting
+  chordName: string
+  manualStartFret: number
+  manualFretCount: number
+}
+
+type ChordModalState =
+  | {
+      kind: 'stock'
+      draft: ChordDraftState
+    }
+  | {
+      kind: 'layout'
+      draft: ChordDraftState
+      targetRowId: string
+    }
+  | {
+      blockId: string
+      draft: ChordDraftState
+      kind: 'edit'
+    }
 
 let blockSequence = 1
 let rowSequence = 1
@@ -305,19 +329,13 @@ function App() {
   )
   const [appFeedback, setAppFeedback] = useState<AppFeedback | null>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
-  const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
   const [editingLyricsRowId, setEditingLyricsRowId] = useState<string | null>(
     null,
   )
+  const [chordModal, setChordModal] = useState<ChordModalState | null>(null)
   const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
   const text = UI_TEXT[locale]
-
-  const availableForms = getChordForms(selectedRoot, selectedQuality)
-  const selectedForm =
-    availableForms.find((form) => form.id === selectedFormId) ??
-    availableForms[0] ??
-    null
 
   const selectedBlock =
     blocks.find((block) => block.id === selectedBlockId) ?? blocks[0]
@@ -326,7 +344,6 @@ function App() {
     throw new Error('At least one chord block must be present')
   }
 
-  const isEditingSelectedBlock = editingBlockId === selectedBlockId
   const activeLayoutRow = layoutRows.find(
     (row) => row.id === selectedBlock.rowId,
   )
@@ -345,11 +362,6 @@ function App() {
     (blockId) => blockId === selectedBlockId,
   )
   const selectedBlockSummary = summarizeChord(selectedBlock.fretting)
-  const currentSummary = summarizeChord(currentFretting)
-  const currentDisplayName = getDisplayName(
-    currentSummary.currentName,
-    currentChordName,
-  )
   const selectedBlockDisplayName = getDisplayName(
     selectedBlockSummary.currentName,
     selectedBlock.displayName,
@@ -363,22 +375,6 @@ function App() {
       displayName: getDisplayName(summary.currentName, stockChord.displayName),
     }
   })
-  const isCurrentChordStocked = stockChords.some((stockChord) =>
-    isSameFretting(stockChord.fretting, currentFretting),
-  )
-  const manualVisibleFrets = createVisibleFrets(
-    manualStartFret,
-    manualFretCount,
-  )
-  const manualGridTemplate = `36px 36px 36px repeat(${manualVisibleFrets.length}, minmax(0, 1fr))`
-  const manualStringEntries = currentFretting
-    .map((state, stringIndex) => ({
-      state,
-      stringIndex,
-      stringNumber: 6 - stringIndex,
-    }))
-    .reverse()
-
   const layoutStagePaddingInline = isExportingPdf
     ? 0
     : LAYOUT_STAGE_PADDING_INLINE
@@ -386,7 +382,6 @@ function App() {
   const layoutEntryStagePaddingInline = LAYOUT_STAGE_PADDING_INLINE
   const layoutEntries = buildLayoutEntries(layoutRows, blocks, {
     rowPaddingInline: layoutRowPaddingInline,
-    // Keep the block start position stable so PDF and on-screen lyrics align.
     stagePaddingInline: layoutEntryStagePaddingInline,
   })
   const layoutStageStyle = {
@@ -395,6 +390,39 @@ function App() {
     '--layout-row-padding-inline': `${layoutRowPaddingInline}px`,
     '--layout-stage-padding-inline': `${layoutStagePaddingInline}px`,
   } as CSSProperties
+
+  const modalDraft = chordModal?.draft ?? null
+  const modalAvailableForms = modalDraft
+    ? getChordForms(modalDraft.selectedRoot, modalDraft.selectedQuality)
+    : []
+  const modalSummary = modalDraft ? summarizeChord(modalDraft.fretting) : null
+  const modalDisplayName =
+    modalDraft && modalSummary
+      ? getDisplayName(modalSummary.currentName, modalDraft.chordName)
+      : ''
+  const modalVisibleFrets = modalDraft
+    ? createVisibleFrets(modalDraft.manualStartFret, modalDraft.manualFretCount)
+    : []
+  const modalManualGridTemplate = `36px 36px 36px repeat(${modalVisibleFrets.length}, minmax(0, 1fr))`
+  const modalManualStringEntries = modalDraft
+    ? modalDraft.fretting
+        .map((state, stringIndex) => ({
+          state,
+          stringIndex,
+          stringNumber: 6 - stringIndex,
+        }))
+        .reverse()
+    : []
+  const modalRowLabel =
+    chordModal && chordModal.kind === 'layout'
+      ? getLayoutRowLabel(layoutRows, chordModal.targetRowId, text)
+      : null
+  const isModalChordStocked =
+    chordModal?.kind === 'stock' && modalDraft
+      ? stockChords.some((stockChord) =>
+          isSameFretting(stockChord.fretting, modalDraft.fretting),
+        )
+      : false
 
   useEffect(() => {
     if (!editingLyricsRowId) {
@@ -469,6 +497,24 @@ function App() {
     }
   }, [draggingBlockId])
 
+  useEffect(() => {
+    if (!chordModal) {
+      return
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setChordModal(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [chordModal])
+
   function createProjectSnapshot(): ProjectSnapshot {
     return cloneProjectSnapshot({
       selectedRoot,
@@ -490,8 +536,8 @@ function App() {
     const nextSnapshot = cloneProjectSnapshot(snapshot)
 
     syncProjectSequences(nextSnapshot)
-    setEditingBlockId(null)
     setEditingLyricsRowId(null)
+    setChordModal(null)
     setSelectedRoot(nextSnapshot.selectedRoot)
     setSelectedQuality(nextSnapshot.selectedQuality)
     setSelectedFormId(nextSnapshot.selectedFormId)
@@ -506,40 +552,10 @@ function App() {
     setManualFretCount(clampManualFretCount(nextSnapshot.manualFretCount))
   }
 
-  function syncManualViewportFromFretting(fretting: Fretting) {
-    const viewport = summarizeChord(fretting).viewport
-    setManualStartFret(viewport.startFret)
-    setManualFretCount(clampManualFretCount(viewport.fretCount))
-  }
-
   function activateBlock(block: ChordBlockState) {
     setSelectedBlockId(block.id)
     setSelectedLayoutRowId(block.rowId)
     setEditingLyricsRowId(null)
-    setEditingBlockId((currentEditingId) =>
-      currentEditingId === block.id ? currentEditingId : null,
-    )
-  }
-
-  function toggleSelectedBlockEditing() {
-    if (isEditingSelectedBlock) {
-      setEditingBlockId(null)
-      return
-    }
-
-    const nextSelectedBlock = blocks.find(
-      (block) => block.id === selectedBlockId,
-    )
-
-    if (!nextSelectedBlock) {
-      return
-    }
-
-    const nextFretting = copyFretting(nextSelectedBlock.fretting)
-    setCurrentFretting(nextFretting)
-    setCurrentChordName(nextSelectedBlock.displayName ?? '')
-    syncManualViewportFromFretting(nextFretting)
-    setEditingBlockId(selectedBlockId)
   }
 
   function selectLayoutRow(rowId: string) {
@@ -559,26 +575,6 @@ function App() {
     setEditingLyricsRowId(rowId)
   }
 
-  function updateBlockFretting(blockId: string, fretting: Fretting) {
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.id === blockId ? { ...block, fretting } : block,
-      ),
-    )
-  }
-
-  function updateBlockDisplayName(blockId: string, displayName: string) {
-    const storedDisplayName = toStoredDisplayName(displayName)
-
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.id === blockId
-          ? { ...block, displayName: storedDisplayName }
-          : block,
-      ),
-    )
-  }
-
   function updateBlockById(
     blockId: string,
     updater: (block: ChordBlockState) => ChordBlockState,
@@ -590,47 +586,211 @@ function App() {
     )
   }
 
-  function applyCurrentFretting(fretting: Fretting) {
-    const nextFretting = copyFretting(fretting)
-    setCurrentFretting(nextFretting)
-
-    if (editingBlockId) {
-      updateBlockFretting(editingBlockId, nextFretting)
-    }
+  function commitChordDraft(draft: ChordDraftState) {
+    setSelectedRoot(draft.selectedRoot)
+    setSelectedQuality(draft.selectedQuality)
+    setSelectedFormId(draft.selectedFormId)
+    setCurrentFretting(copyFretting(draft.fretting))
+    setCurrentChordName(draft.chordName)
+    setManualStartFret(Math.max(1, draft.manualStartFret))
+    setManualFretCount(clampManualFretCount(draft.manualFretCount))
   }
 
-  function applyCurrentChordName(nextName: string) {
-    setCurrentChordName(nextName)
-
-    if (editingBlockId) {
-      updateBlockDisplayName(editingBlockId, nextName)
-    }
-  }
-
-  function applyGeneratedForm(form: ChordForm) {
-    const fretting = copyFretting(form.fretting)
-    setSelectedFormId(form.id)
-    applyCurrentFretting(fretting)
-    syncManualViewportFromFretting(fretting)
-  }
-
-  function addBlockToSelectedLayoutRow(
-    fretting: Fretting,
-    displayName = currentChordName,
+  function updateChordModalDraft(
+    updater: (draft: ChordDraftState) => ChordDraftState,
   ) {
-    const nextBlock = createChordBlock(
-      copyFretting(fretting),
-      selectedLayoutRow.id,
-      {
-        displayName: toStoredDisplayName(displayName),
-      },
-    )
+    setChordModal((currentModal) => {
+      if (!currentModal) {
+        return currentModal
+      }
+
+      return {
+        ...currentModal,
+        draft: updater(currentModal.draft),
+      }
+    })
+  }
+
+  function openStockChordModal() {
+    setChordModal({
+      kind: 'stock',
+      draft: createChordDraft({
+        currentChordName,
+        currentFretting,
+        manualFretCount,
+        manualStartFret,
+        selectedFormId,
+        selectedQuality,
+        selectedRoot,
+      }),
+    })
+  }
+
+  function openLayoutChordModal(rowId: string) {
+    if (!layoutRows.some((row) => row.id === rowId)) {
+      return
+    }
+
+    setSelectedLayoutRowId(rowId)
+    setEditingLyricsRowId(null)
+    setChordModal({
+      kind: 'layout',
+      draft: createChordDraft({
+        currentChordName,
+        currentFretting,
+        manualFretCount,
+        manualStartFret,
+        selectedFormId,
+        selectedQuality,
+        selectedRoot,
+      }),
+      targetRowId: rowId,
+    })
+  }
+
+  function openEditChordModal() {
+    const blockToEdit = blocks.find((block) => block.id === selectedBlockId)
+
+    if (!blockToEdit) {
+      return
+    }
+
+    setChordModal({
+      blockId: blockToEdit.id,
+      draft: createChordDraftFromBlock(blockToEdit, {
+        selectedFormId,
+        selectedQuality,
+        selectedRoot,
+      }),
+      kind: 'edit',
+    })
+  }
+
+  function handleChordModalRootChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextRoot = event.target.value as PitchClassName
+
+    updateChordModalDraft((draft) => {
+      const nextForms = getChordForms(nextRoot, draft.selectedQuality)
+      const nextForm = nextForms[0]
+      const nextFretting = nextForm
+        ? copyFretting(nextForm.fretting)
+        : draft.fretting
+
+      return syncDraftViewport({
+        ...draft,
+        selectedFormId: nextForm?.id ?? '',
+        selectedRoot: nextRoot,
+      }, nextFretting)
+    })
+  }
+
+  function handleChordModalQualityChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextQuality = event.target.value as ChordQuality
+
+    updateChordModalDraft((draft) => {
+      const nextForms = getChordForms(draft.selectedRoot, nextQuality)
+      const nextForm = nextForms[0]
+      const nextFretting = nextForm
+        ? copyFretting(nextForm.fretting)
+        : draft.fretting
+
+      return syncDraftViewport({
+        ...draft,
+        selectedFormId: nextForm?.id ?? '',
+        selectedQuality: nextQuality,
+      }, nextFretting)
+    })
+  }
+
+  function handleChordModalFormChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextFormId = event.target.value
+
+    updateChordModalDraft((draft) => {
+      const nextForm = getChordForms(
+        draft.selectedRoot,
+        draft.selectedQuality,
+      ).find((form) => form.id === nextFormId)
+
+      if (!nextForm) {
+        return draft
+      }
+
+      return syncDraftViewport(
+        {
+          ...draft,
+          selectedFormId: nextForm.id,
+        },
+        nextForm.fretting,
+      )
+    })
+  }
+
+  function handleChordModalNameChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextName = event.target.value
+
+    updateChordModalDraft((draft) => ({
+      ...draft,
+      chordName: nextName,
+    }))
+  }
+
+  function handleChordModalManualStartFretChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const parsed = Number.parseInt(event.target.value, 10)
+
+    updateChordModalDraft((draft) => ({
+      ...draft,
+      manualStartFret: Number.isNaN(parsed) ? 1 : Math.max(1, parsed),
+    }))
+  }
+
+  function handleChordModalManualFretCountChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const parsed = Number.parseInt(event.target.value, 10)
+
+    updateChordModalDraft((draft) => ({
+      ...draft,
+      manualFretCount: Number.isNaN(parsed)
+        ? MIN_MANUAL_FRET_COUNT
+        : clampManualFretCount(parsed),
+    }))
+  }
+
+  function handleChordModalStringStateChange(
+    stringIndex: number,
+    nextState: StringState,
+  ) {
+    updateChordModalDraft((draft) => {
+      const nextFretting = [...draft.fretting]
+      nextFretting[stringIndex] = nextState
+
+      return {
+        ...draft,
+        fretting: toFretting(nextFretting),
+      }
+    })
+  }
+
+  function handleChordModalViewportSync() {
+    updateChordModalDraft((draft) => syncDraftViewport(draft, draft.fretting))
+  }
+
+  function addBlockToLayoutRow(
+    rowId: string,
+    fretting: Fretting,
+    displayName?: string,
+  ) {
+    const nextBlock = createChordBlock(copyFretting(fretting), rowId, {
+      displayName: toStoredDisplayName(displayName),
+    })
 
     setBlocks((currentBlocks) => {
       const insertionIndex = getInsertionIndexForRow(
         currentBlocks,
         layoutRows,
-        selectedLayoutRow.id,
+        rowId,
       )
 
       return [
@@ -642,56 +802,79 @@ function App() {
     activateBlock(nextBlock)
   }
 
-  function handleRootChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextRoot = event.target.value as PitchClassName
-    const nextForms = getChordForms(nextRoot, selectedQuality)
-    const nextForm = nextForms[0]
-
-    setSelectedRoot(nextRoot)
-    setSelectedFormId(nextForm?.id ?? '')
-
-    if (nextForm) {
-      const fretting = copyFretting(nextForm.fretting)
-      applyCurrentFretting(fretting)
-      syncManualViewportFromFretting(fretting)
-    }
+  function closeChordModal() {
+    setChordModal(null)
   }
 
-  function handleQualityChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextQuality = event.target.value as ChordQuality
-    const nextForms = getChordForms(selectedRoot, nextQuality)
-    const nextForm = nextForms[0]
+  function handleSubmitChordModal(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
 
-    setSelectedQuality(nextQuality)
-    setSelectedFormId(nextForm?.id ?? '')
-
-    if (nextForm) {
-      const fretting = copyFretting(nextForm.fretting)
-      applyCurrentFretting(fretting)
-      syncManualViewportFromFretting(fretting)
-    }
-  }
-
-  function handleFormChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextForm = availableForms.find(
-      (form) => form.id === event.target.value,
-    )
-
-    if (!nextForm) {
+    if (!chordModal) {
       return
     }
 
-    applyGeneratedForm(nextForm)
-  }
+    const { draft } = chordModal
+    const draftSummary = summarizeChord(draft.fretting)
+    const draftDisplayName = getDisplayName(
+      draftSummary.currentName,
+      draft.chordName,
+    )
 
-  function setStringState(stringIndex: number, nextState: StringState) {
-    const nextFretting = [...currentFretting]
-    nextFretting[stringIndex] = nextState
-    applyCurrentFretting(toFretting(nextFretting))
-  }
+    if (chordModal.kind === 'stock') {
+      if (isModalChordStocked) {
+        setAppFeedback({
+          kind: 'success',
+          text: text.alreadyStockedFeedback(draftDisplayName),
+        })
+        return
+      }
 
-  function handleAddGeneratedBlock() {
-    addBlockToSelectedLayoutRow(currentFretting)
+      commitChordDraft(draft)
+      setStockChords((currentStockChords) => [
+        ...currentStockChords,
+        createStockChord(
+          copyFretting(draft.fretting),
+          toStoredDisplayName(draft.chordName),
+        ),
+      ])
+      setAppFeedback({
+        kind: 'success',
+        text: text.addedToStockFeedback(draftDisplayName),
+      })
+      closeChordModal()
+      return
+    }
+
+    if (chordModal.kind === 'layout') {
+      commitChordDraft(draft)
+      addBlockToLayoutRow(
+        chordModal.targetRowId,
+        draft.fretting,
+        draft.chordName,
+      )
+      closeChordModal()
+      return
+    }
+
+    const blockToEdit = blocks.find((block) => block.id === chordModal.blockId)
+
+    if (!blockToEdit) {
+      closeChordModal()
+      return
+    }
+
+    commitChordDraft(draft)
+    updateBlockById(chordModal.blockId, (block) => ({
+      ...block,
+      displayName: toStoredDisplayName(draft.chordName),
+      fretting: copyFretting(draft.fretting),
+    }))
+    activateBlock({
+      ...blockToEdit,
+      displayName: toStoredDisplayName(draft.chordName),
+      fretting: copyFretting(draft.fretting),
+    })
+    closeChordModal()
   }
 
   function handleLocaleChange(nextLocale: Locale) {
@@ -703,38 +886,27 @@ function App() {
     setAppFeedback(null)
   }
 
-  function handleAddCurrentChordToStock() {
-    if (isCurrentChordStocked) {
-      setAppFeedback({
-        kind: 'success',
-        text: text.alreadyStockedFeedback(currentDisplayName),
-      })
-      return
-    }
-
-    const nextStockChord = createStockChord(
-      copyFretting(currentFretting),
-      toStoredDisplayName(currentChordName),
-    )
-
-    setStockChords((currentStockChords) => [
-      ...currentStockChords,
-      nextStockChord,
-    ])
-    setAppFeedback({
-      kind: 'success',
-      text: text.addedToStockFeedback(currentDisplayName),
-    })
-  }
-
-  function handleAddStockChordToLayout(stockChordId: string) {
+  function handleAddStockChordToLayout(stockChordId: string, rowId?: string) {
     const stockChord = stockChords.find((entry) => entry.id === stockChordId)
 
     if (!stockChord) {
       return
     }
 
-    addBlockToSelectedLayoutRow(stockChord.fretting, stockChord.displayName)
+    addBlockToLayoutRow(
+      rowId ?? selectedLayoutRow.id,
+      stockChord.fretting,
+      stockChord.displayName,
+    )
+  }
+
+  function handleAddStockChordFromModal(stockChordId: string) {
+    if (!chordModal || chordModal.kind !== 'layout') {
+      return
+    }
+
+    handleAddStockChordToLayout(stockChordId, chordModal.targetRowId)
+    closeChordModal()
   }
 
   function handleRemoveStockChord(stockChordId: string) {
@@ -774,8 +946,8 @@ function App() {
       activeLayoutRowId,
       {
         displayName: nextSelectedBlock.displayName,
-        xOffset: nextSelectedBlock.xOffset,
         spacing: nextSelectedBlock.spacing,
+        xOffset: nextSelectedBlock.xOffset,
       },
     )
 
@@ -801,10 +973,6 @@ function App() {
 
     if (!fallbackBlock) {
       return
-    }
-
-    if (editingBlockId === selectedBlockId) {
-      setEditingBlockId(null)
     }
 
     setBlocks(nextBlocks)
@@ -945,24 +1113,6 @@ function App() {
     setDraggingBlockId(block.id)
   }
 
-  function handleCurrentChordNameChange(event: ChangeEvent<HTMLInputElement>) {
-    applyCurrentChordName(event.target.value)
-  }
-
-  function handleManualStartFretChange(event: ChangeEvent<HTMLInputElement>) {
-    const parsed = Number.parseInt(event.target.value, 10)
-    setManualStartFret(Number.isNaN(parsed) ? 1 : Math.max(1, parsed))
-  }
-
-  function handleManualFretCountChange(event: ChangeEvent<HTMLInputElement>) {
-    const parsed = Number.parseInt(event.target.value, 10)
-    setManualFretCount(
-      Number.isNaN(parsed)
-        ? MIN_MANUAL_FRET_COUNT
-        : clampManualFretCount(parsed),
-    )
-  }
-
   function openProjectFilePicker() {
     projectFileInputRef.current?.click()
   }
@@ -1051,6 +1201,23 @@ function App() {
     }
   }
 
+  const modalTitle = chordModal
+    ? chordModal.kind === 'stock'
+      ? text.chordBuilderModalTitle
+      : chordModal.kind === 'layout'
+        ? text.layoutAddModalTitle(modalRowLabel ?? text.layoutHeading)
+        : text.layoutEditModalTitle
+    : ''
+  const modalSubmitLabel = chordModal
+    ? chordModal.kind === 'stock'
+      ? isModalChordStocked
+        ? text.alreadyStockedButton
+        : text.addToStock
+      : chordModal.kind === 'layout'
+        ? text.addToRow(modalRowLabel ?? text.layoutHeading)
+        : text.saveChordChanges
+    : ''
+
   return (
     <main className="app-shell">
       <header className="hero">
@@ -1125,277 +1292,19 @@ function App() {
         </div>
       </header>
 
-      <section className="workspace-grid">
-        <section
-          className="panel generator-panel"
-          aria-labelledby="generator-heading"
-        >
-          <div className="panel-heading">
-            <h2 id="generator-heading">{text.generatorHeading}</h2>
-          </div>
-
-          <div className="field-grid">
-            <label className="field">
-              <span>{text.rootNote}</span>
-              <select
-                aria-label="Root note"
-                onChange={handleRootChange}
-                value={selectedRoot}
-              >
-                {PITCH_CLASSES.map((pitchClass) => (
-                  <option key={pitchClass} value={pitchClass}>
-                    {pitchClass}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>{text.chordQuality}</span>
-              <select
-                aria-label="Chord quality"
-                onChange={handleQualityChange}
-                value={selectedQuality}
-              >
-                {CHORD_QUALITIES.map((quality) => (
-                  <option key={quality} value={quality}>
-                    {CHORD_QUALITY_LABELS[quality]}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>{text.chordForm}</span>
-              <select
-                aria-label="Chord form"
-                onChange={handleFormChange}
-                value={selectedForm?.id ?? ''}
-              >
-                {availableForms.map((form) => (
-                  <option key={form.id} value={form.id}>
-                    {form.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="generator-actions">
-            <button onClick={handleAddGeneratedBlock} type="button">
-              {text.addCurrentChord}
-            </button>
-            <button
-              disabled={isCurrentChordStocked}
-              onClick={handleAddCurrentChordToStock}
-              type="button"
-            >
-              {isCurrentChordStocked
-                ? text.alreadyStockedButton
-                : text.addToStock}
-            </button>
-          </div>
-        </section>
-
-        <section
-          className="panel editor-panel"
-          aria-labelledby="editor-heading"
-        >
-          <div className="panel-heading">
-            <h2 id="editor-heading">{text.editorHeading}</h2>
-          </div>
-
-          <div className="editor-content">
-            <div className="diagram-card">
-              <div className="diagram-card-header">
-                <div>
-                  {isEditingSelectedBlock ? (
-                    <p className="meta-label">{text.editingLayoutBlock}</p>
-                  ) : null}
-                  <h3>{currentDisplayName}</h3>
-                  <label className="field small diagram-name-field">
-                    <span>{text.displayChordName}</span>
-                    <input
-                      aria-label="Chord name"
-                      onChange={handleCurrentChordNameChange}
-                      placeholder={currentSummary.currentName}
-                      type="text"
-                      value={currentChordName}
-                    />
-                  </label>
-                  <p className="meta-note">{text.useAutoDetectedName}</p>
-                </div>
-                {isEditingSelectedBlock ? (
-                  <div className="editor-mode-controls">
-                    <p className="meta-note editor-mode-note editing">
-                      {text.editingBlockNotice(selectedBlockDisplayName)}
-                    </p>
-                    <p className="meta-note">ID: {selectedBlock.id}</p>
-                  </div>
-                ) : null}
-              </div>
-
-              <ChordDiagram
-                fretting={currentFretting}
-                markerLabels={currentSummary.stringDegreeLabels}
-                viewport={currentSummary.viewport}
-              />
-            </div>
-
-            <div className="manual-builder">
-              <div className="manual-builder-header">
-                <div>
-                  <h3>{text.frettingInput}</h3>
-                </div>
-                <button
-                  className="secondary-button"
-                  onClick={() =>
-                    syncManualViewportFromFretting(currentFretting)
-                  }
-                  type="button"
-                >
-                  {text.autoAdjustViewport}
-                </button>
-              </div>
-
-              <div className="manual-settings">
-                <label className="field small">
-                  <span>{text.startFret}</span>
-                  <input
-                    aria-label="Manual start fret"
-                    min="1"
-                    onChange={handleManualStartFretChange}
-                    type="number"
-                    value={manualStartFret}
-                  />
-                </label>
-
-                <label className="field small">
-                  <span>{text.visibleFretCount}</span>
-                  <input
-                    aria-label="Manual fret count"
-                    max={MAX_MANUAL_FRET_COUNT}
-                    min={MIN_MANUAL_FRET_COUNT}
-                    onChange={handleManualFretCountChange}
-                    type="number"
-                    value={manualFretCount}
-                  />
-                </label>
-              </div>
-
-              <div
-                aria-label={text.frettingInput}
-                className="manual-grid"
-                role="group"
-              >
-                {manualStringEntries.map(
-                  ({ state, stringIndex, stringNumber }) => (
-                    <div
-                      className="manual-grid-row"
-                      key={`manual-row-${stringIndex}`}
-                      style={{ gridTemplateColumns: manualGridTemplate }}
-                    >
-                      <span className="manual-grid-string">
-                        {text.stringLabel(stringNumber)}
-                      </span>
-                      <button
-                        aria-label={text.stringMuteLabel(stringNumber)}
-                        aria-pressed={state === 'x'}
-                        className={state === 'x' ? 'active' : ''}
-                        onClick={() => setStringState(stringIndex, 'x')}
-                        type="button"
-                      >
-                        X
-                      </button>
-                      <button
-                        aria-label={text.stringOpenLabel(stringNumber)}
-                        aria-pressed={state === 0}
-                        className={state === 0 ? 'active' : ''}
-                        onClick={() => setStringState(stringIndex, 0)}
-                        type="button"
-                      >
-                        O
-                      </button>
-                      {manualVisibleFrets.map((fret) => (
-                        <button
-                          aria-label={text.stringFretLabel(stringNumber, fret)}
-                          aria-pressed={state === fret}
-                          className={state === fret ? 'active' : ''}
-                          key={`manual-string-${stringIndex}-fret-${fret}`}
-                          onClick={() => setStringState(stringIndex, fret)}
-                          type="button"
-                        >
-                          {fret}
-                        </button>
-                      ))}
-                    </div>
-                  ),
-                )}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="panel info-panel" aria-labelledby="info-heading">
-          <div className="panel-heading">
-            <h2 id="info-heading">{text.infoHeading}</h2>
-          </div>
-
-          <dl className="info-list">
-            <div>
-              <dt>{text.currentChordName}</dt>
-              <dd>{currentDisplayName}</dd>
-            </div>
-            <div>
-              <dt>{text.candidateChordNames}</dt>
-              <dd>
-                {currentSummary.candidates.length > 0
-                  ? currentSummary.candidates
-                      .slice(0, 3)
-                      .map((candidate) => candidate.label)
-                      .join(', ')
-                  : text.noCandidates}
-              </dd>
-            </div>
-            <div>
-              <dt>{text.bassNote}</dt>
-              <dd>{currentSummary.bassNote ?? '-'}</dd>
-            </div>
-            <div>
-              <dt>{text.chordTones}</dt>
-              <dd>
-                {currentSummary.chordTones.length > 0
-                  ? currentSummary.chordTones.join(', ')
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt>{text.uniqueNotes}</dt>
-              <dd>
-                {currentSummary.uniqueNotes.length > 0
-                  ? currentSummary.uniqueNotes.join(', ')
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt>{text.playedNotes}</dt>
-              <dd>
-                {currentSummary.playedNotes.length > 0
-                  ? currentSummary.playedNotes
-                      .map((note) => note.note)
-                      .join(', ')
-                  : '-'}
-              </dd>
-            </div>
-          </dl>
-        </section>
-      </section>
-
       <section className="panel stock-panel" aria-labelledby="stock-heading">
         <div className="panel-heading stock-panel-heading">
           <div>
             <h2 id="stock-heading">{text.stockHeading}</h2>
           </div>
+          <button
+            aria-label={text.openStockAddModal}
+            className="panel-icon-button"
+            onClick={openStockChordModal}
+            type="button"
+          >
+            +
+          </button>
         </div>
 
         {stockEntries.length > 0 ? (
@@ -1455,14 +1364,11 @@ function App() {
 
         <div className="layout-toolbar">
           <button
-            aria-pressed={isEditingSelectedBlock}
             className="secondary-button"
-            onClick={toggleSelectedBlockEditing}
+            onClick={openEditChordModal}
             type="button"
           >
-            {isEditingSelectedBlock
-              ? text.finishEditingSelectedChord
-              : text.editSelectedChord}
+            {text.editSelectedChord}
           </button>
           <button onClick={handleDuplicateBlock} type="button">
             {text.duplicateSelectedChord}
@@ -1588,6 +1494,16 @@ function App() {
                         />
                       </button>
                     ))}
+
+                    <button
+                      aria-label={text.openLayoutAddModal(rowLabel)}
+                      className="layout-add-button"
+                      onClick={() => openLayoutChordModal(rowEntry.row.id)}
+                      style={{ left: `${rowEntry.addButtonLeft}px` }}
+                      type="button"
+                    >
+                      +
+                    </button>
                   </div>
 
                   {isExportingPdf || editingLyricsRowId !== rowEntry.row.id ? (
@@ -1618,8 +1534,8 @@ function App() {
                       onChange={(event) =>
                         handleLyricsLineChange(rowEntry.row.id, event)
                       }
-                      placeholder={text.lyricsPlaceholder}
                       onFocus={() => selectLayoutRow(rowEntry.row.id)}
+                      placeholder={text.lyricsPlaceholder}
                       ref={(node) => {
                         lyricsInputRefs.current[rowEntry.row.id] = node
                       }}
@@ -1633,6 +1549,131 @@ function App() {
           </div>
         </div>
       </section>
+
+      {chordModal && modalDraft && modalSummary ? (
+        <div
+          className="modal-overlay"
+          onClick={closeChordModal}
+          role="presentation"
+        >
+          <div
+            aria-labelledby="chord-modal-heading"
+            aria-modal="true"
+            className="chord-modal"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="chord-modal-header">
+              <div>
+                {chordModal.kind === 'edit' ? (
+                  <p className="meta-label">{text.editSelectedChord}</p>
+                ) : null}
+                <h2 id="chord-modal-heading">{modalTitle}</h2>
+                {chordModal.kind === 'edit' ? (
+                  <p className="meta-note">
+                    {text.editingBlockNotice(selectedBlockDisplayName)}
+                  </p>
+                ) : null}
+              </div>
+              <button
+                aria-label={text.modalClose}
+                className="panel-icon-button"
+                onClick={closeChordModal}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+
+            <form className="chord-modal-form" onSubmit={handleSubmitChordModal}>
+              <ChordComposer
+                availableForms={modalAvailableForms}
+                chordName={modalDraft.chordName}
+                displayName={modalDisplayName}
+                fretting={modalDraft.fretting}
+                manualFretCount={modalDraft.manualFretCount}
+                manualGridTemplate={modalManualGridTemplate}
+                manualStartFret={modalDraft.manualStartFret}
+                manualStringEntries={modalManualStringEntries}
+                manualVisibleFrets={modalVisibleFrets}
+                maxManualFretCount={MAX_MANUAL_FRET_COUNT}
+                minManualFretCount={MIN_MANUAL_FRET_COUNT}
+                onChordNameChange={handleChordModalNameChange}
+                onFormChange={handleChordModalFormChange}
+                onManualFretCountChange={handleChordModalManualFretCountChange}
+                onManualStartFretChange={handleChordModalManualStartFretChange}
+                onQualityChange={handleChordModalQualityChange}
+                onRootChange={handleChordModalRootChange}
+                onStringStateChange={handleChordModalStringStateChange}
+                onViewportSync={handleChordModalViewportSync}
+                selectedFormId={modalDraft.selectedFormId}
+                selectedQuality={modalDraft.selectedQuality}
+                selectedRoot={modalDraft.selectedRoot}
+                summary={modalSummary}
+                text={text}
+              />
+
+              {chordModal.kind === 'layout' ? (
+                <section
+                  aria-labelledby="modal-stock-heading"
+                  className="composer-section modal-stock-section"
+                >
+                  <div className="panel-heading">
+                    <h2 id="modal-stock-heading">{text.stockHeading}</h2>
+                  </div>
+
+                  {stockEntries.length > 0 ? (
+                    <div className="stock-grid modal-stock-grid">
+                      {stockEntries.map(({ stockChord, summary, displayName }) => (
+                        <article className="stock-card" key={stockChord.id}>
+                          <div className="chord-preview-block stock-chord-preview">
+                            <h3 className="chord-preview-name">{displayName}</h3>
+                            <ChordDiagram
+                              compact
+                              fretting={stockChord.fretting}
+                              markerLabels={summary.stringDegreeLabels}
+                              viewport={summary.viewport}
+                            />
+                          </div>
+
+                          <div className="stock-card-actions">
+                            <button
+                              onClick={() =>
+                                handleAddStockChordFromModal(stockChord.id)
+                              }
+                              type="button"
+                            >
+                              {text.addToRow(modalRowLabel ?? text.layoutHeading)}
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="stock-empty">{text.stockEmpty}</p>
+                  )}
+                </section>
+              ) : null}
+
+              <div className="modal-actions">
+                <button
+                  className="secondary-button"
+                  onClick={closeChordModal}
+                  type="button"
+                >
+                  {text.modalClose}
+                </button>
+                <button
+                  disabled={chordModal.kind === 'stock' && isModalChordStocked}
+                  type="submit"
+                >
+                  {modalSubmitLabel}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </main>
   )
 }
@@ -1643,6 +1684,83 @@ function clampManualFretCount(value: number): number {
 
 function createVisibleFrets(startFret: number, fretCount: number): number[] {
   return Array.from({ length: fretCount }, (_, index) => startFret + index)
+}
+
+function createChordDraft({
+  selectedRoot,
+  selectedQuality,
+  selectedFormId,
+  currentFretting,
+  currentChordName,
+  manualStartFret,
+  manualFretCount,
+}: {
+  selectedRoot: PitchClassName
+  selectedQuality: ChordQuality
+  selectedFormId: string
+  currentFretting: Fretting
+  currentChordName: string
+  manualStartFret: number
+  manualFretCount: number
+}): ChordDraftState {
+  return {
+    chordName: currentChordName,
+    fretting: copyFretting(currentFretting),
+    manualFretCount: clampManualFretCount(manualFretCount),
+    manualStartFret: Math.max(1, manualStartFret),
+    selectedFormId,
+    selectedQuality,
+    selectedRoot,
+  }
+}
+
+function createChordDraftFromBlock(
+  block: ChordBlockState,
+  {
+    selectedRoot,
+    selectedQuality,
+    selectedFormId,
+  }: {
+    selectedRoot: PitchClassName
+    selectedQuality: ChordQuality
+    selectedFormId: string
+  },
+): ChordDraftState {
+  const viewport = summarizeChord(block.fretting).viewport
+
+  return {
+    chordName: block.displayName ?? '',
+    fretting: copyFretting(block.fretting),
+    manualFretCount: clampManualFretCount(viewport.fretCount),
+    manualStartFret: viewport.startFret,
+    selectedFormId,
+    selectedQuality,
+    selectedRoot,
+  }
+}
+
+function syncDraftViewport(
+  draft: ChordDraftState,
+  fretting: Fretting,
+): ChordDraftState {
+  const viewport = summarizeChord(fretting).viewport
+
+  return {
+    ...draft,
+    fretting: copyFretting(fretting),
+    manualFretCount: clampManualFretCount(viewport.fretCount),
+    manualStartFret: viewport.startFret,
+  }
+}
+
+function getLayoutRowLabel(
+  layoutRows: readonly LayoutRowState[],
+  rowId: string,
+  text: (typeof UI_TEXT)[Locale],
+): string {
+  const rowIndex = layoutRows.findIndex((row) => row.id === rowId)
+
+  return text.layoutRowLabel(rowIndex < 0 ? 0 : rowIndex)
 }
 
 function buildLayoutEntries(
@@ -1689,7 +1807,11 @@ function buildLayoutEntries(
       entry.hasFollowingBlock = index < entries.length - 1
     })
 
-    const chordLayerWidth = Math.max(cursor, nextFlowLeft)
+    const addButtonLeft = Math.max(cursor, nextFlowLeft)
+    const chordLayerWidth = Math.max(
+      cursor,
+      nextFlowLeft + LAYOUT_ADD_BUTTON_WIDTH,
+    )
     const chordStageWidth =
       chordLayerWidth + rowPaddingInline * 2 + stagePaddingInline * 2
     const lyricStageWidth = Math.max(
@@ -1699,6 +1821,7 @@ function buildLayoutEntries(
 
     return {
       row,
+      addButtonLeft,
       entries,
       stageWidth: Math.max(chordStageWidth, lyricStageWidth),
     }

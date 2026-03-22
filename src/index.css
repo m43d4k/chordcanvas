@@ -293,6 +293,7 @@ button {
 .generator-actions button:focus,
 .stock-card-actions button:focus,
 .secondary-button:focus,
+.panel-icon-button:focus,
 .manual-grid button:focus,
 .layout-chord-block:focus {
   border-color: rgba(115, 103, 240, 0.44);
@@ -331,7 +332,8 @@ button {
 .generator-actions button,
 .layout-toolbar button,
 .stock-card-actions button,
-.secondary-button {
+.secondary-button,
+.panel-icon-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -363,7 +365,8 @@ button {
 .generator-actions button:hover,
 .layout-toolbar button:hover,
 .stock-card-actions button:hover,
-.layout-chord-block:hover {
+.layout-chord-block:hover,
+.panel-icon-button:hover {
   border-color: var(--border-hover);
   background: var(--surface-muted);
 }
@@ -580,6 +583,14 @@ button {
   align-items: flex-end;
 }
 
+.panel-icon-button {
+  width: var(--control-height);
+  min-width: var(--control-height);
+  padding: 0;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
 .stock-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
@@ -730,6 +741,10 @@ button {
   box-shadow: none;
 }
 
+.layout-stage[data-exporting-pdf='true'] .layout-add-button {
+  display: none;
+}
+
 .layout-stage[data-exporting-pdf='true'] .layout-chord-layer {
   min-height: 110px;
 }
@@ -830,6 +845,33 @@ button {
   position: relative;
   width: 100%;
   min-height: 150px;
+}
+
+.layout-add-button {
+  position: absolute;
+  top: 18px;
+  width: 3.4rem;
+  height: 6.8rem;
+  padding: 0;
+  border: 1px dashed var(--border-hover);
+  border-radius: 4px;
+  background: rgba(115, 103, 240, 0.08);
+  color: var(--accent-strong);
+  font-size: 1.9rem;
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.layout-add-button:hover,
+.layout-add-button:focus {
+  border-color: var(--accent-strong);
+  background: rgba(115, 103, 240, 0.16);
+  color: var(--accent-ink);
+  outline: none;
 }
 
 .chord-preview-block {
@@ -1010,9 +1052,96 @@ button {
   font-size: 7px;
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(12, 15, 26, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.chord-modal {
+  width: min(1120px, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+.chord-modal-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.chord-modal-header h2 {
+  margin: 0.3rem 0 0;
+  color: var(--text);
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.chord-modal-form,
+.composer-sections {
+  display: grid;
+  gap: 1rem;
+}
+
+.chord-modal-form {
+  margin-top: 1rem;
+}
+
+.composer-section {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-muted);
+}
+
+.composer-section .field-grid,
+.composer-section .editor-content,
+.composer-section .info-list {
+  margin-top: 0.95rem;
+}
+
+.modal-editor-content {
+  margin-top: 0.95rem;
+}
+
+.modal-stock-section .stock-empty {
+  margin-top: 0.95rem;
+}
+
+.modal-stock-grid .stock-card-actions {
+  grid-template-columns: 1fr;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 @media (min-width: 860px) {
   .editor-content {
     grid-template-columns: minmax(252px, 320px) minmax(0, 1fr);
+  }
+
+  .composer-sections {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .composer-section:last-child,
+  .modal-stock-section {
+    grid-column: 1 / -1;
   }
 
   .manual-builder {
@@ -1036,6 +1165,21 @@ button {
   .layout-controls {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .layout-add-button {
+    width: 3rem;
+    height: 5.8rem;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions button {
+    width: 100%;
   }
 }
 
