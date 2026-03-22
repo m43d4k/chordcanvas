@@ -85,6 +85,45 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
+  it('uses a tighter default block spacing in the layout editor', () => {
+    render(<App />)
+
+    expect(screen.getByLabelText('Block spacing')).toHaveValue(6)
+  })
+
+  it('applies the configured spacing between adjacent layout blocks', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '現在のコードを追加',
+      }),
+    )
+
+    const [firstBlock, secondBlock] = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+
+    expect(firstBlock).toHaveStyle({ left: '16px' })
+    expect(secondBlock).toHaveStyle({ left: '174px' })
+  })
+
+  it('expands the stage enough to keep four blocks inside the row frame', () => {
+    const { container } = render(<App />)
+
+    for (let index = 0; index < 3; index += 1) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: '現在のコードを追加',
+        }),
+      )
+    }
+
+    expect(container.querySelector('.layout-stage')).toHaveStyle({
+      width: '710.4px',
+    })
+  })
+
   it('updates the selected chord when generator controls change', () => {
     render(<App />)
 

@@ -18,4 +18,16 @@ describe('ChordDiagram', () => {
       expect(line.getAttribute('y1')).toBe(line.getAttribute('y2'))
     })
   })
+
+  it('uses a tighter compact viewBox for layout rendering', () => {
+    const fretting = toFretting(['x', 3, 2, 0, 1, 0])
+    const viewport = deriveViewport(fretting)
+    const { container } = render(
+      <ChordDiagram compact fretting={fretting} viewport={viewport} />,
+    )
+
+    expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe(
+      '0 0 122 130',
+    )
+  })
 })

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
+import type { CSSProperties, ChangeEvent } from 'react'
 import ChordDiagram from './components/ChordDiagram'
 import {
   exportLayoutStagePdf,
@@ -30,8 +30,12 @@ import {
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
 const DEFAULT_LYRICS = 'Shine a little light over the morning line'
-const DEFAULT_SPACING = 36
-const LAYOUT_SLOT_WIDTH = 180
+const DEFAULT_SPACING = 6
+const LAYOUT_BLOCK_WIDTH = 152
+const LAYOUT_SLOT_WIDTH = LAYOUT_BLOCK_WIDTH
+const LAYOUT_STAGE_MIN_WIDTH = 640
+const LAYOUT_STAGE_PADDING_INLINE = 16
+const LAYOUT_ROW_PADDING_INLINE = 15.2
 const MIN_MANUAL_FRET_COUNT = 3
 const MAX_MANUAL_FRET_COUNT = 8
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
@@ -289,6 +293,12 @@ function App() {
   const manualGridTemplate = `36px 36px 36px repeat(${manualVisibleFrets.length}, minmax(0, 1fr))`
 
   const layoutEntries = buildLayoutEntries(layoutRows, blocks)
+  const layoutStageStyle = {
+    width: `${layoutEntries.stageWidth}px`,
+    '--layout-block-width': `${LAYOUT_BLOCK_WIDTH}px`,
+    '--layout-row-padding-inline': `${LAYOUT_ROW_PADDING_INLINE}px`,
+    '--layout-stage-padding-inline': `${LAYOUT_STAGE_PADDING_INLINE}px`,
+  } as CSSProperties
 
   function createProjectSnapshot(): ProjectSnapshot {
     return cloneProjectSnapshot({
@@ -1089,7 +1099,7 @@ function App() {
           <div
             className="layout-stage"
             ref={layoutStageRef}
-            style={{ width: `${layoutEntries.stageWidth}px` }}
+            style={layoutStageStyle}
           >
             {layoutEntries.rows.map((rowEntry, index) => (
               <section
@@ -1165,7 +1175,7 @@ function buildLayoutEntries(
   blocks: readonly ChordBlockState[],
 ) {
   const rows = layoutRows.map((row) => {
-    let cursor = 20
+    let cursor = 16
     const entries = blocks
       .filter((block) => block.rowId === row.id)
       .map((block) => {
@@ -1180,12 +1190,17 @@ function buildLayoutEntries(
         }
       })
 
-    const lyricWidth = Math.max(640, row.lyrics.length * 11 + 80)
+    const chordStageWidth =
+      cursor + LAYOUT_ROW_PADDING_INLINE * 2 + LAYOUT_STAGE_PADDING_INLINE * 2
+    const lyricStageWidth = Math.max(
+      LAYOUT_STAGE_MIN_WIDTH,
+      row.lyrics.length * 11 + 80,
+    )
 
     return {
       row,
       entries,
-      stageWidth: Math.max(cursor + 40, lyricWidth),
+      stageWidth: Math.max(chordStageWidth, lyricStageWidth),
     }
   })
 
@@ -1193,7 +1208,7 @@ function buildLayoutEntries(
     rows,
     stageWidth: rows.reduce(
       (maxWidth, rowEntry) => Math.max(maxWidth, rowEntry.stageWidth),
-      640,
+      LAYOUT_STAGE_MIN_WIDTH,
     ),
   }
 }

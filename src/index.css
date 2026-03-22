@@ -459,9 +459,12 @@ button {
 }
 
 .layout-stage {
+  --layout-block-width: 152px;
+  --layout-row-padding-inline: 15.2px;
+  --layout-stage-padding-inline: 16px;
   display: grid;
   gap: 1rem;
-  padding: 1rem 1rem 1.4rem;
+  padding: 1rem var(--layout-stage-padding-inline) 1.4rem;
   border-radius: 24px;
   background:
     linear-gradient(rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
@@ -537,7 +540,9 @@ button {
 }
 
 .layout-row {
-  padding: 0.95rem 0.95rem 1rem;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.95rem var(--layout-row-padding-inline) 1rem;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.03);
 }
@@ -579,14 +584,15 @@ button {
 
 .layout-chord-layer {
   position: relative;
+  width: 100%;
   min-height: 210px;
 }
 
 .layout-chord-block {
   position: absolute;
   top: 0;
-  width: 170px;
-  padding: 0.8rem 0.75rem 0.65rem;
+  width: var(--layout-block-width);
+  padding: 0.56rem 0.45rem 0.45rem;
   text-align: left;
 }
 
@@ -597,13 +603,14 @@ button {
 
 .layout-block-name {
   display: block;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.38rem;
   color: #fff6ea;
   font-weight: 600;
 }
 
 .lyrics-line {
   margin-top: 1.2rem;
+  width: 100%;
   padding: 0.8rem 0.3rem 0;
   border-top: 1px dashed rgba(245, 239, 230, 0.18);
   color: var(--text-soft);

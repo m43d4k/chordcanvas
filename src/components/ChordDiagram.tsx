@@ -34,8 +34,8 @@ function ChordDiagram({
 }: ChordDiagramProps) {
   const fretSpacing = compact ? 26 : 32
   const stringSpacing = compact ? 16 : 20
-  const gridLeft = compact ? 40 : 52
-  const gridTop = compact ? 42 : 56
+  const gridLeft = compact ? 34 : 52
+  const gridTop = compact ? 36 : 56
   const gridWidth = viewport.fretCount * fretSpacing
   const gridRight = gridLeft + gridWidth
   const stringYs = Array.from(
@@ -44,10 +44,11 @@ function ChordDiagram({
   )
   const topStringY = stringYs[0] ?? gridTop
   const bottomStringY = stringYs[stringYs.length - 1] ?? gridTop
-  const width = gridRight + 18
-  const height = bottomStringY + (compact ? 20 : 26)
-  const fretLabelY = gridTop - (compact ? 10 : 14)
-  const statusLabelX = gridLeft - (compact ? 18 : 22)
+  const width = gridRight + (compact ? 10 : 18)
+  const height = bottomStringY + (compact ? 14 : 26)
+  const fretLabelY = gridTop - (compact ? 8 : 14)
+  const statusLabelX = gridLeft - (compact ? 16 : 22)
+  const startFretY = compact ? 28 : 32
 
   return (
     <svg
@@ -67,7 +68,7 @@ function ChordDiagram({
           className="diagram-start-fret"
           textAnchor="middle"
           x={gridLeft + fretSpacing / 2}
-          y="32"
+          y={startFretY}
         >
           {viewport.startFret}fr
         </text>
