@@ -1039,14 +1039,12 @@ function App() {
     setSelectedLayoutRowId(nextRow.id)
   }
 
-  function handleDeleteSelectedLayoutRow() {
+  function handleDeleteLayoutRow(rowId: string) {
     if (layoutRows.length === 1) {
       return
     }
 
-    const selectedRowIndex = layoutRows.findIndex(
-      (row) => row.id === selectedLayoutRow.id,
-    )
+    const selectedRowIndex = layoutRows.findIndex((row) => row.id === rowId)
     const rowToRemove = layoutRows[selectedRowIndex]
     const fallbackRow =
       layoutRows[selectedRowIndex - 1] ?? layoutRows[selectedRowIndex + 1]
@@ -1068,8 +1066,15 @@ function App() {
           : block,
       ),
     )
-    setSelectedLayoutRowId(fallbackRow.id)
-    setEditingLyricsRowId(null)
+    if (
+      selectedLayoutRowId === rowToRemove.id ||
+      selectedBlock.rowId === rowToRemove.id
+    ) {
+      setSelectedLayoutRowId(fallbackRow.id)
+    }
+    if (editingLyricsRowId === rowToRemove.id) {
+      setEditingLyricsRowId(null)
+    }
   }
 
   function handleLyricsLineChange(
@@ -1351,19 +1356,6 @@ function App() {
         </div>
 
         <div className="layout-toolbar">
-          <button onClick={handleAddLayoutRow} type="button">
-            {text.addRow}
-          </button>
-          <button
-            disabled={layoutRows.length === 1}
-            onClick={handleDeleteSelectedLayoutRow}
-            type="button"
-          >
-            {text.deleteSelectedRow}
-          </button>
-        </div>
-
-        <div className="layout-toolbar">
           <button
             className="secondary-button"
             onClick={openEditChordModal}
@@ -1437,16 +1429,13 @@ function App() {
                       {rowLabel}
                     </h3>
                     <button
-                      aria-label={text.setInsertionTargetAria(rowLabel)}
-                      aria-pressed={rowEntry.row.id === selectedLayoutRow.id}
-                      className="layout-row-selector"
-                      onClick={() => selectLayoutRow(rowEntry.row.id)}
+                      aria-label={text.removeLayoutRowAria(rowLabel)}
+                      className="layout-row-delete-button"
+                      disabled={layoutRows.length === 1}
+                      onClick={() => handleDeleteLayoutRow(rowEntry.row.id)}
                       type="button"
                     >
-                      <span
-                        aria-hidden="true"
-                        className="layout-row-selector-indicator"
-                      />
+                      <span aria-hidden="true">×</span>
                     </button>
                   </div>
 
@@ -1558,6 +1547,15 @@ function App() {
                 </section>
               )
             })}
+
+            <button
+              aria-label={text.addRow}
+              className="layout-row-add-button"
+              onClick={handleAddLayoutRow}
+              type="button"
+            >
+              +
+            </button>
           </div>
         </div>
       </section>

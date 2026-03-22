@@ -46,7 +46,7 @@ export interface UiText {
   layoutHeading: string
   openLayoutAddModal: (rowLabel: string) => string
   addRow: string
-  deleteSelectedRow: string
+  removeLayoutRowAria: (rowLabel: string) => string
   lyricsLineLabel: (index: number) => string
   lyricsPlaceholder: string
   editSelectedChord: string
@@ -59,7 +59,6 @@ export interface UiText {
   saveChordChanges: string
   layoutDragHint: string
   layoutRowLabel: (index: number) => string
-  setInsertionTargetAria: (rowLabel: string) => string
   chordBuilderModalTitle: string
   layoutAddModalTitle: (rowLabel: string) => string
   layoutEditModalTitle: string
@@ -125,7 +124,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutHeading: 'レイアウト編集',
     openLayoutAddModal: (rowLabel) => `${rowLabel} にコードを追加`,
     addRow: '行を追加',
-    deleteSelectedRow: '選択行を削除',
+    removeLayoutRowAria: (rowLabel) => `${rowLabel}を削除`,
     lyricsLineLabel: (index) => `歌詞 ${index + 1} 行`,
     lyricsPlaceholder: '歌詞を入力。スペースで位置を調整。',
     editSelectedChord: '編集',
@@ -139,7 +138,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutDragHint:
       'コードブロックを左右にドラッグすると、その位置に合わせて横へ移動できます。',
     layoutRowLabel: (index) => `${index + 1}行目`,
-    setInsertionTargetAria: (rowLabel) => `${rowLabel} を追加先にする`,
     chordBuilderModalTitle: 'ストック用コードを追加',
     layoutAddModalTitle: (rowLabel) => `${rowLabel} にコードを追加`,
     layoutEditModalTitle: 'コードブロックを編集',
@@ -206,7 +204,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutHeading: 'Layout Editor',
     openLayoutAddModal: (rowLabel) => `Add chord to ${rowLabel}`,
     addRow: 'Add Row',
-    deleteSelectedRow: 'Delete Selected Row',
+    removeLayoutRowAria: (rowLabel) => `Delete ${rowLabel}`,
     lyricsLineLabel: (index) => `Lyrics line ${index + 1}`,
     lyricsPlaceholder: 'Enter lyrics. Use spaces to adjust alignment.',
     editSelectedChord: 'Edit',
@@ -220,8 +218,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutDragHint:
       'Drag a chord block left or right to slide it horizontally in the row.',
     layoutRowLabel: (index) => `Row ${index + 1}`,
-    setInsertionTargetAria: (rowLabel) =>
-      `Set ${rowLabel} as the insertion target`,
     chordBuilderModalTitle: 'Add Chord to Stock',
     layoutAddModalTitle: (rowLabel) => `Add Chord to ${rowLabel}`,
     layoutEditModalTitle: 'Edit Chord Block',

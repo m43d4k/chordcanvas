@@ -162,6 +162,12 @@ function getLayoutAddButton(index: number): HTMLElement {
   })
 }
 
+function getLayoutRowDeleteButton(index: number): HTMLElement {
+  return within(getLayoutRow(index)).getByRole('button', {
+    name: new RegExp(`^(${index}行目を削除|Delete Row ${index})$`),
+  })
+}
+
 function getOpenStockModalButton(): HTMLElement {
   return screen.getByRole('button', {
     name: /^(ストックにコードを追加|Add chord to stock)$/i,
@@ -538,7 +544,7 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
-  it('deletes the selected layout row and moves its blocks to an adjacent row', () => {
+  it('deletes a layout row from its row close button and moves its blocks to an adjacent row', () => {
     render(<App />)
 
     fireEvent.click(
@@ -562,11 +568,7 @@ describe('App', () => {
       }),
     ).toHaveLength(1)
 
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: '選択行を削除',
-      }),
-    )
+    fireEvent.click(getLayoutRowDeleteButton(2))
 
     expect(
       screen.queryByRole('button', {
