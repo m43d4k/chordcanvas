@@ -12,6 +12,12 @@ function createProjectSnapshot(): ProjectSnapshot {
     selectedQuality: 'major',
     selectedFormId: 'open-e-major',
     layoutRows: [{ id: 'row-1', lyrics: 'Intro line' }],
+    stockChords: [
+      {
+        id: 'stock-1',
+        fretting: toFretting([0, 2, 2, 1, 0, 0]),
+      },
+    ],
     blocks: [
       {
         id: 'chord-1',
@@ -57,5 +63,19 @@ describe('projectFile', () => {
     expect(() => parseProjectFile(invalidDocument)).toThrow(
       'blocks[0] が存在しない rowId を参照しています。',
     )
+  })
+
+  it('treats missing stockChords as an empty array when importing', () => {
+    const snapshot = createProjectSnapshot()
+    const { stockChords, ...legacySnapshot } = snapshot
+    const legacyDocument = JSON.stringify({
+      format: 'chordcanvas-project',
+      version: 1,
+      exportedAt: '2026-03-22T00:00:00.000Z',
+      state: legacySnapshot,
+    })
+
+    expect(stockChords).toHaveLength(1)
+    expect(parseProjectFile(legacyDocument).stockChords).toEqual([])
   })
 })

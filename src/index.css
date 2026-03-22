@@ -182,6 +182,7 @@ button {
 .field select,
 .layout-toolbar button,
 .generator-actions button,
+.stock-card-footer button,
 .secondary-button,
 .manual-grid button,
 .layout-chord-block {
@@ -201,8 +202,7 @@ button {
 .lyrics-field input,
 .lyrics-line {
   font-family:
-    'SFMono-Regular', 'Consolas', 'Menlo', 'Monaco', 'BIZ UD Gothic',
-    monospace;
+    'SFMono-Regular', 'Consolas', 'Menlo', 'Monaco', 'BIZ UD Gothic', monospace;
   font-variant-ligatures: none;
 }
 
@@ -216,6 +216,7 @@ button {
 .field select:focus,
 .layout-toolbar button:focus,
 .generator-actions button:focus,
+.stock-card-footer button:focus,
 .secondary-button:focus,
 .manual-grid button:focus,
 .layout-chord-block:focus {
@@ -324,7 +325,8 @@ button {
 }
 
 .generator-actions button,
-.layout-toolbar button {
+.layout-toolbar button,
+.stock-card-footer button {
   padding: 0.68rem 0.9rem;
   transition:
     transform 160ms ease,
@@ -334,6 +336,7 @@ button {
 
 .generator-actions button:hover,
 .layout-toolbar button:hover,
+.stock-card-footer button:hover,
 .layout-chord-block:hover {
   border-color: rgba(243, 173, 97, 0.45);
   background: rgba(243, 173, 97, 0.1);
@@ -408,6 +411,69 @@ button {
   margin-top: 1rem;
 }
 
+.stock-panel {
+  margin-top: 1rem;
+}
+
+.stock-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.stock-selection-note {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.95rem;
+}
+
+.stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.stock-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.95rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stock-card-header,
+.stock-card-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.stock-card-header h3 {
+  margin: 0.2rem 0 0;
+  font-size: 1.08rem;
+}
+
+.stock-card .chord-diagram {
+  width: min(176px, 100%);
+  margin: 0 auto;
+}
+
+.stock-card-footer p,
+.stock-empty {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.88rem;
+}
+
+.stock-empty {
+  margin-top: 1rem;
+}
+
 .layout-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -418,6 +484,12 @@ button {
 .layout-toolbar button[disabled] {
   cursor: not-allowed;
   opacity: 0.48;
+  transform: none;
+}
+
+.generator-actions button[disabled] {
+  cursor: default;
+  opacity: 0.6;
   transform: none;
 }
 
@@ -741,5 +813,13 @@ button {
   .manual-builder-header,
   .manual-settings {
     display: grid;
+  }
+
+  .stock-card-footer {
+    align-items: stretch;
+  }
+
+  .stock-card-footer button {
+    width: 100%;
   }
 }

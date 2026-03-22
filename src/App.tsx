@@ -1,10 +1,7 @@
 import { useRef, useState } from 'react'
 import type { CSSProperties, ChangeEvent } from 'react'
 import ChordDiagram from './components/ChordDiagram'
-import {
-  exportLayoutStagePdf,
-  LAYOUT_PDF_FILE_NAME,
-} from './export/layoutPdf'
+import { exportLayoutStagePdf, LAYOUT_PDF_FILE_NAME } from './export/layoutPdf'
 import {
   CHORD_QUALITIES,
   CHORD_QUALITY_LABELS,
@@ -25,6 +22,7 @@ import {
   type ChordBlockState,
   type LayoutRowState,
   type ProjectSnapshot,
+  type StockChordState,
 } from './project/projectFile'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
@@ -47,6 +45,7 @@ interface AppFeedback {
 
 let blockSequence = 1
 let rowSequence = 1
+let stockSequence = 1
 
 function createLayoutRow(lyrics = ''): LayoutRowState {
   return {
@@ -69,8 +68,19 @@ function createChordBlock(
   }
 }
 
+function createStockChord(fretting: Fretting): StockChordState {
+  return {
+    id: `stock-${stockSequence++}`,
+    fretting,
+  }
+}
+
 function copyFretting(fretting: Fretting): Fretting {
   return toFretting([...fretting])
+}
+
+function isSameFretting(left: Fretting, right: Fretting): boolean {
+  return left.every((state, index) => state === right[index])
 }
 
 function createInitialAppState() {
@@ -213,6 +223,10 @@ function syncProjectSequences(snapshot: ProjectSnapshot) {
     snapshot.layoutRows.map((row) => row.id),
     'row-',
   )
+  stockSequence = getNextSequenceValue(
+    snapshot.stockChords.map((stockChord) => stockChord.id),
+    'stock-',
+  )
   blockSequence = getNextSequenceValue(
     snapshot.blocks.map((block) => block.id),
     'chord-',
@@ -233,6 +247,7 @@ function App() {
   const [layoutRows, setLayoutRows] = useState<LayoutRowState[]>(() => [
     initialState.initialRow,
   ])
+  const [stockChords, setStockChords] = useState<StockChordState[]>([])
   const [blocks, setBlocks] = useState<ChordBlockState[]>(() => [
     initialState.initialBlock,
   ])
@@ -286,6 +301,13 @@ function App() {
     (blockId) => blockId === selectedBlockId,
   )
   const selectedSummary = summarizeChord(activeBlock.fretting)
+  const stockEntries = stockChords.map((stockChord) => ({
+    stockChord,
+    summary: summarizeChord(stockChord.fretting),
+  }))
+  const isCurrentChordStocked = stockChords.some((stockChord) =>
+    isSameFretting(stockChord.fretting, activeBlock.fretting),
+  )
   const manualVisibleFrets = createVisibleFrets(
     manualStartFret,
     manualFretCount,
@@ -306,6 +328,7 @@ function App() {
       selectedQuality,
       selectedFormId,
       layoutRows,
+      stockChords,
       blocks,
       selectedBlockId,
       selectedLayoutRowId,
@@ -322,6 +345,7 @@ function App() {
     setSelectedQuality(nextSnapshot.selectedQuality)
     setSelectedFormId(nextSnapshot.selectedFormId)
     setLayoutRows(nextSnapshot.layoutRows)
+    setStockChords(nextSnapshot.stockChords)
     setBlocks(nextSnapshot.blocks)
     setSelectedBlockId(nextSnapshot.selectedBlockId)
     setSelectedLayoutRowId(nextSnapshot.selectedLayoutRowId)
@@ -374,6 +398,28 @@ function App() {
     syncManualViewportFromFretting(fretting)
   }
 
+  function addBlockToSelectedLayoutRow(fretting: Fretting) {
+    const nextBlock = createChordBlock(
+      copyFretting(fretting),
+      selectedLayoutRow.id,
+    )
+
+    setBlocks((currentBlocks) => {
+      const insertionIndex = getInsertionIndexForRow(
+        currentBlocks,
+        layoutRows,
+        selectedLayoutRow.id,
+      )
+
+      return [
+        ...currentBlocks.slice(0, insertionIndex),
+        nextBlock,
+        ...currentBlocks.slice(insertionIndex),
+      ]
+    })
+    activateBlock(nextBlock)
+  }
+
   function handleRootChange(event: ChangeEvent<HTMLSelectElement>) {
     const nextRoot = event.target.value as PitchClassName
     const nextForms = getChordForms(nextRoot, selectedQuality)
@@ -423,25 +469,56 @@ function App() {
   }
 
   function handleAddGeneratedBlock() {
-    const nextBlock = createChordBlock(
-      copyFretting(activeBlock.fretting),
-      selectedLayoutRow.id,
-    )
+    addBlockToSelectedLayoutRow(activeBlock.fretting)
+  }
 
-    setBlocks((currentBlocks) => {
-      const insertionIndex = getInsertionIndexForRow(
-        currentBlocks,
-        layoutRows,
-        selectedLayoutRow.id,
-      )
+  function handleAddCurrentChordToStock() {
+    if (isCurrentChordStocked) {
+      setAppFeedback({
+        kind: 'success',
+        text: `${selectedSummary.currentName} はすでにストック済みです。`,
+      })
+      return
+    }
 
-      return [
-        ...currentBlocks.slice(0, insertionIndex),
-        nextBlock,
-        ...currentBlocks.slice(insertionIndex),
-      ]
+    const nextStockChord = createStockChord(copyFretting(activeBlock.fretting))
+
+    setStockChords((currentStockChords) => [
+      ...currentStockChords,
+      nextStockChord,
+    ])
+    setAppFeedback({
+      kind: 'success',
+      text: `${selectedSummary.currentName} をストックに追加しました。`,
     })
-    activateBlock(nextBlock)
+  }
+
+  function handleAddStockChordToLayout(stockChordId: string) {
+    const stockChord = stockChords.find((entry) => entry.id === stockChordId)
+
+    if (!stockChord) {
+      return
+    }
+
+    addBlockToSelectedLayoutRow(stockChord.fretting)
+  }
+
+  function handleRemoveStockChord(stockChordId: string) {
+    const stockChord = stockChords.find((entry) => entry.id === stockChordId)
+
+    if (!stockChord) {
+      return
+    }
+
+    const stockSummary = summarizeChord(stockChord.fretting)
+
+    setStockChords((currentStockChords) =>
+      currentStockChords.filter((entry) => entry.id !== stockChordId),
+    )
+    setAppFeedback({
+      kind: 'success',
+      text: `${stockSummary.currentName} をストックから削除しました。`,
+    })
   }
 
   function handleDuplicateBlock() {
@@ -791,9 +868,19 @@ function App() {
             <button onClick={handleAddGeneratedBlock} type="button">
               現在のコードを追加
             </button>
+            <button
+              disabled={isCurrentChordStocked}
+              onClick={handleAddCurrentChordToStock}
+              type="button"
+            >
+              {isCurrentChordStocked
+                ? 'このコードはストック済み'
+                : 'ストックに追加'}
+            </button>
             <p>
               現在の選択は編集中のコードに即時反映されます。押弦の直接編集は右の
-              コードダイアグラム編集パネルで行えます。
+              コードダイアグラム編集パネルで行えます。同じ押弦のコードは
+              ストックに 1 回だけ保存されます。
             </p>
           </div>
         </section>
@@ -992,6 +1079,65 @@ function App() {
             </div>
           </dl>
         </section>
+      </section>
+
+      <section className="panel stock-panel" aria-labelledby="stock-heading">
+        <div className="panel-heading stock-panel-heading">
+          <div>
+            <p className="panel-kicker">Project stock</p>
+            <h2 id="stock-heading">コードストック</h2>
+          </div>
+          <p className="stock-selection-note">
+            追加先の行: {selectedLayoutRowLabel}
+          </p>
+        </div>
+
+        {stockEntries.length > 0 ? (
+          <div className="stock-grid">
+            {stockEntries.map(({ stockChord, summary }) => (
+              <article className="stock-card" key={stockChord.id}>
+                <div className="stock-card-header">
+                  <div>
+                    <p className="meta-label">Saved chord</p>
+                    <h3>{summary.currentName}</h3>
+                  </div>
+                  <button
+                    className="secondary-button"
+                    onClick={() => handleRemoveStockChord(stockChord.id)}
+                    type="button"
+                  >
+                    削除
+                  </button>
+                </div>
+
+                <ChordDiagram
+                  compact
+                  fretting={stockChord.fretting}
+                  viewport={summary.viewport}
+                />
+
+                <div className="stock-card-footer">
+                  <p>
+                    ベース音: {summary.bassNote ?? '-'} / 構成音:{' '}
+                    {summary.chordTones.length > 0
+                      ? summary.chordTones.join(', ')
+                      : '-'}
+                  </p>
+                  <button
+                    onClick={() => handleAddStockChordToLayout(stockChord.id)}
+                    type="button"
+                  >
+                    選択中の行に追加
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="stock-empty">
+            ストックはまだ空です。コード生成パネルからよく使うコードを追加できます。
+          </p>
+        )}
       </section>
 
       <section className="panel layout-panel" aria-labelledby="layout-heading">

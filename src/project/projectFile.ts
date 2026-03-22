@@ -24,11 +24,17 @@ export interface LayoutRowState {
   lyrics: string
 }
 
+export interface StockChordState {
+  id: string
+  fretting: Fretting
+}
+
 export interface ProjectSnapshot {
   selectedRoot: PitchClassName
   selectedQuality: ChordQuality
   selectedFormId: string
   layoutRows: LayoutRowState[]
+  stockChords: StockChordState[]
   blocks: ChordBlockState[]
   selectedBlockId: string
   selectedLayoutRowId: string
@@ -84,6 +90,10 @@ export function cloneProjectSnapshot(
   return {
     ...snapshot,
     layoutRows: snapshot.layoutRows.map((row) => ({ ...row })),
+    stockChords: snapshot.stockChords.map((stockChord) => ({
+      ...stockChord,
+      fretting: toFretting([...stockChord.fretting]),
+    })),
     blocks: snapshot.blocks.map((block) => ({
       ...block,
       fretting: toFretting([...block.fretting]),
@@ -97,6 +107,7 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
   }
 
   const layoutRows = parseLayoutRows(value.layoutRows)
+  const stockChords = parseStockChords(value.stockChords)
   const blocks = parseBlocks(
     value.blocks,
     new Set(layoutRows.map((row) => row.id)),
@@ -120,6 +131,7 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
     selectedQuality: parseChordQuality(value.selectedQuality),
     selectedFormId: parseString(value.selectedFormId, 'selectedFormId'),
     layoutRows,
+    stockChords,
     blocks,
     selectedBlockId,
     selectedLayoutRowId,
@@ -147,6 +159,30 @@ function parseLayoutRows(value: unknown): LayoutRowState[] {
     return {
       id: parseString(row.id, `layoutRows[${index}].id`),
       lyrics: parseString(row.lyrics, `layoutRows[${index}].lyrics`),
+    }
+  })
+}
+
+function parseStockChords(value: unknown): StockChordState[] {
+  if (value === undefined) {
+    return []
+  }
+
+  if (!Array.isArray(value)) {
+    throw new Error('stockChords の形式が不正です。')
+  }
+
+  return value.map((stockChord, index) => {
+    if (!isRecord(stockChord)) {
+      throw new Error(`stockChords[${index}] の形式が不正です。`)
+    }
+
+    return {
+      id: parseString(stockChord.id, `stockChords[${index}].id`),
+      fretting: parseFretting(
+        stockChord.fretting,
+        `stockChords[${index}].fretting`,
+      ),
     }
   })
 }

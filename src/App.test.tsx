@@ -80,6 +80,11 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
+        name: 'コードストック',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
         name: 'レイアウト編集',
       }),
     ).toBeInTheDocument()
@@ -157,6 +162,30 @@ describe('App', () => {
     ).toHaveLength(2)
   })
 
+  it('adds the current chord to stock and avoids duplicate stock entries', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'ストックに追加',
+      }),
+    )
+
+    const stockPanel = screen.getByRole('region', {
+      name: 'コードストック',
+    })
+
+    expect(
+      within(stockPanel).getByRole('heading', { name: 'E' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'このコードはストック済み',
+      }),
+    ).toBeDisabled()
+    expect(within(stockPanel).getAllByText('E')).toHaveLength(1)
+  })
+
   it('adds layout rows and assigns the selected block to another row', () => {
     render(<App />)
 
@@ -219,6 +248,55 @@ describe('App', () => {
     fireEvent.click(
       screen.getByRole('button', {
         name: '現在のコードを追加',
+      }),
+    )
+
+    const firstRow = screen.getByRole('region', {
+      name: '1行目',
+    })
+
+    expect(
+      within(firstRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+    expect(
+      within(secondRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+  })
+
+  it('adds a stocked chord to the selected layout row', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'ストックに追加',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '行を追加',
+      }),
+    )
+
+    const secondRow = screen.getByRole('region', {
+      name: '2行目',
+    })
+
+    fireEvent.click(
+      within(secondRow).getByRole('button', {
+        name: '2行目 を追加先にする',
+      }),
+    )
+    fireEvent.click(
+      within(
+        screen.getByRole('region', {
+          name: 'コードストック',
+        }),
+      ).getByRole('button', {
+        name: '選択中の行に追加',
       }),
     )
 
@@ -358,6 +436,7 @@ describe('App', () => {
       expect(projectDocument.format).toBe('chordcanvas-project')
       expect(projectDocument.version).toBe(1)
       expect(projectDocument.state.layoutRows[0].lyrics).toBe('Exported line')
+      expect(projectDocument.state.stockChords).toEqual([])
     } finally {
       Object.defineProperty(URL, 'createObjectURL', {
         configurable: true,
@@ -405,12 +484,9 @@ describe('App', () => {
 
       expect(pdfInstance?.addImage).toHaveBeenCalled()
       expect(pdfInstance?.addPage).toHaveBeenCalledTimes(1)
-      expect(pdfInstance?.save).toHaveBeenCalledWith(
-        'chordcanvas-layout.pdf',
-        {
-          returnPromise: true,
-        },
-      )
+      expect(pdfInstance?.save).toHaveBeenCalledWith('chordcanvas-layout.pdf', {
+        returnPromise: true,
+      })
       expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
       expect(screen.getByRole('status')).toHaveTextContent(
         'chordcanvas-layout.pdf を書き出しました。',
@@ -428,6 +504,12 @@ describe('App', () => {
       layoutRows: [
         { id: 'row-12', lyrics: 'Verse line' },
         { id: 'row-18', lyrics: 'Bridge line' },
+      ],
+      stockChords: [
+        {
+          id: 'stock-9',
+          fretting: toFretting(['x', 0, 2, 2, 1, 0]),
+        },
       ],
       blocks: [
         {
@@ -479,6 +561,15 @@ describe('App', () => {
     expect(screen.getByLabelText('Block spacing')).toHaveValue(48)
     expect(screen.getByLabelText('Manual start fret')).toHaveValue(5)
     expect(screen.getByLabelText('Manual fret count')).toHaveValue(4)
+    expect(
+      within(
+        screen.getByRole('region', {
+          name: 'コードストック',
+        }),
+      ).getByRole('heading', {
+        name: 'Am',
+      }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(
       'saved-project.json を読み込みました。',
     )
