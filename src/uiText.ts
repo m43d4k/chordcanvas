@@ -25,7 +25,6 @@ interface UiText {
   autoAdjustViewport: string
   startFret: string
   visibleFretCount: string
-  stringHeader: string
   stringLabel: (stringNumber: number) => string
   stringMuteLabel: (stringNumber: number) => string
   stringOpenLabel: (stringNumber: number) => string
@@ -95,7 +94,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     autoAdjustViewport: '表示範囲を自動調整',
     startFret: '開始フレット',
     visibleFretCount: '表示フレット数',
-    stringHeader: '弦',
     stringLabel: (stringNumber) => `${stringNumber}弦`,
     stringMuteLabel: (stringNumber) => `${stringNumber}弦 ミュート`,
     stringOpenLabel: (stringNumber) => `${stringNumber}弦 開放`,
@@ -168,7 +166,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     autoAdjustViewport: 'Auto-fit Viewport',
     startFret: 'Start Fret',
     visibleFretCount: 'Visible Frets',
-    stringHeader: 'String',
     stringLabel: (stringNumber) => `Str ${stringNumber}`,
     stringMuteLabel: (stringNumber) => `Mute string ${stringNumber}`,
     stringOpenLabel: (stringNumber) => `Open string ${stringNumber}`,

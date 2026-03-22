@@ -66,6 +66,24 @@ describe('ChordDiagram', () => {
     )
   })
 
+  it('uses a tighter top inset when layout spacing is compacted', () => {
+    const fretting = toFretting(['x', 3, 2, 0, 1, 0])
+    const viewport = deriveViewport(fretting)
+    const { container } = render(
+      <ChordDiagram
+        compact
+        fretting={fretting}
+        markerLabels={summarizeChord(fretting).stringDegreeLabels}
+        tightTopSpacing
+        viewport={viewport}
+      />,
+    )
+
+    expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe(
+      '0 0 154 114',
+    )
+  })
+
   it('uses a much tighter compact viewBox during pdf export', () => {
     const fretting = toFretting(['x', 3, 2, 0, 1, 0])
     const viewport = deriveViewport(fretting)

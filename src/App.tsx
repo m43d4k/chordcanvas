@@ -1168,23 +1168,6 @@ function App() {
                 className="manual-grid"
                 role="group"
               >
-                <div
-                  className="manual-grid-header"
-                  style={{ gridTemplateColumns: manualGridTemplate }}
-                >
-                  <span className="manual-grid-corner">{text.stringHeader}</span>
-                  <span className="manual-grid-status">X</span>
-                  <span className="manual-grid-status">O</span>
-                  {manualVisibleFrets.map((fret) => (
-                    <span
-                      className="manual-grid-fret-label"
-                      key={`manual-fret-${fret}`}
-                    >
-                      {fret}
-                    </span>
-                  ))}
-                </div>
-
                 {manualStringEntries.map(
                   ({ state, stringIndex, stringNumber }) => (
                     <div
@@ -1503,6 +1486,7 @@ function App() {
                           fretting={entry.block.fretting}
                           markerLabels={entry.summary.stringDegreeLabels}
                           pdfExport={isExportingPdf}
+                          tightTopSpacing
                           viewport={entry.summary.viewport}
                         />
                       </button>

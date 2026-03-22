@@ -12,6 +12,7 @@ interface ChordDiagramProps {
   viewport: DiagramViewport
   title?: string
   compact?: boolean
+  tightTopSpacing?: boolean
   pdfExport?: boolean
 }
 
@@ -34,13 +35,15 @@ function ChordDiagram({
   viewport,
   title,
   compact = false,
+  tightTopSpacing = false,
   pdfExport = false,
 }: ChordDiagramProps) {
   const isPdfCompact = compact && pdfExport
+  const isTightCompact = compact && tightTopSpacing && !pdfExport
   const fretSpacing = isPdfCompact ? 20 : compact ? 22 : 32
   const stringSpacing = isPdfCompact ? 13 : compact ? 16 : 20
   const gridLeft = compact ? 34 : 52
-  const gridTop = isPdfCompact ? 20 : compact ? 36 : 56
+  const gridTop = isPdfCompact ? 20 : isTightCompact ? 24 : compact ? 36 : 56
   const gridWidth = viewport.fretCount * fretSpacing
   const gridRight = gridLeft + gridWidth
   const stringYs = Array.from(
@@ -50,8 +53,8 @@ function ChordDiagram({
   const topStringY = stringYs[0] ?? gridTop
   const bottomStringY = stringYs[stringYs.length - 1] ?? gridTop
   const width = gridRight + (isPdfCompact ? 10 : compact ? 10 : 18)
-  const height = bottomStringY + (isPdfCompact ? 7 : compact ? 14 : 26)
-  const fretLabelY = gridTop - (isPdfCompact ? 6 : compact ? 8 : 14)
+  const height = bottomStringY + (isPdfCompact ? 7 : isTightCompact ? 10 : compact ? 14 : 26)
+  const fretLabelY = gridTop - (isPdfCompact ? 6 : isTightCompact ? 6 : compact ? 8 : 14)
   const statusLabelX = gridLeft - (compact ? 16 : 22)
   const lastStringIndex = stringYs.length - 1
 

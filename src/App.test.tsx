@@ -649,6 +649,8 @@ describe('App', () => {
       ...container.querySelectorAll<HTMLElement>('.manual-grid-string'),
     ].map((label) => label.textContent)
 
+    expect(container.querySelector('.manual-grid-header')).toBeNull()
+    expect(screen.queryByText(/^弦$/)).not.toBeInTheDocument()
     expect(stringLabels[0]).toBe('1弦')
     expect(stringLabels[stringLabels.length - 1]).toBe('6弦')
   })
