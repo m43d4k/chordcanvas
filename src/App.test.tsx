@@ -16,14 +16,15 @@ const pdfMocks = vi.hoisted(() => {
     save: ReturnType<typeof vi.fn>
     setDocumentProperties: ReturnType<typeof vi.fn>
   }> = []
-  const jsPDF = vi.fn(function JsPdfMock() {
+  const jsPDF = vi.fn(function JsPdfMock(options?: { orientation?: string }) {
+    const isPortrait = options?.orientation === 'portrait'
     const instance = {
       addImage: vi.fn(),
       addPage: vi.fn(),
       internal: {
         pageSize: {
-          getHeight: () => 595.28,
-          getWidth: () => 841.89,
+          getHeight: () => (isPortrait ? 841.89 : 595.28),
+          getWidth: () => (isPortrait ? 595.28 : 841.89),
         },
       },
       save: vi.fn().mockResolvedValue(undefined),
@@ -832,6 +833,9 @@ describe('App', () => {
 
   it('exports the current layout as PDF', async () => {
     const exportCanvas = document.createElement('canvas')
+    let capturedBlockLeft = ''
+    let capturedRowPaddingInline = ''
+    let capturedStagePaddingInline = ''
     const fakeContext = {
       drawImage: vi.fn(),
       fillRect: vi.fn(),
@@ -841,8 +845,21 @@ describe('App', () => {
       .mockImplementation(() => fakeContext)
 
     exportCanvas.width = 1200
-    exportCanvas.height = 1600
-    pdfMocks.html2canvas.mockResolvedValue(exportCanvas)
+    exportCanvas.height = 2500
+    pdfMocks.html2canvas.mockImplementation(async (stageElement: HTMLElement) => {
+      const layoutBlock =
+        stageElement.querySelector<HTMLElement>('.layout-chord-block.selected')
+
+      capturedStagePaddingInline = stageElement.style.getPropertyValue(
+        '--layout-stage-padding-inline',
+      )
+      capturedRowPaddingInline = stageElement.style.getPropertyValue(
+        '--layout-row-padding-inline',
+      )
+      capturedBlockLeft = layoutBlock?.style.left ?? ''
+
+      return exportCanvas
+    })
 
     try {
       const { container } = render(<App />)
@@ -860,11 +877,21 @@ describe('App', () => {
       const layoutStage = container.querySelector('.layout-stage')
       const pdfInstance = pdfMocks.pdfInstances[0]
 
+      expect(pdfMocks.jsPDF).toHaveBeenCalledWith(
+        expect.objectContaining({
+          format: 'a4',
+          orientation: 'portrait',
+          unit: 'pt',
+        }),
+      )
       expect(pdfInstance?.addImage).toHaveBeenCalled()
       expect(pdfInstance?.addPage).toHaveBeenCalledTimes(1)
       expect(pdfInstance?.save).toHaveBeenCalledWith('chordcanvas-layout.pdf', {
         returnPromise: true,
       })
+      expect(capturedStagePaddingInline).toBe('0px')
+      expect(capturedRowPaddingInline).toBe('0px')
+      expect(capturedBlockLeft).toBe('0px')
       expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
       expect(screen.getByRole('status')).toHaveTextContent(
         'chordcanvas-layout.pdf を書き出しました。',
@@ -872,6 +899,64 @@ describe('App', () => {
     } finally {
       getContextSpy.mockRestore()
     }
+  })
+
+  it('aggressively tightens pdf layout spacing while moving chord names above diagrams', () => {
+    const { container } = render(<App />)
+    const layoutStage = container.querySelector<HTMLElement>('.layout-stage')
+    const layoutRow =
+      container.querySelector<HTMLElement>('.layout-row.selected')
+    const layoutRowHeader =
+      container.querySelector<HTMLElement>('.layout-row.selected .layout-row-header')
+    const layoutChordLayer =
+      container.querySelector<HTMLElement>('.layout-row.selected .layout-chord-layer')
+    const layoutBlock = container.querySelector<HTMLElement>(
+      '.layout-chord-block.selected',
+    )
+    const chordPreviewName = container.querySelector<HTMLElement>(
+      '.layout-chord-block.selected .chord-preview-name',
+    )
+    const chordDiagram = container.querySelector<SVGElement>(
+      '.layout-chord-block.selected .chord-diagram',
+    )
+    const lyricsLine =
+      container.querySelector<HTMLElement>('.layout-row.selected .lyrics-line')
+
+    expect(layoutStage).not.toBeNull()
+    expect(layoutRow).not.toBeNull()
+    expect(layoutRowHeader).not.toBeNull()
+    expect(layoutChordLayer).not.toBeNull()
+    expect(layoutBlock).not.toBeNull()
+    expect(chordPreviewName).not.toBeNull()
+    expect(chordDiagram).not.toBeNull()
+    expect(lyricsLine).not.toBeNull()
+
+    layoutStage!.setAttribute('data-exporting-pdf', 'true')
+
+    expect(getComputedStyle(layoutStage!).borderTopWidth).toBe('0px')
+    expect(getComputedStyle(layoutStage!).gap).toBe('2px')
+    expect(getComputedStyle(layoutStage!).paddingTop).toBe('4px')
+    expect(getComputedStyle(layoutStage!).paddingBottom).toBe('4px')
+    expect(getComputedStyle(layoutRow!).borderTopWidth).toBe('0px')
+    expect(getComputedStyle(layoutRowHeader!).display).toBe('none')
+    expect(getComputedStyle(layoutChordLayer!).minHeight).toBe('110px')
+    expect(getComputedStyle(layoutBlock!).borderTopWidth).toBe('0px')
+    expect(getComputedStyle(layoutBlock!).display).toBe('flex')
+    expect(getComputedStyle(layoutBlock!).flexDirection).toBe('column')
+    expect(getComputedStyle(layoutBlock!).alignItems).toBe('center')
+    expect(getComputedStyle(layoutBlock!).gap).toBe('0px')
+    expect(getComputedStyle(layoutBlock!).paddingTop).toBe('2px')
+    expect(getComputedStyle(layoutBlock!).paddingBottom).toBe('0px')
+    expect(layoutBlock!.firstElementChild).toBe(chordPreviewName)
+    expect(getComputedStyle(chordPreviewName!).width).toBe('100%')
+    expect(getComputedStyle(chordPreviewName!).marginBottom).toBe('0px')
+    expect(getComputedStyle(chordPreviewName!).color).toBe('rgb(111, 97, 181)')
+    expect(getComputedStyle(chordPreviewName!).textAlign).toBe('center')
+    expect(layoutBlock!.lastElementChild).toBe(chordDiagram)
+    expect(getComputedStyle(lyricsLine!).marginTop).toBe('0px')
+    expect(getComputedStyle(lyricsLine!).paddingTop).toBe('0px')
+    expect(getComputedStyle(lyricsLine!).borderTopWidth).toBe('0px')
+    expect(getComputedStyle(lyricsLine!).color).toBe('rgb(86, 72, 154)')
   })
 
   it('imports a saved project JSON', async () => {

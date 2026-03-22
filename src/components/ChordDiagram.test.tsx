@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { deriveViewport, summarizeChord, toFretting } from '../music/chords'
+import '../index.css'
 import ChordDiagram from './ChordDiagram'
 
 describe('ChordDiagram', () => {
@@ -65,6 +66,24 @@ describe('ChordDiagram', () => {
     )
   })
 
+  it('uses a much tighter compact viewBox during pdf export', () => {
+    const fretting = toFretting(['x', 3, 2, 0, 1, 0])
+    const viewport = deriveViewport(fretting)
+    const { container } = render(
+      <ChordDiagram
+        compact
+        fretting={fretting}
+        markerLabels={summarizeChord(fretting).stringDegreeLabels}
+        pdfExport
+        viewport={viewport}
+      />,
+    )
+
+    expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe(
+      '0 0 144 92',
+    )
+  })
+
   it('does not render a separate start fret label', () => {
     const fretting = toFretting([10, 12, 12, 11, 10, 10])
     const viewport = deriveViewport(fretting)
@@ -97,5 +116,58 @@ describe('ChordDiagram', () => {
     ].map((text) => text.textContent)
 
     expect(markerTexts).toEqual(['5', 'R', '3', '9'])
+  })
+
+  it('uses dark gray fret and string lines while pdf export styling is active', () => {
+    const fretting = toFretting(['x', 3, 2, 0, 1, 0])
+    const viewport = deriveViewport(fretting)
+    const { container } = render(
+      <div className="layout-stage" data-exporting-pdf="true">
+        <ChordDiagram
+          fretting={fretting}
+          markerLabels={summarizeChord(fretting).stringDegreeLabels}
+          viewport={viewport}
+        />
+      </div>,
+    )
+
+    const stringLine = container.querySelector<SVGLineElement>(
+      'line.diagram-string',
+    )
+    const fretLine = container.querySelector<SVGLineElement>(
+      'line.diagram-fret:not(.nut)',
+    )
+    const nutLine =
+      container.querySelector<SVGLineElement>('line.diagram-fret.nut')
+
+    expect(stringLine).not.toBeNull()
+    expect(fretLine).not.toBeNull()
+    expect(nutLine).not.toBeNull()
+    expect(getComputedStyle(stringLine!).stroke).toBe('rgb(90, 90, 90)')
+    expect(getComputedStyle(fretLine!).stroke).toBe('rgb(90, 90, 90)')
+    expect(getComputedStyle(nutLine!).stroke).toBe('rgb(63, 63, 63)')
+  })
+
+  it('uses darker purple top labels while pdf export styling is active', () => {
+    const fretting = toFretting(['x', 3, 2, 0, 1, 0])
+    const viewport = deriveViewport(fretting)
+    const { container } = render(
+      <div className="layout-stage" data-exporting-pdf="true">
+        <ChordDiagram
+          fretting={fretting}
+          markerLabels={summarizeChord(fretting).stringDegreeLabels}
+          viewport={viewport}
+        />
+      </div>,
+    )
+
+    const topLabels = [
+      ...container.querySelectorAll<SVGTextElement>('text.diagram-top-label'),
+    ]
+
+    expect(topLabels).toHaveLength(3)
+    topLabels.forEach((label) => {
+      expect(getComputedStyle(label).fill).toBe('rgb(86, 72, 154)')
+    })
   })
 })

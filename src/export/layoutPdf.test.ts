@@ -9,14 +9,15 @@ const pdfMocks = vi.hoisted(() => {
     save: ReturnType<typeof vi.fn>
     setDocumentProperties: ReturnType<typeof vi.fn>
   }> = []
-  const jsPDF = vi.fn(function JsPdfMock() {
+  const jsPDF = vi.fn(function JsPdfMock(options?: { orientation?: string }) {
+    const isPortrait = options?.orientation === 'portrait'
     const instance = {
       addImage: vi.fn(),
       addPage: vi.fn(),
       internal: {
         pageSize: {
-          getHeight: () => 595.28,
-          getWidth: () => 841.89,
+          getHeight: () => (isPortrait ? 841.89 : 595.28),
+          getWidth: () => (isPortrait ? 595.28 : 841.89),
         },
       },
       save: vi.fn().mockResolvedValue(undefined),
@@ -68,7 +69,7 @@ describe('exportLayoutStagePdf', () => {
         width: 1200,
       }) as DOMRect
     sourceCanvas.width = 1200
-    sourceCanvas.height = 1600
+    sourceCanvas.height = 2500
     pdfMocks.html2canvas.mockResolvedValue(sourceCanvas)
 
     try {
@@ -88,7 +89,14 @@ describe('exportLayoutStagePdf', () => {
         width: 1200,
       }),
     )
-    expect(html2CanvasOptions?.scale).toBeCloseTo(2.701, 3)
+    expect(pdfMocks.jsPDF).toHaveBeenCalledWith(
+      expect.objectContaining({
+        format: 'a4',
+        orientation: 'portrait',
+        unit: 'pt',
+      }),
+    )
+    expect(html2CanvasOptions?.scale).toBeCloseTo(1.845, 3)
     expect(pdfInstance?.setDocumentProperties).toHaveBeenCalled()
     expect(pdfInstance?.addImage).toHaveBeenCalledTimes(2)
     expect(pdfInstance?.addPage).toHaveBeenCalledTimes(1)

@@ -116,7 +116,7 @@
 - JSON ファイルから project を読み込む
 - 読み込み時は現在の編集中 state を置き換える
 - 現在のレイアウトを PDF として書き出す
-- PDF 出力は A4 横向きとし、画面の devicePixelRatio に依存せず印刷向けの解像度を確保する
+- PDF 出力は A4 縦向きとし、画面の devicePixelRatio に依存せず印刷向けの解像度を確保する
 
 ---
 

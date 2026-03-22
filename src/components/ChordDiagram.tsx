@@ -12,6 +12,7 @@ interface ChordDiagramProps {
   viewport: DiagramViewport
   title?: string
   compact?: boolean
+  pdfExport?: boolean
 }
 
 function getMarkerX(
@@ -33,11 +34,13 @@ function ChordDiagram({
   viewport,
   title,
   compact = false,
+  pdfExport = false,
 }: ChordDiagramProps) {
-  const fretSpacing = compact ? 22 : 32
-  const stringSpacing = compact ? 16 : 20
+  const isPdfCompact = compact && pdfExport
+  const fretSpacing = isPdfCompact ? 20 : compact ? 22 : 32
+  const stringSpacing = isPdfCompact ? 13 : compact ? 16 : 20
   const gridLeft = compact ? 34 : 52
-  const gridTop = compact ? 36 : 56
+  const gridTop = isPdfCompact ? 20 : compact ? 36 : 56
   const gridWidth = viewport.fretCount * fretSpacing
   const gridRight = gridLeft + gridWidth
   const stringYs = Array.from(
@@ -46,9 +49,9 @@ function ChordDiagram({
   )
   const topStringY = stringYs[0] ?? gridTop
   const bottomStringY = stringYs[stringYs.length - 1] ?? gridTop
-  const width = gridRight + (compact ? 10 : 18)
-  const height = bottomStringY + (compact ? 14 : 26)
-  const fretLabelY = gridTop - (compact ? 8 : 14)
+  const width = gridRight + (isPdfCompact ? 10 : compact ? 10 : 18)
+  const height = bottomStringY + (isPdfCompact ? 7 : compact ? 14 : 26)
+  const fretLabelY = gridTop - (isPdfCompact ? 6 : compact ? 8 : 14)
   const statusLabelX = gridLeft - (compact ? 16 : 22)
   const lastStringIndex = stringYs.length - 1
 
@@ -158,7 +161,7 @@ function ChordDiagram({
               className="diagram-marker"
               cx={markerX}
               cy={y}
-              r={compact ? 7 : 8.5}
+              r={isPdfCompact ? 6.2 : compact ? 7 : 8.5}
             />
             {markerLabels[stringIndex] ? (
               <text className="diagram-marker-text" x={markerX} y={y + 1}>

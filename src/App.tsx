@@ -360,12 +360,19 @@ function App() {
     }))
     .reverse()
 
-  const layoutEntries = buildLayoutEntries(layoutRows, blocks)
+  const layoutStagePaddingInline = isExportingPdf
+    ? 0
+    : LAYOUT_STAGE_PADDING_INLINE
+  const layoutRowPaddingInline = isExportingPdf ? 0 : LAYOUT_ROW_PADDING_INLINE
+  const layoutEntries = buildLayoutEntries(layoutRows, blocks, {
+    rowPaddingInline: layoutRowPaddingInline,
+    stagePaddingInline: layoutStagePaddingInline,
+  })
   const layoutStageStyle = {
     width: `${layoutEntries.stageWidth}px`,
     '--layout-block-width': `${LAYOUT_BLOCK_WIDTH}px`,
-    '--layout-row-padding-inline': `${LAYOUT_ROW_PADDING_INLINE}px`,
-    '--layout-stage-padding-inline': `${LAYOUT_STAGE_PADDING_INLINE}px`,
+    '--layout-row-padding-inline': `${layoutRowPaddingInline}px`,
+    '--layout-stage-padding-inline': `${layoutStagePaddingInline}px`,
   } as CSSProperties
 
   function createProjectSnapshot(): ProjectSnapshot {
@@ -1495,6 +1502,7 @@ function App() {
                           compact
                           fretting={entry.block.fretting}
                           markerLabels={entry.summary.stringDegreeLabels}
+                          pdfExport={isExportingPdf}
                           viewport={entry.summary.viewport}
                         />
                       </button>
@@ -1525,10 +1533,17 @@ function createVisibleFrets(startFret: number, fretCount: number): number[] {
 function buildLayoutEntries(
   layoutRows: readonly LayoutRowState[],
   blocks: readonly ChordBlockState[],
+  {
+    rowPaddingInline = LAYOUT_ROW_PADDING_INLINE,
+    stagePaddingInline = LAYOUT_STAGE_PADDING_INLINE,
+  }: {
+    rowPaddingInline?: number
+    stagePaddingInline?: number
+  } = {},
 ) {
   const rows = layoutRows.map((row) => {
-    let cursor = 16
-    let nextFlowLeft = 16
+    let cursor = stagePaddingInline
+    let nextFlowLeft = stagePaddingInline
     let minLeft = 0
     const entries = blocks
       .filter((block) => block.rowId === row.id)
@@ -1554,9 +1569,7 @@ function buildLayoutEntries(
 
     const chordLayerWidth = Math.max(cursor, nextFlowLeft)
     const chordStageWidth =
-      chordLayerWidth +
-      LAYOUT_ROW_PADDING_INLINE * 2 +
-      LAYOUT_STAGE_PADDING_INLINE * 2
+      chordLayerWidth + rowPaddingInline * 2 + stagePaddingInline * 2
     const lyricStageWidth = Math.max(
       LAYOUT_STAGE_MIN_WIDTH,
       row.lyrics.length * 11 + 80,

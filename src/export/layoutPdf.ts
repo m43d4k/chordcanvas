@@ -7,6 +7,8 @@ const MAX_CAPTURE_SCALE = 4
 const MAX_CANVAS_EDGE = 16_384
 const MAX_CANVAS_PIXELS = 40_000_000
 const PDF_POINTS_PER_INCH = 72
+const PDF_PAGE_FORMAT = 'a4'
+const PDF_PAGE_ORIENTATION = 'portrait'
 
 function waitForNextPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -110,8 +112,8 @@ export async function exportLayoutStagePdf(
     const { html2canvas, jsPDF } = await loadPdfDependencies()
     const pdf = new jsPDF({
       compress: true,
-      format: 'a4',
-      orientation: 'landscape',
+      format: PDF_PAGE_FORMAT,
+      orientation: PDF_PAGE_ORIENTATION,
       unit: 'pt',
     })
     const pageWidth = pdf.internal.pageSize.getWidth()

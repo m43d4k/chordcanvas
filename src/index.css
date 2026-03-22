@@ -708,24 +708,32 @@ button {
 }
 
 .layout-stage[data-exporting-pdf='true'] {
+  border: 0;
+  gap: 2px;
+  padding-top: 4px;
+  padding-bottom: 4px;
   background: #ffffff;
   box-shadow: none;
 }
 
 .layout-stage[data-exporting-pdf='true'] .layout-row {
-  border-color: rgba(22, 32, 51, 0.12);
+  border: 0;
+  padding-top: 2px;
+  padding-bottom: 0;
   background: #ffffff;
   box-shadow: none;
 }
 
 .layout-stage[data-exporting-pdf='true'] .layout-row.selected {
-  border-color: rgba(22, 32, 51, 0.12);
+  border: 0;
+  padding-top: 2px;
+  padding-bottom: 0;
   background: #ffffff;
   box-shadow: none;
 }
 
 .layout-stage[data-exporting-pdf='true'] .layout-row-header {
-  justify-content: flex-start;
+  display: none;
 }
 
 .layout-stage[data-exporting-pdf='true'] .layout-row-selector {
@@ -734,9 +742,30 @@ button {
 
 .layout-stage[data-exporting-pdf='true'] .layout-chord-block,
 .layout-stage[data-exporting-pdf='true'] .layout-chord-block.selected {
-  border-color: rgba(22, 32, 51, 0.12);
+  border: 0;
   background: #ffffff;
   box-shadow: none;
+}
+
+.layout-stage[data-exporting-pdf='true'] .layout-chord-layer {
+  min-height: 110px;
+}
+
+.layout-stage[data-exporting-pdf='true'] .chord-preview-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 2px 6px 0;
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-string,
+.layout-stage[data-exporting-pdf='true'] .diagram-fret {
+  stroke: #5a5a5a;
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-fret.nut {
+  stroke: #3f3f3f;
 }
 
 .layout-row {
@@ -852,6 +881,13 @@ button {
   letter-spacing: -0.02em;
 }
 
+.layout-stage[data-exporting-pdf='true'] .chord-preview-name {
+  width: 100%;
+  margin-bottom: 0;
+  color: #6f61b5;
+  text-align: center;
+}
+
 .lyrics-line {
   margin-top: 0.55rem;
   width: 100%;
@@ -861,6 +897,13 @@ button {
   font-size: 1.02rem;
   letter-spacing: 0;
   white-space: pre;
+}
+
+.layout-stage[data-exporting-pdf='true'] .lyrics-line {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  color: #56489a;
 }
 
 .chord-diagram {
@@ -893,6 +936,11 @@ button {
   font-weight: 700;
   text-anchor: middle;
   dominant-baseline: middle;
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-title,
+.layout-stage[data-exporting-pdf='true'] .diagram-top-label {
+  fill: #56489a;
 }
 
 .diagram-string,
