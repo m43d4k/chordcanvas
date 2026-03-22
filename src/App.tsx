@@ -959,16 +959,25 @@ function App() {
     activateBlock(nextBlock)
   }
 
-  function handleDeleteBlock() {
+  function handleDeleteBlock(blockId = selectedBlockId) {
     if (blocks.length === 1) {
       return
     }
 
-    const selectedIndex = blocks.findIndex(
-      (block) => block.id === selectedBlockId,
-    )
-    const nextBlocks = blocks.filter((block) => block.id !== selectedBlockId)
-    const fallbackIndex = Math.max(0, selectedIndex - 1)
+    const blockIndex = blocks.findIndex((block) => block.id === blockId)
+
+    if (blockIndex < 0) {
+      return
+    }
+
+    const nextBlocks = blocks.filter((block) => block.id !== blockId)
+
+    if (blockId !== selectedBlockId) {
+      setBlocks(nextBlocks)
+      return
+    }
+
+    const fallbackIndex = Math.max(0, blockIndex - 1)
     const fallbackBlock = nextBlocks[fallbackIndex] ?? nextBlocks[0]
 
     if (!fallbackBlock) {
@@ -1310,7 +1319,15 @@ function App() {
         {stockEntries.length > 0 ? (
           <div className="stock-grid">
             {stockEntries.map(({ stockChord, summary, displayName }) => (
-              <article className="stock-card" key={stockChord.id}>
+              <article className="stock-card dismissible-card" key={stockChord.id}>
+                <button
+                  aria-label={text.removeStockChordAria(displayName)}
+                  className="card-dismiss-button"
+                  onClick={() => handleRemoveStockChord(stockChord.id)}
+                  type="button"
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
                 <div className="chord-preview-block stock-chord-preview">
                   <h3 className="chord-preview-name">{displayName}</h3>
                   <ChordDiagram
@@ -1319,22 +1336,6 @@ function App() {
                     markerLabels={summary.stringDegreeLabels}
                     viewport={summary.viewport}
                   />
-                </div>
-
-                <div className="stock-card-actions">
-                  <button
-                    onClick={() => handleAddStockChordToLayout(stockChord.id)}
-                    type="button"
-                  >
-                    {text.addToSelectedRow}
-                  </button>
-                  <button
-                    className="secondary-button"
-                    onClick={() => handleRemoveStockChord(stockChord.id)}
-                    type="button"
-                  >
-                    {text.delete}
-                  </button>
                 </div>
               </article>
             ))}
@@ -1372,13 +1373,6 @@ function App() {
           </button>
           <button onClick={handleDuplicateBlock} type="button">
             {text.duplicateSelectedChord}
-          </button>
-          <button
-            disabled={blocks.length === 1}
-            onClick={handleDeleteBlock}
-            type="button"
-          >
-            {text.deleteSelectedChord}
           </button>
           <button
             disabled={activeRowSelectionIndex <= 0}
@@ -1458,41 +1452,59 @@ function App() {
 
                   <div className="layout-chord-layer">
                     {rowEntry.entries.map((entry) => (
-                      <button
-                        aria-label={`Select ${entry.displayName} block`}
-                        className={`chord-preview-block layout-chord-block${
+                      <div
+                        className={`layout-chord-block dismissible-card${
                           entry.block.id === selectedBlockId ? ' selected' : ''
                         }`}
                         data-dragging={
                           draggingBlockId === entry.block.id ? 'true' : undefined
                         }
-                        draggable={false}
                         key={entry.block.id}
-                        onClick={() => activateBlock(entry.block)}
-                        onPointerDown={(event) =>
-                          handleLayoutBlockPointerDown(
-                            entry.block,
-                            entry.hasFollowingBlock,
-                            entry.minXOffset,
-                            event,
-                          )
-                        }
                         style={{ left: `${entry.left}px` }}
-                        title={text.layoutDragHint}
-                        type="button"
                       >
-                        <span className="chord-preview-name">
-                          {entry.displayName}
-                        </span>
-                        <ChordDiagram
-                          compact
-                          fretting={entry.block.fretting}
-                          markerLabels={entry.summary.stringDegreeLabels}
-                          pdfExport={isExportingPdf}
-                          tightTopSpacing
-                          viewport={entry.summary.viewport}
-                        />
-                      </button>
+                        <button
+                          aria-label={text.removeLayoutChordAria(
+                            entry.displayName,
+                          )}
+                          className="card-dismiss-button"
+                          disabled={blocks.length === 1}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleDeleteBlock(entry.block.id)
+                          }}
+                          type="button"
+                        >
+                          <span aria-hidden="true">×</span>
+                        </button>
+                        <button
+                          aria-label={`Select ${entry.displayName} block`}
+                          className="chord-preview-block layout-chord-block-button"
+                          draggable={false}
+                          onClick={() => activateBlock(entry.block)}
+                          onPointerDown={(event) =>
+                            handleLayoutBlockPointerDown(
+                              entry.block,
+                              entry.hasFollowingBlock,
+                              entry.minXOffset,
+                              event,
+                            )
+                          }
+                          title={text.layoutDragHint}
+                          type="button"
+                        >
+                          <span className="chord-preview-name">
+                            {entry.displayName}
+                          </span>
+                          <ChordDiagram
+                            compact
+                            fretting={entry.block.fretting}
+                            markerLabels={entry.summary.stringDegreeLabels}
+                            pdfExport={isExportingPdf}
+                            tightTopSpacing
+                            viewport={entry.summary.viewport}
+                          />
+                        </button>
+                      </div>
                     ))}
 
                     <button

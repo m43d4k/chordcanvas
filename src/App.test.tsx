@@ -91,10 +91,33 @@ function openLyricsLineInput(index: number): HTMLInputElement {
   ) as HTMLInputElement
 }
 
+function getLayoutBlockContainer(element: HTMLElement): HTMLElement {
+  const block =
+    element.matches('.layout-chord-block')
+      ? element
+      : element.closest('.layout-chord-block')
+
+  if (!(block instanceof HTMLElement)) {
+    throw new Error('Expected layout block container')
+  }
+
+  return block
+}
+
 function getLayoutBlocks(): HTMLElement[] {
-  return screen.getAllByRole('button', {
-    name: /^Select .* block$/,
-  })
+  return screen
+    .getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+    .map((button) => getLayoutBlockContainer(button))
+}
+
+function getLayoutBlockByName(displayName: string): HTMLElement {
+  return getLayoutBlockContainer(
+    screen.getByRole('button', {
+      name: `Select ${displayName} block`,
+    }),
+  )
 }
 
 function dragLayoutBlock(
@@ -103,7 +126,16 @@ function dragLayoutBlock(
   endClientX: number,
   pointerId = 1,
 ) {
-  fireEvent.pointerDown(block, {
+  const dragHandle =
+    block.matches('.layout-chord-block')
+      ? block.querySelector('.layout-chord-block-button')
+      : block
+
+  if (!(dragHandle instanceof HTMLElement)) {
+    throw new Error('Expected layout block drag handle')
+  }
+
+  fireEvent.pointerDown(dragHandle, {
     button: 0,
     clientX: startClientX,
     pointerId,
@@ -312,9 +344,7 @@ describe('App', () => {
 
     addChordBlockToRow(1)
 
-    const [firstBlock, secondBlock] = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
+    const [firstBlock, secondBlock] = getLayoutBlocks()
 
     expect(firstBlock).toHaveStyle({ left: '16px' })
     expect(secondBlock).toHaveStyle({ left: '174px' })
@@ -408,6 +438,16 @@ describe('App', () => {
     expect(
       within(stockPanel).getByRole('heading', { name: 'E' }),
     ).toBeInTheDocument()
+    expect(
+      within(stockPanel).queryByRole('button', {
+        name: '削除',
+      }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(stockPanel).getByRole('button', {
+        name: 'E をストックから削除',
+      }),
+    ).toBeInTheDocument()
 
     const duplicateDialog = openStockModal()
 
@@ -416,6 +456,29 @@ describe('App', () => {
         name: 'このコードはストック済み',
       }),
     ).toBeDisabled()
+  })
+
+  it('removes a stocked chord from the card close button', () => {
+    render(<App />)
+
+    addCurrentChordToStock()
+
+    const stockPanel = screen.getByRole('region', {
+      name: 'コードストック',
+    })
+
+    fireEvent.click(
+      within(stockPanel).getByRole('button', {
+        name: 'E をストックから削除',
+      }),
+    )
+
+    expect(
+      within(stockPanel).queryByRole('heading', { name: 'E' }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(stockPanel).getByText(/ストックはまだ空です。/),
+    ).toBeInTheDocument()
   })
 
   it('adds layout rows and assigns the selected block to another row', () => {
@@ -568,6 +631,32 @@ describe('App', () => {
         name: 'Select Intro E block',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('removes a layout block from the card close button', () => {
+    render(<App />)
+
+    addChordBlockToRow(1)
+
+    const dialog = openEditModal()
+
+    fireEvent.change(within(dialog).getByLabelText('Chord name'), {
+      target: { value: 'Intro E' },
+    })
+    submitModal(dialog, '変更を保存')
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Intro E をレイアウトから削除',
+      }),
+    )
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'Select Intro E block',
+      }),
+    ).not.toBeInTheDocument()
+    expect(getLayoutBlocks()).toHaveLength(1)
   })
 
   it('allows direct manual fret selection from the modal builder', () => {
@@ -813,14 +902,10 @@ describe('App', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', {
-        name: 'Select Verse Am block',
-      }),
+      getLayoutBlockByName('Verse Am'),
     ).toHaveStyle({ left: '28px' })
     expect(
-      screen.getByRole('button', {
-        name: 'Select Bridge F block',
-      }),
+      getLayoutBlockByName('Bridge F'),
     ).toHaveStyle({ left: '21px' })
     expect(
       within(

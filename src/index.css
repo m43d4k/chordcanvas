@@ -591,6 +591,62 @@ button {
   line-height: 1;
 }
 
+.dismissible-card {
+  position: relative;
+  overflow: visible;
+}
+
+.card-dismiss-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  min-width: 1.7rem;
+  min-height: 1.7rem;
+  padding: 0;
+  border: 1px solid rgba(214, 219, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(16, 19, 34, 0.9);
+  color: var(--text-soft);
+  box-shadow: none;
+  font-size: 1.05rem;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(34%, -34%) scale(0.92);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.dismissible-card:hover .card-dismiss-button,
+.dismissible-card:focus-within .card-dismiss-button {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(34%, -34%) scale(1);
+}
+
+.card-dismiss-button:hover,
+.card-dismiss-button:focus-visible {
+  border-color: rgba(255, 145, 171, 0.44);
+  background: rgba(183, 68, 93, 0.88);
+  color: #fff6fa;
+  outline: none;
+}
+
+.dismissible-card:hover .card-dismiss-button:disabled,
+.dismissible-card:focus-within .card-dismiss-button:disabled {
+  opacity: 0.42;
+  pointer-events: none;
+}
+
 .stock-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
@@ -741,6 +797,10 @@ button {
   box-shadow: none;
 }
 
+.layout-stage[data-exporting-pdf='true'] .card-dismiss-button {
+  display: none;
+}
+
 .layout-stage[data-exporting-pdf='true'] .layout-add-button {
   display: none;
 }
@@ -888,17 +948,32 @@ button {
   position: absolute;
   top: 0;
   width: var(--layout-block-width);
+  border: 1px solid var(--border);
+  border-radius: 4px;
   background: var(--surface-strong);
+}
+
+.layout-chord-block-button {
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: grab;
   touch-action: none;
   user-select: none;
 }
 
-.layout-chord-block.chord-preview-block {
+.layout-chord-block-button.chord-preview-block {
   gap: 0.16rem;
 }
 
-.layout-chord-block[data-dragging='true'] {
+.layout-chord-block-button:focus-visible {
+  outline: none;
+}
+
+.layout-chord-block[data-dragging='true'],
+.layout-chord-block[data-dragging='true'] .layout-chord-block-button {
   cursor: grabbing;
 }
 
@@ -1250,6 +1325,14 @@ button {
 
   .layout-chord-layer {
     min-height: 146px;
+  }
+}
+
+@media (hover: none) {
+  .card-dismiss-button {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(34%, -34%) scale(1);
   }
 }
 

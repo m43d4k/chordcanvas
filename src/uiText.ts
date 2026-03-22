@@ -39,9 +39,9 @@ export interface UiText {
   playedNotes: string
   stockHeading: string
   openStockAddModal: string
-  addToSelectedRow: string
   addToRow: (rowLabel: string) => string
   delete: string
+  removeStockChordAria: (name: string) => string
   stockEmpty: string
   layoutHeading: string
   openLayoutAddModal: (rowLabel: string) => string
@@ -52,7 +52,7 @@ export interface UiText {
   editSelectedChord: string
   finishEditingSelectedChord: string
   duplicateSelectedChord: string
-  deleteSelectedChord: string
+  removeLayoutChordAria: (name: string) => string
   moveLeft: string
   moveRight: string
   selectedChordRow: string
@@ -117,9 +117,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     playedNotes: '発音音',
     stockHeading: 'コードストック',
     openStockAddModal: 'ストックにコードを追加',
-    addToSelectedRow: '選択中の行に追加',
     addToRow: (rowLabel) => `${rowLabel} に追加`,
     delete: '削除',
+    removeStockChordAria: (name) => `${name} をストックから削除`,
     stockEmpty:
       'ストックはまだ空です。繰り返し使うコードを追加できます。',
     layoutHeading: 'レイアウト編集',
@@ -131,7 +131,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     editSelectedChord: '編集',
     finishEditingSelectedChord: '編集を終了',
     duplicateSelectedChord: '複製',
-    deleteSelectedChord: '削除',
+    removeLayoutChordAria: (name) => `${name} をレイアウトから削除`,
     moveLeft: '左へ',
     moveRight: '右へ',
     selectedChordRow: '配置行',
@@ -198,9 +198,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     playedNotes: 'Played Notes',
     stockHeading: 'Chord Stock',
     openStockAddModal: 'Add chord to stock',
-    addToSelectedRow: 'Add to Selected Row',
     addToRow: (rowLabel) => `Add to ${rowLabel}`,
     delete: 'Delete',
+    removeStockChordAria: (name) => `Remove ${name} from stock`,
     stockEmpty:
       'Chord stock is empty. Add chords you use repeatedly.',
     layoutHeading: 'Layout Editor',
@@ -212,7 +212,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     editSelectedChord: 'Edit',
     finishEditingSelectedChord: 'Stop Editing',
     duplicateSelectedChord: 'Duplicate',
-    deleteSelectedChord: 'Delete',
+    removeLayoutChordAria: (name) => `Remove ${name} from layout`,
     moveLeft: 'Move Left',
     moveRight: 'Move Right',
     selectedChordRow: 'Row',

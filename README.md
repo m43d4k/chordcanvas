@@ -14,7 +14,7 @@ Guitar chord diagram editor for creating, editing, arranging, and PDF-exporting 
 - Arrange chord blocks across multiple lyric rows
 - Edit lyric rows in place on the layout while preserving spacing in PDF export
 - Adjust per-block horizontal offset and trailing spacing, and drag chord blocks horizontally while pushing later blocks out of the way
-- Save reusable chord voicings in a project stock and add them back to the selected row, including from the layout add modal
+- Save reusable chord voicings in a project stock and add them back from the layout add modal
 - Export and import project JSON, and export layout PDF
 
 ## Setup
