@@ -5,6 +5,7 @@ import { exportLayoutStagePdf, LAYOUT_PDF_FILE_NAME } from './export/layoutPdf'
 import {
   CHORD_QUALITIES,
   CHORD_QUALITY_LABELS,
+  MINIMUM_DIAGRAM_FRET_COUNT,
   PITCH_CLASSES,
   type ChordForm,
   type ChordQuality,
@@ -34,8 +35,8 @@ const LAYOUT_SLOT_WIDTH = LAYOUT_BLOCK_WIDTH
 const LAYOUT_STAGE_MIN_WIDTH = 640
 const LAYOUT_STAGE_PADDING_INLINE = 16
 const LAYOUT_ROW_PADDING_INLINE = 15.2
-const MIN_MANUAL_FRET_COUNT = 3
-const MAX_MANUAL_FRET_COUNT = 8
+const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
+const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
 
 interface AppFeedback {

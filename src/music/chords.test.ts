@@ -22,21 +22,21 @@ describe('music/chords', () => {
 
     expect(deriveViewport(fretting)).toEqual({
       startFret: 6,
-      fretCount: 3,
+      fretCount: 5,
       isNutPosition: false,
-      visibleFrets: [6, 7, 8],
-      editableFrets: [6, 7, 8, 9],
+      visibleFrets: [6, 7, 8, 9, 10],
+      editableFrets: [6, 7, 8, 9, 10, 11],
     })
   })
 
-  it('keeps visible fret labels for low-position diagrams', () => {
+  it('keeps a five-fret viewport for low-position diagrams', () => {
     const fretting = toFretting(['x', 3, 2, 0, 1, 0])
 
     expect(deriveViewport(fretting)).toMatchObject({
       startFret: 1,
-      fretCount: 3,
+      fretCount: 5,
       isNutPosition: true,
-      visibleFrets: [1, 2, 3],
+      visibleFrets: [1, 2, 3, 4, 5],
     })
   })
 

@@ -570,7 +570,7 @@ describe('App', () => {
     expect(screen.getByLabelText('Block horizontal offset')).toHaveValue(5)
     expect(screen.getByLabelText('Block spacing')).toHaveValue(48)
     expect(screen.getByLabelText('Manual start fret')).toHaveValue(5)
-    expect(screen.getByLabelText('Manual fret count')).toHaveValue(4)
+    expect(screen.getByLabelText('Manual fret count')).toHaveValue(5)
     expect(
       within(
         screen.getByRole('region', {

@@ -32,7 +32,7 @@ function ChordDiagram({
   title,
   compact = false,
 }: ChordDiagramProps) {
-  const fretSpacing = compact ? 26 : 32
+  const fretSpacing = compact ? 22 : 32
   const stringSpacing = compact ? 16 : 20
   const gridLeft = compact ? 34 : 52
   const gridTop = compact ? 36 : 56

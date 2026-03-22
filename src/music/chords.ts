@@ -55,6 +55,8 @@ export const CHORD_QUALITY_LABELS = {
   '7sus4': '7sus4',
 } as const
 
+export const MINIMUM_DIAGRAM_FRET_COUNT = 5
+
 const CHORD_SYMBOLS = {
   major: '',
   minor: 'm',
@@ -661,10 +663,10 @@ export function deriveViewport(fretting: Fretting): DiagramViewport {
   if (frettedValues.length === 0) {
     return {
       startFret: 1,
-      fretCount: 3,
+      fretCount: MINIMUM_DIAGRAM_FRET_COUNT,
       isNutPosition: true,
-      visibleFrets: [1, 2, 3],
-      editableFrets: [1, 2, 3, 4],
+      visibleFrets: range(1, MINIMUM_DIAGRAM_FRET_COUNT),
+      editableFrets: range(1, MINIMUM_DIAGRAM_FRET_COUNT + 1),
     }
   }
 
@@ -672,7 +674,10 @@ export function deriveViewport(fretting: Fretting): DiagramViewport {
   const maxFret = Math.max(...frettedValues)
   const isNutPosition = minFret <= 4
   const startFret = isNutPosition ? 1 : minFret
-  const fretCount = Math.max(3, maxFret - startFret + 1)
+  const fretCount = Math.max(
+    MINIMUM_DIAGRAM_FRET_COUNT,
+    maxFret - startFret + 1,
+  )
   const visibleFrets = range(startFret, startFret + fretCount - 1)
   const editableEnd = startFret + fretCount
   const editableFrets = range(startFret, editableEnd)

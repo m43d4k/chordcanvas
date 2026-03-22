@@ -47,7 +47,7 @@ describe('ChordDiagram', () => {
     )
 
     expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe(
-      '0 0 122 130',
+      '0 0 154 130',
     )
   })
 })
