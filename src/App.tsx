@@ -89,7 +89,7 @@ function App() {
     manualStartFret,
     manualFretCount,
   )
-  const manualGridTemplate = `48px 52px 52px repeat(${manualVisibleFrets.length}, minmax(46px, 1fr))`
+  const manualGridTemplate = `36px 36px 36px repeat(${manualVisibleFrets.length}, minmax(0, 1fr))`
 
   const layoutEntries = buildLayoutEntries(blocks, lyricsLine)
 
