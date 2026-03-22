@@ -803,15 +803,20 @@ function App() {
     key: 'xOffset' | 'spacing',
     event: ChangeEvent<HTMLInputElement>,
   ) {
-    const parsed = Number.parseInt(event.target.value, 10)
+    const parsed = Number.parseInt(event.currentTarget.value, 10)
+    const nextValue = Number.isNaN(parsed)
+      ? 0
+      : key === 'spacing'
+        ? Math.max(0, parsed)
+        : parsed
+
+    if (!Number.isNaN(parsed)) {
+      event.currentTarget.value = String(nextValue)
+    }
 
     updateSelectedBlock((block) => ({
       ...block,
-      [key]: Number.isNaN(parsed)
-        ? 0
-        : key === 'spacing'
-          ? Math.max(0, parsed)
-          : parsed,
+      [key]: nextValue,
     }))
   }
 
@@ -1490,6 +1495,8 @@ function buildLayoutEntries(
 ) {
   const rows = layoutRows.map((row) => {
     let cursor = 16
+    let nextFlowLeft = 16
+    let minLeft = 0
     const entries = blocks
       .filter((block) => block.rowId === row.id)
       .map((block) => {
@@ -1498,7 +1505,10 @@ function buildLayoutEntries(
           summary.currentName,
           block.displayName,
         )
-        const left = Math.max(0, cursor + block.xOffset)
+        const flowLeft = Math.max(cursor, nextFlowLeft)
+        const left = Math.max(minLeft, flowLeft + block.xOffset)
+        minLeft = left + LAYOUT_BLOCK_WIDTH
+        nextFlowLeft = minLeft + block.spacing
         cursor += LAYOUT_SLOT_WIDTH + block.spacing
 
         return {
@@ -1509,8 +1519,11 @@ function buildLayoutEntries(
         }
       })
 
+    const chordLayerWidth = Math.max(cursor, nextFlowLeft)
     const chordStageWidth =
-      cursor + LAYOUT_ROW_PADDING_INLINE * 2 + LAYOUT_STAGE_PADDING_INLINE * 2
+      chordLayerWidth +
+      LAYOUT_ROW_PADDING_INLINE * 2 +
+      LAYOUT_STAGE_PADDING_INLINE * 2
     const lyricStageWidth = Math.max(
       LAYOUT_STAGE_MIN_WIDTH,
       row.lyrics.length * 11 + 80,

@@ -113,6 +113,94 @@ describe('App', () => {
     expect(secondBlock).toHaveStyle({ left: '174px' })
   })
 
+  it('pushes following blocks rightward to avoid overlap after a horizontal offset', () => {
+    render(<App />)
+
+    for (let index = 0; index < 2; index += 1) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: '現在のコードを追加',
+        }),
+      )
+    }
+
+    const blocks = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+
+    fireEvent.click(blocks[1])
+    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
+      target: { value: '120' },
+    })
+
+    const updatedBlocks = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+
+    expect(updatedBlocks[1]).toHaveStyle({ left: '294px' })
+    expect(updatedBlocks[2]).toHaveStyle({ left: '452px' })
+  })
+
+  it('removes leading zeroes from layout number inputs', () => {
+    render(<App />)
+
+    const offsetInput = screen.getByLabelText('Block horizontal offset')
+    const spacingInput = screen.getByLabelText('Block spacing')
+
+    fireEvent.change(offsetInput, { target: { value: '6' } })
+    fireEvent.change(offsetInput, { target: { value: '06' } })
+    fireEvent.change(spacingInput, { target: { value: '24' } })
+    fireEvent.change(spacingInput, { target: { value: '024' } })
+
+    expect(offsetInput).toHaveDisplayValue('6')
+    expect(spacingInput).toHaveDisplayValue('24')
+  })
+
+  it('applies each block horizontal offset from its pushed position', () => {
+    render(<App />)
+
+    for (let index = 0; index < 2; index += 1) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: '現在のコードを追加',
+        }),
+      )
+    }
+
+    let blocks = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+
+    fireEvent.click(blocks[0])
+    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
+      target: { value: '120' },
+    })
+
+    blocks = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+    fireEvent.click(blocks[1])
+    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
+      target: { value: '20' },
+    })
+
+    blocks = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+    fireEvent.click(blocks[2])
+    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
+      target: { value: '40' },
+    })
+
+    const updatedBlocks = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+
+    expect(updatedBlocks[0]).toHaveStyle({ left: '136px' })
+    expect(updatedBlocks[1]).toHaveStyle({ left: '314px' })
+    expect(updatedBlocks[2]).toHaveStyle({ left: '512px' })
+  })
+
   it('expands the stage enough to keep four blocks inside the row frame', () => {
     const { container } = render(<App />)
 
@@ -126,6 +214,31 @@ describe('App', () => {
 
     expect(container.querySelector('.layout-stage')).toHaveStyle({
       width: '710.4px',
+    })
+  })
+
+  it('expands the stage when a horizontal offset pushes the last block rightward', () => {
+    const { container } = render(<App />)
+
+    for (let index = 0; index < 3; index += 1) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: '現在のコードを追加',
+        }),
+      )
+    }
+
+    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
+      target: { value: '120' },
+    })
+
+    const blocks = screen.getAllByRole('button', {
+      name: /^Select .* block$/,
+    })
+
+    expect(blocks[3]).toHaveStyle({ left: '610px' })
+    expect(container.querySelector('.layout-stage')).toHaveStyle({
+      width: '830.4px',
     })
   })
 
