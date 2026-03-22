@@ -1,0 +1,105 @@
+:root {
+  font-family: 'Avenir Next', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #f5efe6;
+  background:
+    radial-gradient(
+      circle at top left,
+      rgba(229, 145, 45, 0.28),
+      transparent 40%
+    ),
+    linear-gradient(135deg, #111827 0%, #1f2937 45%, #2f241d 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(1100px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 4rem 0 5rem;
+}
+
+.hero {
+  padding: 2rem;
+  border: 1px solid rgba(245, 239, 230, 0.12);
+  border-radius: 24px;
+  background: rgba(17, 24, 39, 0.55);
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(14px);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: #f7b267;
+  font-size: 0.85rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.8rem, 7vw, 5.5rem);
+  line-height: 0.95;
+}
+
+.lead {
+  width: min(42rem, 100%);
+  margin: 1.5rem 0 0;
+  color: rgba(245, 239, 230, 0.88);
+  font-size: 1.05rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.feature-card {
+  padding: 1.5rem;
+  border: 1px solid rgba(247, 178, 103, 0.15);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.feature-card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+}
+
+.feature-card p {
+  margin: 0;
+  color: rgba(245, 239, 230, 0.82);
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 2rem 0 3rem;
+  }
+
+  .hero {
+    padding: 1.5rem;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
