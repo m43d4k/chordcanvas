@@ -25,6 +25,7 @@ import {
   type ProjectSnapshot,
   type StockChordState,
 } from './project/projectFile'
+import { UI_TEXT, type Locale } from './uiText'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
@@ -123,10 +124,6 @@ function createInitialAppState() {
     initialBlock,
     initialManualViewport,
   }
-}
-
-function getLayoutRowLabel(index: number): string {
-  return `${index + 1}行目`
 }
 
 function getRowBlockIndices(
@@ -261,6 +258,7 @@ function App() {
   const [initialState] = useState(createInitialAppState)
   const layoutStageRef = useRef<HTMLDivElement | null>(null)
   const projectFileInputRef = useRef<HTMLInputElement | null>(null)
+  const [locale, setLocale] = useState<Locale>('ja')
 
   const [selectedRoot, setSelectedRoot] = useState<PitchClassName>(DEFAULT_ROOT)
   const [selectedQuality, setSelectedQuality] =
@@ -294,6 +292,7 @@ function App() {
   const [appFeedback, setAppFeedback] = useState<AppFeedback | null>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
+  const text = UI_TEXT[locale]
 
   const availableForms = getChordForms(selectedRoot, selectedQuality)
   const selectedForm =
@@ -582,11 +581,20 @@ function App() {
     addBlockToSelectedLayoutRow(currentFretting)
   }
 
+  function handleLocaleChange(nextLocale: Locale) {
+    if (nextLocale === locale) {
+      return
+    }
+
+    setLocale(nextLocale)
+    setAppFeedback(null)
+  }
+
   function handleAddCurrentChordToStock() {
     if (isCurrentChordStocked) {
       setAppFeedback({
         kind: 'success',
-        text: `${currentDisplayName} はすでにストック済みです。`,
+        text: text.alreadyStockedFeedback(currentDisplayName),
       })
       return
     }
@@ -602,7 +610,7 @@ function App() {
     ])
     setAppFeedback({
       kind: 'success',
-      text: `${currentDisplayName} をストックに追加しました。`,
+      text: text.addedToStockFeedback(currentDisplayName),
     })
   }
 
@@ -634,7 +642,7 @@ function App() {
     )
     setAppFeedback({
       kind: 'success',
-      text: `${stockDisplayName} をストックから削除しました。`,
+      text: text.removedFromStockFeedback(stockDisplayName),
     })
   }
 
@@ -854,7 +862,7 @@ function App() {
     URL.revokeObjectURL(objectUrl)
     setAppFeedback({
       kind: 'success',
-      text: `${PROJECT_EXPORT_FILE_NAME} を書き出しました。`,
+      text: text.projectExportedFeedback(PROJECT_EXPORT_FILE_NAME),
     })
   }
 
@@ -864,7 +872,7 @@ function App() {
     if (!layoutStageElement) {
       setAppFeedback({
         kind: 'error',
-        text: 'PDF 出力に失敗しました: レイアウト領域を取得できませんでした。',
+        text: text.pdfExportFailedMissingStage,
       })
       return
     }
@@ -875,14 +883,14 @@ function App() {
       await exportLayoutStagePdf(layoutStageElement)
       setAppFeedback({
         kind: 'success',
-        text: `${LAYOUT_PDF_FILE_NAME} を書き出しました。`,
+        text: text.pdfExportedFeedback(LAYOUT_PDF_FILE_NAME),
       })
     } catch (error) {
       setAppFeedback({
         kind: 'error',
-        text: `PDF 出力に失敗しました: ${
-          error instanceof Error ? error.message : '不明なエラー'
-        }`,
+        text: text.pdfExportFailed(
+          error instanceof Error ? error.message : text.unknownError,
+        ),
       })
     } finally {
       setIsExportingPdf(false)
@@ -902,14 +910,14 @@ function App() {
       applyProjectSnapshot(nextSnapshot)
       setAppFeedback({
         kind: 'success',
-        text: `${file.name} を読み込みました。現在の project を置き換えています。`,
+        text: text.projectImportedFeedback(file.name),
       })
     } catch (error) {
       setAppFeedback({
         kind: 'error',
-        text: `インポートに失敗しました: ${
-          error instanceof Error ? error.message : '不明なエラー'
-        }`,
+        text: text.importFailed(
+          error instanceof Error ? error.message : text.unknownError,
+        ),
       })
     } finally {
       input.value = ''
@@ -919,10 +927,33 @@ function App() {
   return (
     <main className="app-shell">
       <header className="hero">
-        <h1>ChordCanvas</h1>
+        <div className="hero-header">
+          <h1>ChordCanvas</h1>
+          <div
+            aria-label={text.languageToggleGroupLabel}
+            className="language-toggle"
+            role="group"
+          >
+            <button
+              aria-pressed={locale === 'ja'}
+              className="secondary-button"
+              onClick={() => handleLocaleChange('ja')}
+              type="button"
+            >
+              {text.languageJa}
+            </button>
+            <button
+              aria-pressed={locale === 'en'}
+              className="secondary-button"
+              onClick={() => handleLocaleChange('en')}
+              type="button"
+            >
+              {text.languageEn}
+            </button>
+          </div>
+        </div>
         <p className="lead">
-          コード生成、押弦編集、コード名判定、歌詞上への配置をブラウザだけで完結させる
-          chord editor の初期実装です。
+          {text.lead}
         </p>
 
         <div className="hero-actions">
@@ -933,21 +964,21 @@ function App() {
               onClick={handlePdfExport}
               type="button"
             >
-              {isExportingPdf ? 'PDF を書き出し中...' : 'レイアウトを PDF 出力'}
+              {isExportingPdf ? text.exportingPdf : text.exportPdf}
             </button>
             <button
               className="secondary-button"
               onClick={handleProjectExport}
               type="button"
             >
-              プロジェクトを書き出し
+              {text.exportProject}
             </button>
             <button
               className="secondary-button"
               onClick={openProjectFilePicker}
               type="button"
             >
-              プロジェクトを読み込む
+              {text.importProject}
             </button>
             <input
               accept="application/json,.json"
@@ -976,12 +1007,12 @@ function App() {
           aria-labelledby="generator-heading"
         >
           <div className="panel-heading">
-            <h2 id="generator-heading">コード生成パネル</h2>
+            <h2 id="generator-heading">{text.generatorHeading}</h2>
           </div>
 
           <div className="field-grid">
             <label className="field">
-              <span>ルート音</span>
+              <span>{text.rootNote}</span>
               <select
                 aria-label="Root note"
                 onChange={handleRootChange}
@@ -996,7 +1027,7 @@ function App() {
             </label>
 
             <label className="field">
-              <span>コード種別</span>
+              <span>{text.chordQuality}</span>
               <select
                 aria-label="Chord quality"
                 onChange={handleQualityChange}
@@ -1011,7 +1042,7 @@ function App() {
             </label>
 
             <label className="field">
-              <span>候補フォーム</span>
+              <span>{text.chordForm}</span>
               <select
                 aria-label="Chord form"
                 onChange={handleFormChange}
@@ -1028,7 +1059,7 @@ function App() {
 
           <div className="generator-actions">
             <button onClick={handleAddGeneratedBlock} type="button">
-              現在のコードを追加
+              {text.addCurrentChord}
             </button>
             <button
               disabled={isCurrentChordStocked}
@@ -1036,8 +1067,8 @@ function App() {
               type="button"
             >
               {isCurrentChordStocked
-                ? 'このコードはストック済み'
-                : 'ストックに追加'}
+                ? text.alreadyStockedButton
+                : text.addToStock}
             </button>
           </div>
         </section>
@@ -1047,7 +1078,7 @@ function App() {
           aria-labelledby="editor-heading"
         >
           <div className="panel-heading">
-            <h2 id="editor-heading">コードダイアグラム編集</h2>
+            <h2 id="editor-heading">{text.editorHeading}</h2>
           </div>
 
           <div className="editor-content">
@@ -1056,12 +1087,12 @@ function App() {
                 <div>
                   <p className="meta-label">
                     {isEditingSelectedBlock
-                      ? 'Editing layout block'
-                      : 'Current chord'}
+                      ? text.editingLayoutBlock
+                      : text.currentChord}
                   </p>
                   <h3>{currentDisplayName}</h3>
                   <label className="field small diagram-name-field">
-                    <span>表示コード名</span>
+                    <span>{text.displayChordName}</span>
                     <input
                       aria-label="Chord name"
                       onChange={handleCurrentChordNameChange}
@@ -1070,12 +1101,12 @@ function App() {
                       value={currentChordName}
                     />
                   </label>
-                  <p className="meta-note">空欄なら自動判定名を使います。</p>
+                  <p className="meta-note">{text.useAutoDetectedName}</p>
                 </div>
                 {isEditingSelectedBlock ? (
                   <div className="editor-mode-controls">
                     <p className="meta-note editor-mode-note editing">
-                      {selectedBlockDisplayName} を編集中
+                      {text.editingBlockNotice(selectedBlockDisplayName)}
                     </p>
                     <p className="meta-note">ID: {selectedBlock.id}</p>
                   </div>
@@ -1092,7 +1123,7 @@ function App() {
             <div className="manual-builder">
               <div className="manual-builder-header">
                 <div>
-                  <h3>押弦入力</h3>
+                  <h3>{text.frettingInput}</h3>
                 </div>
                 <button
                   className="secondary-button"
@@ -1101,13 +1132,13 @@ function App() {
                   }
                   type="button"
                 >
-                  表示範囲を自動調整
+                  {text.autoAdjustViewport}
                 </button>
               </div>
 
               <div className="manual-settings">
                 <label className="field small">
-                  <span>開始フレット</span>
+                  <span>{text.startFret}</span>
                   <input
                     aria-label="Manual start fret"
                     min="1"
@@ -1118,7 +1149,7 @@ function App() {
                 </label>
 
                 <label className="field small">
-                  <span>表示フレット数</span>
+                  <span>{text.visibleFretCount}</span>
                   <input
                     aria-label="Manual fret count"
                     max={MAX_MANUAL_FRET_COUNT}
@@ -1130,12 +1161,16 @@ function App() {
                 </label>
               </div>
 
-              <div className="manual-grid" role="group" aria-label="押弦入力">
+              <div
+                aria-label={text.frettingInput}
+                className="manual-grid"
+                role="group"
+              >
                 <div
                   className="manual-grid-header"
                   style={{ gridTemplateColumns: manualGridTemplate }}
                 >
-                  <span className="manual-grid-corner">弦</span>
+                  <span className="manual-grid-corner">{text.stringHeader}</span>
                   <span className="manual-grid-status">X</span>
                   <span className="manual-grid-status">O</span>
                   {manualVisibleFrets.map((fret) => (
@@ -1156,10 +1191,10 @@ function App() {
                       style={{ gridTemplateColumns: manualGridTemplate }}
                     >
                       <span className="manual-grid-string">
-                        {stringNumber}弦
+                        {text.stringLabel(stringNumber)}
                       </span>
                       <button
-                        aria-label={`${stringNumber}弦 ミュート`}
+                        aria-label={text.stringMuteLabel(stringNumber)}
                         aria-pressed={state === 'x'}
                         className={state === 'x' ? 'active' : ''}
                         onClick={() => setStringState(stringIndex, 'x')}
@@ -1168,7 +1203,7 @@ function App() {
                         X
                       </button>
                       <button
-                        aria-label={`${stringNumber}弦 開放`}
+                        aria-label={text.stringOpenLabel(stringNumber)}
                         aria-pressed={state === 0}
                         className={state === 0 ? 'active' : ''}
                         onClick={() => setStringState(stringIndex, 0)}
@@ -1178,7 +1213,7 @@ function App() {
                       </button>
                       {manualVisibleFrets.map((fret) => (
                         <button
-                          aria-label={`${stringNumber}弦 ${fret}フレット`}
+                          aria-label={text.stringFretLabel(stringNumber, fret)}
                           aria-pressed={state === fret}
                           className={state === fret ? 'active' : ''}
                           key={`manual-string-${stringIndex}-fret-${fret}`}
@@ -1198,31 +1233,31 @@ function App() {
 
         <section className="panel info-panel" aria-labelledby="info-heading">
           <div className="panel-heading">
-            <h2 id="info-heading">コード情報</h2>
+            <h2 id="info-heading">{text.infoHeading}</h2>
           </div>
 
           <dl className="info-list">
             <div>
-              <dt>現在のコード名</dt>
+              <dt>{text.currentChordName}</dt>
               <dd>{currentDisplayName}</dd>
             </div>
             <div>
-              <dt>候補コード名</dt>
+              <dt>{text.candidateChordNames}</dt>
               <dd>
                 {currentSummary.candidates.length > 0
                   ? currentSummary.candidates
                       .slice(0, 3)
                       .map((candidate) => candidate.label)
                       .join(', ')
-                  : '該当なし'}
+                  : text.noCandidates}
               </dd>
             </div>
             <div>
-              <dt>ベース音</dt>
+              <dt>{text.bassNote}</dt>
               <dd>{currentSummary.bassNote ?? '-'}</dd>
             </div>
             <div>
-              <dt>構成音</dt>
+              <dt>{text.chordTones}</dt>
               <dd>
                 {currentSummary.chordTones.length > 0
                   ? currentSummary.chordTones.join(', ')
@@ -1230,7 +1265,7 @@ function App() {
               </dd>
             </div>
             <div>
-              <dt>ユニーク音</dt>
+              <dt>{text.uniqueNotes}</dt>
               <dd>
                 {currentSummary.uniqueNotes.length > 0
                   ? currentSummary.uniqueNotes.join(', ')
@@ -1238,7 +1273,7 @@ function App() {
               </dd>
             </div>
             <div>
-              <dt>発音音</dt>
+              <dt>{text.playedNotes}</dt>
               <dd>
                 {currentSummary.playedNotes.length > 0
                   ? currentSummary.playedNotes
@@ -1254,7 +1289,7 @@ function App() {
       <section className="panel stock-panel" aria-labelledby="stock-heading">
         <div className="panel-heading stock-panel-heading">
           <div>
-            <h2 id="stock-heading">コードストック</h2>
+            <h2 id="stock-heading">{text.stockHeading}</h2>
           </div>
         </div>
 
@@ -1277,41 +1312,39 @@ function App() {
                     onClick={() => handleAddStockChordToLayout(stockChord.id)}
                     type="button"
                   >
-                    選択中の行に追加
+                    {text.addToSelectedRow}
                   </button>
                   <button
                     className="secondary-button"
                     onClick={() => handleRemoveStockChord(stockChord.id)}
                     type="button"
                   >
-                    削除
+                    {text.delete}
                   </button>
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <p className="stock-empty">
-            ストックはまだ空です。コード生成パネルからよく使うコードを追加できます。
-          </p>
+          <p className="stock-empty">{text.stockEmpty}</p>
         )}
       </section>
 
       <section className="panel layout-panel" aria-labelledby="layout-heading">
         <div className="panel-heading">
-          <h2 id="layout-heading">レイアウト編集</h2>
+          <h2 id="layout-heading">{text.layoutHeading}</h2>
         </div>
 
         <div className="layout-toolbar">
           <button onClick={handleAddLayoutRow} type="button">
-            行を追加
+            {text.addRow}
           </button>
           <button
             disabled={layoutRows.length === 1}
             onClick={handleDeleteSelectedLayoutRow}
             type="button"
           >
-            選択中の行を削除
+            {text.deleteSelectedRow}
           </button>
         </div>
 
@@ -1323,7 +1356,7 @@ function App() {
               }`}
               key={row.id}
             >
-              <span>歌詞 {index + 1} 行</span>
+              <span>{text.lyricsLineLabel(index)}</span>
               <input
                 aria-label={`Lyrics line ${index + 1}`}
                 onChange={(event) => handleLyricsLineChange(row.id, event)}
@@ -1343,25 +1376,25 @@ function App() {
             type="button"
           >
             {isEditingSelectedBlock
-              ? '選択コードの編集を終了'
-              : '選択コードを編集'}
+              ? text.finishEditingSelectedChord
+              : text.editSelectedChord}
           </button>
           <button onClick={handleDuplicateBlock} type="button">
-            選択コードを複製
+            {text.duplicateSelectedChord}
           </button>
           <button
             disabled={blocks.length === 1}
             onClick={handleDeleteBlock}
             type="button"
           >
-            選択コードを削除
+            {text.deleteSelectedChord}
           </button>
           <button
             disabled={activeRowSelectionIndex <= 0}
             onClick={() => handleMoveBlock(-1)}
             type="button"
           >
-            左へ並び替え
+            {text.moveLeft}
           </button>
           <button
             disabled={
@@ -1371,13 +1404,13 @@ function App() {
             onClick={() => handleMoveBlock(1)}
             type="button"
           >
-            右へ並び替え
+            {text.moveRight}
           </button>
         </div>
 
         <div className="layout-controls">
           <label className="field small">
-            <span>選択コードの配置行</span>
+            <span>{text.selectedChordRow}</span>
             <select
               aria-label="Block row"
               onChange={handleBlockRowChange}
@@ -1385,14 +1418,14 @@ function App() {
             >
               {layoutRows.map((row, index) => (
                 <option key={row.id} value={row.id}>
-                  {getLayoutRowLabel(index)}
+                  {text.layoutRowLabel(index)}
                 </option>
               ))}
             </select>
           </label>
 
           <label className="field small">
-            <span>横オフセット(px)</span>
+            <span>{text.horizontalOffset}</span>
             <input
               aria-label="Block horizontal offset"
               onChange={(event) => handleNumberFieldChange('xOffset', event)}
@@ -1402,7 +1435,7 @@ function App() {
           </label>
 
           <label className="field small">
-            <span>後続との間隔(px)</span>
+            <span>{text.spacingAfter}</span>
             <input
               aria-label="Block spacing"
               min="0"
@@ -1419,61 +1452,65 @@ function App() {
             ref={layoutStageRef}
             style={layoutStageStyle}
           >
-            {layoutEntries.rows.map((rowEntry, index) => (
-              <section
-                aria-labelledby={`layout-row-heading-${rowEntry.row.id}`}
-                className={`layout-row${
-                  rowEntry.row.id === selectedLayoutRow.id ? ' selected' : ''
-                }`}
-                key={rowEntry.row.id}
-              >
-                <div className="layout-row-header">
-                  <h3 id={`layout-row-heading-${rowEntry.row.id}`}>
-                    {getLayoutRowLabel(index)}
-                  </h3>
-                  <button
-                    aria-label={`${getLayoutRowLabel(index)} を追加先にする`}
-                    aria-pressed={rowEntry.row.id === selectedLayoutRow.id}
-                    className="secondary-button layout-row-selector"
-                    onClick={() => selectLayoutRow(rowEntry.row.id)}
-                    type="button"
-                  >
-                    {rowEntry.row.id === selectedLayoutRow.id
-                      ? '追加先'
-                      : 'この行に追加'}
-                  </button>
-                </div>
+            {layoutEntries.rows.map((rowEntry, index) => {
+              const rowLabel = text.layoutRowLabel(index)
 
-                <div className="layout-chord-layer">
-                  {rowEntry.entries.map((entry) => (
+              return (
+                <section
+                  aria-labelledby={`layout-row-heading-${rowEntry.row.id}`}
+                  className={`layout-row${
+                    rowEntry.row.id === selectedLayoutRow.id ? ' selected' : ''
+                  }`}
+                  key={rowEntry.row.id}
+                >
+                  <div className="layout-row-header">
+                    <h3 id={`layout-row-heading-${rowEntry.row.id}`}>
+                      {rowLabel}
+                    </h3>
                     <button
-                      aria-label={`Select ${entry.displayName} block`}
-                      className={`chord-preview-block layout-chord-block${
-                        entry.block.id === selectedBlockId ? ' selected' : ''
-                      }`}
-                      key={entry.block.id}
-                      onClick={() => activateBlock(entry.block)}
-                      style={{ left: `${entry.left}px` }}
+                      aria-label={text.setInsertionTargetAria(rowLabel)}
+                      aria-pressed={rowEntry.row.id === selectedLayoutRow.id}
+                      className="secondary-button layout-row-selector"
+                      onClick={() => selectLayoutRow(rowEntry.row.id)}
                       type="button"
                     >
-                      <span className="chord-preview-name">
-                        {entry.displayName}
-                      </span>
-                      <ChordDiagram
-                        compact
-                        fretting={entry.block.fretting}
-                        markerLabels={entry.summary.stringDegreeLabels}
-                        viewport={entry.summary.viewport}
-                      />
+                      {rowEntry.row.id === selectedLayoutRow.id
+                        ? text.addTarget
+                        : text.addToThisRow}
                     </button>
-                  ))}
-                </div>
+                  </div>
 
-                <div className="lyrics-line">
-                  {rowEntry.row.lyrics || '\u00a0'}
-                </div>
-              </section>
-            ))}
+                  <div className="layout-chord-layer">
+                    {rowEntry.entries.map((entry) => (
+                      <button
+                        aria-label={`Select ${entry.displayName} block`}
+                        className={`chord-preview-block layout-chord-block${
+                          entry.block.id === selectedBlockId ? ' selected' : ''
+                        }`}
+                        key={entry.block.id}
+                        onClick={() => activateBlock(entry.block)}
+                        style={{ left: `${entry.left}px` }}
+                        type="button"
+                      >
+                        <span className="chord-preview-name">
+                          {entry.displayName}
+                        </span>
+                        <ChordDiagram
+                          compact
+                          fretting={entry.block.fretting}
+                          markerLabels={entry.summary.stringDegreeLabels}
+                          viewport={entry.summary.viewport}
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="lyrics-line">
+                    {rowEntry.row.lyrics || '\u00a0'}
+                  </div>
+                </section>
+              )
+            })}
           </div>
         </div>
       </section>

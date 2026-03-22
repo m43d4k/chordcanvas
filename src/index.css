@@ -76,6 +76,14 @@ button {
   padding: 1.35rem 2.2rem 1.2rem;
 }
 
+.hero-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.9rem 1rem;
+}
+
 .meta-label {
   margin: 0;
   color: var(--accent);
@@ -88,6 +96,18 @@ button {
   margin: 0.15rem 0 0;
   font-size: clamp(2.2rem, 5.2vw, 3.8rem);
   line-height: 0.92;
+}
+
+.language-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.language-toggle .secondary-button {
+  min-width: 5.4rem;
 }
 
 .lead {
@@ -707,7 +727,7 @@ button {
 .layout-chord-layer {
   position: relative;
   width: 100%;
-  min-height: 210px;
+  min-height: 176px;
 }
 
 .chord-preview-block {
@@ -738,9 +758,9 @@ button {
 }
 
 .lyrics-line {
-  margin-top: 1.2rem;
+  margin-top: 0.45rem;
   width: 100%;
-  padding: 0.8rem 0.3rem 0;
+  padding: 0.3rem 0.3rem 0;
   border-top: 1px dashed rgba(245, 239, 230, 0.18);
   color: var(--text-soft);
   font-size: 1.08rem;
@@ -847,6 +867,15 @@ button {
 
   .hero {
     padding: 1rem 1.1rem 0.95rem;
+  }
+
+  .hero-header {
+    align-items: stretch;
+  }
+
+  .language-toggle {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .panel {

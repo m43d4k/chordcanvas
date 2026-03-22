@@ -64,6 +64,16 @@ afterEach(() => {
   pdfMocks.pdfInstances.length = 0
 })
 
+function getItemOrThrow<T>(items: readonly T[], index: number): T {
+  const item = items[index]
+
+  if (item === undefined) {
+    throw new Error(`Expected item at index ${index}`)
+  }
+
+  return item
+}
+
 describe('App', () => {
   it('renders the chord editor panels', () => {
     render(<App />)
@@ -94,6 +104,37 @@ describe('App', () => {
     render(<App />)
 
     expect(screen.getByLabelText('Block spacing')).toHaveValue(6)
+  })
+
+  it('switches visible UI copy to English from the header toggle', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'English',
+      }),
+    )
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Chord Generator',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'Layout Editor',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Export Layout PDF',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Add Current Chord',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('applies the configured spacing between adjacent layout blocks', () => {
@@ -128,7 +169,7 @@ describe('App', () => {
       name: /^Select .* block$/,
     })
 
-    fireEvent.click(blocks[1])
+    fireEvent.click(getItemOrThrow(blocks, 1))
     fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
       target: { value: '120' },
     })
@@ -171,7 +212,7 @@ describe('App', () => {
       name: /^Select .* block$/,
     })
 
-    fireEvent.click(blocks[0])
+    fireEvent.click(getItemOrThrow(blocks, 0))
     fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
       target: { value: '120' },
     })
@@ -179,7 +220,7 @@ describe('App', () => {
     blocks = screen.getAllByRole('button', {
       name: /^Select .* block$/,
     })
-    fireEvent.click(blocks[1])
+    fireEvent.click(getItemOrThrow(blocks, 1))
     fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
       target: { value: '20' },
     })
@@ -187,7 +228,7 @@ describe('App', () => {
     blocks = screen.getAllByRole('button', {
       name: /^Select .* block$/,
     })
-    fireEvent.click(blocks[2])
+    fireEvent.click(getItemOrThrow(blocks, 2))
     fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
       target: { value: '40' },
     })
