@@ -85,7 +85,7 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
-        name: 'コード生成パネル',
+        name: 'コード生成',
       }),
     ).toBeInTheDocument()
     expect(
@@ -142,7 +142,7 @@ describe('App', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: '現在のコードを追加',
+        name: 'コードを追加',
       }),
     )
 
@@ -160,7 +160,7 @@ describe('App', () => {
     for (let index = 0; index < 2; index += 1) {
       fireEvent.click(
         screen.getByRole('button', {
-          name: '現在のコードを追加',
+          name: 'コードを追加',
         }),
       )
     }
@@ -203,7 +203,7 @@ describe('App', () => {
     for (let index = 0; index < 2; index += 1) {
       fireEvent.click(
         screen.getByRole('button', {
-          name: '現在のコードを追加',
+          name: 'コードを追加',
         }),
       )
     }
@@ -248,7 +248,7 @@ describe('App', () => {
     for (let index = 0; index < 3; index += 1) {
       fireEvent.click(
         screen.getByRole('button', {
-          name: '現在のコードを追加',
+          name: 'コードを追加',
         }),
       )
     }
@@ -264,7 +264,7 @@ describe('App', () => {
     for (let index = 0; index < 3; index += 1) {
       fireEvent.click(
         screen.getByRole('button', {
-          name: '現在のコードを追加',
+          name: 'コードを追加',
         }),
       )
     }
@@ -305,7 +305,7 @@ describe('App', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: '現在のコードを追加',
+        name: 'コードを追加',
       }),
     )
 
@@ -345,7 +345,7 @@ describe('App', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: '現在のコードを追加',
+        name: 'コードを追加',
       }),
     )
     fireEvent.click(
@@ -401,7 +401,7 @@ describe('App', () => {
     )
     fireEvent.click(
       screen.getByRole('button', {
-        name: '現在のコードを追加',
+        name: 'コードを追加',
       }),
     )
 
@@ -426,7 +426,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('button', {
-        name: '選択中の行を削除',
+        name: '選択行を削除',
       }),
     ).toBeDisabled()
 
@@ -437,7 +437,7 @@ describe('App', () => {
     )
     fireEvent.click(
       screen.getByRole('button', {
-        name: '現在のコードを追加',
+        name: 'コードを追加',
       }),
     )
 
@@ -461,7 +461,7 @@ describe('App', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: '選択中の行を削除',
+        name: '選択行を削除',
       }),
     )
 
@@ -477,7 +477,7 @@ describe('App', () => {
     ).toHaveLength(2)
     expect(
       screen.getByRole('button', {
-        name: '選択中の行を削除',
+        name: '選択行を削除',
       }),
     ).toBeDisabled()
   })
@@ -578,7 +578,7 @@ describe('App', () => {
     })
     fireEvent.click(
       screen.getByRole('button', {
-        name: '現在のコードを追加',
+        name: 'コードを追加',
       }),
     )
     fireEvent.click(
@@ -670,7 +670,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('button', {
-        name: '選択コードを編集',
+        name: '編集',
       }),
     ).toHaveAttribute('aria-pressed', 'false')
     expect(
@@ -703,7 +703,7 @@ describe('App', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: '選択コードを編集',
+        name: '編集',
       }),
     )
     fireEvent.change(screen.getByLabelText('Chord quality'), {
@@ -717,7 +717,7 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: '選択コードの編集を終了',
+        name: '編集を終了',
       }),
     ).toHaveAttribute('aria-pressed', 'true')
   })
@@ -727,7 +727,7 @@ describe('App', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: '選択コードを編集',
+        name: '編集',
       }),
     )
     fireEvent.change(screen.getByLabelText('Chord name'), {
