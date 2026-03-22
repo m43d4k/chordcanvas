@@ -108,6 +108,28 @@ const NORMALIZED_INTERVALS = Object.fromEntries(
 
 const STANDARD_TUNING_PITCHES = [4, 9, 2, 7, 11, 4] as const
 const STANDARD_TUNING_MIDI = [40, 45, 50, 55, 59, 64] as const
+const DEFAULT_DEGREE_LABELS = [
+  'R',
+  'b2',
+  '2',
+  'b3',
+  '3',
+  '4',
+  'b5',
+  '5',
+  '#5',
+  '6',
+  'b7',
+  '7',
+] as const
+const EXTENDED_DEGREE_LABELS: Partial<Record<number, string>> = {
+  13: 'b9',
+  14: '9',
+  15: '#9',
+  17: '11',
+  20: 'b13',
+  21: '13',
+}
 
 type RelativeStringState = 'x' | number
 
@@ -155,6 +177,7 @@ export interface ChordSummary {
   candidates: readonly ChordCandidate[]
   currentName: string
   chordTones: readonly PitchClassName[]
+  stringDegreeLabels: readonly (string | null)[]
 }
 
 export interface ChordForm {
@@ -790,7 +813,39 @@ export function summarizeChord(fretting: Fretting): ChordSummary {
     chordTones: currentCandidate
       ? getChordToneNames(currentCandidate.root, currentCandidate.quality)
       : [],
+    stringDegreeLabels: deriveStringDegreeLabels(fretting, currentCandidate),
   }
+}
+
+export function deriveStringDegreeLabels(
+  fretting: Fretting,
+  candidate: ChordCandidate | null = detectChordCandidates(fretting)[0] ?? null,
+): readonly (string | null)[] {
+  if (!candidate) {
+    return fretting.map(() => null)
+  }
+
+  const rootValue = pitchClassNameToValue(candidate.root)
+  const degreeLabelByInterval = createDegreeLabelByInterval(candidate.quality)
+
+  return fretting.map((state, stringIndex) => {
+    if (typeof state !== 'number' || state === 0) {
+      return null
+    }
+
+    const openPitch = STANDARD_TUNING_PITCHES[stringIndex]
+
+    if (openPitch === undefined) {
+      return null
+    }
+
+    const pitchClass = mod12(openPitch + state)
+    const interval = mod12(pitchClass - rootValue)
+
+    return (
+      degreeLabelByInterval.get(interval) ?? DEFAULT_DEGREE_LABELS[interval] ?? null
+    )
+  })
 }
 
 export function getChordForms(
@@ -844,6 +899,21 @@ function range(start: number, end: number): readonly number[] {
 
 function normalizeIntervals(intervals: readonly number[]): readonly number[] {
   return sortUniqueNumbers(intervals.map((interval) => mod12(interval)))
+}
+
+function createDegreeLabelByInterval(quality: ChordQuality): Map<number, string> {
+  return CHORD_INTERVALS[quality].reduce((labels, interval) => {
+    labels.set(mod12(interval), getDegreeLabel(interval))
+    return labels
+  }, new Map<number, string>())
+}
+
+function getDegreeLabel(interval: number): string {
+  return (
+    EXTENDED_DEGREE_LABELS[interval] ??
+    DEFAULT_DEGREE_LABELS[mod12(interval)] ??
+    `${interval}`
+  )
 }
 
 function sortUniqueNumbers(values: readonly number[]): readonly number[] {

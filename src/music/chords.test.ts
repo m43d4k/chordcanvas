@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   detectChordCandidates,
   deriveBassNote,
+  deriveStringDegreeLabels,
   deriveUniqueNotes,
   deriveViewport,
   getChordForms,
@@ -50,6 +51,32 @@ describe('music/chords', () => {
     const fretting = toFretting([0, 1, 0, 0, 'x', 'x'])
 
     expect(detectChordCandidates(fretting)[0]?.label).toBe('Em7b5')
+  })
+
+  it('derives degree labels for fretted notes from the detected chord', () => {
+    const fretting = toFretting([0, 2, 2, 1, 0, 0])
+
+    expect(deriveStringDegreeLabels(fretting)).toEqual([
+      null,
+      '5',
+      'R',
+      '3',
+      null,
+      null,
+    ])
+  })
+
+  it('keeps extended degrees like 9 in marker labels', () => {
+    const fretting = toFretting([0, 2, 2, 1, 0, 2])
+
+    expect(summarizeChord(fretting).stringDegreeLabels).toEqual([
+      null,
+      '5',
+      'R',
+      '3',
+      null,
+      '9',
+    ])
   })
 
   it('returns open presets before movable forms when available', () => {

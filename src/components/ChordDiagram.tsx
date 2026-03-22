@@ -8,6 +8,7 @@ import {
 
 interface ChordDiagramProps {
   fretting: Fretting
+  markerLabels: readonly (string | null)[]
   viewport: DiagramViewport
   title?: string
   compact?: boolean
@@ -28,6 +29,7 @@ function getMarkerX(
 
 function ChordDiagram({
   fretting,
+  markerLabels,
   viewport,
   title,
   compact = false,
@@ -48,7 +50,6 @@ function ChordDiagram({
   const height = bottomStringY + (compact ? 14 : 26)
   const fretLabelY = gridTop - (compact ? 8 : 14)
   const statusLabelX = gridLeft - (compact ? 16 : 22)
-  const startFretY = compact ? 28 : 32
   const lastStringIndex = stringYs.length - 1
 
   function getStringY(stringIndex: number): number | undefined {
@@ -65,17 +66,6 @@ function ChordDiagram({
       {title ? (
         <text className="diagram-title" x="12" y="16">
           {title}
-        </text>
-      ) : null}
-
-      {!viewport.isNutPosition ? (
-        <text
-          className="diagram-start-fret"
-          textAnchor="middle"
-          x={gridLeft + fretSpacing / 2}
-          y={startFretY}
-        >
-          {viewport.startFret}fr
         </text>
       ) : null}
 
@@ -170,9 +160,11 @@ function ChordDiagram({
               cy={y}
               r={compact ? 7 : 8.5}
             />
-            <text className="diagram-marker-text" x={markerX} y={y + 1}>
-              {state}
-            </text>
+            {markerLabels[stringIndex] ? (
+              <text className="diagram-marker-text" x={markerX} y={y + 1}>
+                {markerLabels[stringIndex]}
+              </text>
+            ) : null}
           </g>
         )
       })}

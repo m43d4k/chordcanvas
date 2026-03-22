@@ -914,6 +914,7 @@ function App() {
 
               <ChordDiagram
                 fretting={activeBlock.fretting}
+                markerLabels={selectedSummary.stringDegreeLabels}
                 viewport={selectedSummary.viewport}
               />
             </div>
@@ -1107,6 +1108,7 @@ function App() {
                   <ChordDiagram
                     compact
                     fretting={stockChord.fretting}
+                    markerLabels={summary.stringDegreeLabels}
                     viewport={summary.viewport}
                   />
                 </div>
@@ -1286,6 +1288,7 @@ function App() {
                       <ChordDiagram
                         compact
                         fretting={entry.block.fretting}
+                        markerLabels={entry.summary.stringDegreeLabels}
                         viewport={entry.summary.viewport}
                       />
                     </button>
