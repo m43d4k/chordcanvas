@@ -198,6 +198,14 @@ button {
   outline: none;
 }
 
+.lyrics-field input,
+.lyrics-line {
+  font-family:
+    'SFMono-Regular', 'Consolas', 'Menlo', 'Monaco', 'BIZ UD Gothic',
+    monospace;
+  font-variant-ligatures: none;
+}
+
 .field.active input,
 .field.active select {
   border-color: rgba(243, 173, 97, 0.54);
@@ -600,8 +608,8 @@ button {
   border-top: 1px dashed rgba(245, 239, 230, 0.18);
   color: var(--text-soft);
   font-size: 1.08rem;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
+  letter-spacing: 0;
+  white-space: pre;
 }
 
 .chord-diagram {

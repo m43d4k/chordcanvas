@@ -50,6 +50,7 @@ vi.mock('jspdf', () => ({
 }))
 
 import App from './App'
+import './index.css'
 import { toFretting } from './music/chords'
 import {
   serializeProjectFile,
@@ -206,6 +207,21 @@ describe('App', () => {
     })
 
     expect(within(layoutButton).getAllByText('E')).toHaveLength(1)
+  })
+
+  it('preserves manual spacing in layout lyrics', () => {
+    const { container } = render(<App />)
+    const lyricsInput = screen.getByLabelText('Lyrics line 1')
+
+    fireEvent.change(lyricsInput, {
+      target: { value: '  la  la   line  ' },
+    })
+
+    const lyricsLine = container.querySelector('.lyrics-line')
+
+    expect(lyricsLine).not.toBeNull()
+    expect(lyricsLine?.textContent).toBe('  la  la   line  ')
+    expect(getComputedStyle(lyricsLine as HTMLElement).whiteSpace).toBe('pre')
   })
 
   it('shows the editor chord name only once', () => {

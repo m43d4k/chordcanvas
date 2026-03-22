@@ -1026,7 +1026,9 @@ function App() {
         <div className="layout-row-fields">
           {layoutRows.map((row, index) => (
             <label
-              className={`field${row.id === selectedLayoutRow.id ? ' active' : ''}`}
+              className={`field lyrics-field${
+                row.id === selectedLayoutRow.id ? ' active' : ''
+              }`}
               key={row.id}
             >
               <span>歌詞 {index + 1} 行</span>
