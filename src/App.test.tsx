@@ -421,6 +421,19 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
+  it('uses a label-free insertion target control in layout rows', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '行を追加',
+      }),
+    )
+
+    expect(screen.queryByText('追加先')).not.toBeInTheDocument()
+    expect(screen.queryByText('この行に追加')).not.toBeInTheDocument()
+  })
+
   it('deletes the selected layout row and moves its blocks to an adjacent row', () => {
     render(<App />)
 
@@ -567,6 +580,16 @@ describe('App', () => {
       }),
     ).toHaveLength(1)
     expect(diagramCard?.querySelectorAll('text.diagram-title').length).toBe(0)
+  })
+
+  it('does not show the current chord heading in the editor by default', () => {
+    const { container } = render(<App />)
+    const diagramCard = container.querySelector('.diagram-card')
+
+    expect(diagramCard).not.toBeNull()
+    expect(
+      within(diagramCard as HTMLElement).queryByText('現在のコード'),
+    ).not.toBeInTheDocument()
   })
 
   it('uses an edited chord name for the current chord, layout block, and stock', () => {

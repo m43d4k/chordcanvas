@@ -952,9 +952,6 @@ function App() {
             </button>
           </div>
         </div>
-        <p className="lead">
-          {text.lead}
-        </p>
 
         <div className="hero-actions">
           <div className="project-actions">
@@ -1085,11 +1082,9 @@ function App() {
             <div className="diagram-card">
               <div className="diagram-card-header">
                 <div>
-                  <p className="meta-label">
-                    {isEditingSelectedBlock
-                      ? text.editingLayoutBlock
-                      : text.currentChord}
-                  </p>
+                  {isEditingSelectedBlock ? (
+                    <p className="meta-label">{text.editingLayoutBlock}</p>
+                  ) : null}
                   <h3>{currentDisplayName}</h3>
                   <label className="field small diagram-name-field">
                     <span>{text.displayChordName}</span>
@@ -1470,13 +1465,14 @@ function App() {
                     <button
                       aria-label={text.setInsertionTargetAria(rowLabel)}
                       aria-pressed={rowEntry.row.id === selectedLayoutRow.id}
-                      className="secondary-button layout-row-selector"
+                      className="layout-row-selector"
                       onClick={() => selectLayoutRow(rowEntry.row.id)}
                       type="button"
                     >
-                      {rowEntry.row.id === selectedLayoutRow.id
-                        ? text.addTarget
-                        : text.addToThisRow}
+                      <span
+                        aria-hidden="true"
+                        className="layout-row-selector-indicator"
+                      />
                     </button>
                   </div>
 

@@ -4,7 +4,6 @@ interface UiText {
   languageToggleGroupLabel: string
   languageJa: string
   languageEn: string
-  lead: string
   exportPdf: string
   exportingPdf: string
   exportProject: string
@@ -56,8 +55,6 @@ interface UiText {
   selectedChordRow: string
   horizontalOffset: string
   spacingAfter: string
-  addTarget: string
-  addToThisRow: string
   layoutRowLabel: (index: number) => string
   setInsertionTargetAria: (rowLabel: string) => string
   alreadyStockedFeedback: (name: string) => string
@@ -77,8 +74,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     languageToggleGroupLabel: '言語切り替え',
     languageJa: '日本語',
     languageEn: 'English',
-    lead:
-      'コード生成、押弦編集、コード名判定、歌詞上への配置をブラウザだけで完結させる chord editor の初期実装です。',
     exportPdf: 'レイアウトを PDF 出力',
     exportingPdf: 'PDF を書き出し中...',
     exportProject: 'プロジェクトを書き出し',
@@ -132,8 +127,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     selectedChordRow: '配置行',
     horizontalOffset: '水平オフセット(px)',
     spacingAfter: '後続との間隔(px)',
-    addTarget: '追加先',
-    addToThisRow: 'この行に追加',
     layoutRowLabel: (index) => `${index + 1}行目`,
     setInsertionTargetAria: (rowLabel) => `${rowLabel} を追加先にする`,
     alreadyStockedFeedback: (name) => `${name} はすでにストック済みです。`,
@@ -154,8 +147,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     languageToggleGroupLabel: 'Language switcher',
     languageJa: '日本語',
     languageEn: 'English',
-    lead:
-      'An early browser-only chord editor for generating chords, editing fingerings, identifying names, and arranging diagrams over lyrics.',
     exportPdf: 'Export Layout PDF',
     exportingPdf: 'Exporting PDF...',
     exportProject: 'Export Project',
@@ -188,7 +179,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     candidateChordNames: 'Candidate Names',
     noCandidates: 'No matches',
     bassNote: 'Bass Note',
-    chordTones: 'Chord Tones',
+    chordTones: 'Chord notes',
     uniqueNotes: 'Unique Notes',
     playedNotes: 'Played Notes',
     stockHeading: 'Chord Stock',
@@ -209,8 +200,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     selectedChordRow: 'Row',
     horizontalOffset: 'Horizontal Offset (px)',
     spacingAfter: 'Spacing After (px)',
-    addTarget: 'Add Target',
-    addToThisRow: 'Add to This Row',
     layoutRowLabel: (index) => `Row ${index + 1}`,
     setInsertionTargetAria: (rowLabel) =>
       `Set ${rowLabel} as the insertion target`,
