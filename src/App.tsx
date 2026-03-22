@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import ChordDiagram from './components/ChordDiagram'
 import {
@@ -14,19 +14,14 @@ import {
   summarizeChord,
   toFretting,
 } from './music/chords'
-
-interface ChordBlockState {
-  id: string
-  fretting: Fretting
-  xOffset: number
-  spacing: number
-  rowId: string
-}
-
-interface LayoutRowState {
-  id: string
-  lyrics: string
-}
+import {
+  cloneProjectSnapshot,
+  parseProjectFile,
+  serializeProjectFile,
+  type ChordBlockState,
+  type LayoutRowState,
+  type ProjectSnapshot,
+} from './project/projectFile'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
@@ -35,6 +30,12 @@ const DEFAULT_SPACING = 36
 const LAYOUT_SLOT_WIDTH = 180
 const MIN_MANUAL_FRET_COUNT = 3
 const MAX_MANUAL_FRET_COUNT = 8
+const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
+
+interface ProjectFeedback {
+  kind: 'success' | 'error'
+  text: string
+}
 
 let blockSequence = 1
 let rowSequence = 1
@@ -173,8 +174,46 @@ function moveBlockToRow(
   ]
 }
 
+function getNextSequenceValue(
+  ids: readonly string[],
+  prefix: string,
+  fallback = 1,
+): number {
+  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const sequencePattern = new RegExp(`^${escapedPrefix}(\\d+)$`)
+  let nextValue = fallback
+
+  ids.forEach((id) => {
+    const match = id.match(sequencePattern)
+
+    if (!match) {
+      return
+    }
+
+    const sequence = Number.parseInt(match[1] ?? '', 10)
+
+    if (!Number.isNaN(sequence)) {
+      nextValue = Math.max(nextValue, sequence + 1)
+    }
+  })
+
+  return nextValue
+}
+
+function syncProjectSequences(snapshot: ProjectSnapshot) {
+  rowSequence = getNextSequenceValue(
+    snapshot.layoutRows.map((row) => row.id),
+    'row-',
+  )
+  blockSequence = getNextSequenceValue(
+    snapshot.blocks.map((block) => block.id),
+    'chord-',
+  )
+}
+
 function App() {
   const [initialState] = useState(createInitialAppState)
+  const projectFileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [selectedRoot, setSelectedRoot] = useState<PitchClassName>(DEFAULT_ROOT)
   const [selectedQuality, setSelectedQuality] =
@@ -200,6 +239,8 @@ function App() {
   const [manualFretCount, setManualFretCount] = useState(
     initialState.initialManualViewport.fretCount,
   )
+  const [projectFeedback, setProjectFeedback] =
+    useState<ProjectFeedback | null>(null)
 
   const availableForms = getChordForms(selectedRoot, selectedQuality)
   const selectedForm =
@@ -243,6 +284,35 @@ function App() {
   const manualGridTemplate = `36px 36px 36px repeat(${manualVisibleFrets.length}, minmax(0, 1fr))`
 
   const layoutEntries = buildLayoutEntries(layoutRows, blocks)
+
+  function createProjectSnapshot(): ProjectSnapshot {
+    return cloneProjectSnapshot({
+      selectedRoot,
+      selectedQuality,
+      selectedFormId,
+      layoutRows,
+      blocks,
+      selectedBlockId,
+      selectedLayoutRowId,
+      manualStartFret,
+      manualFretCount,
+    })
+  }
+
+  function applyProjectSnapshot(snapshot: ProjectSnapshot) {
+    const nextSnapshot = cloneProjectSnapshot(snapshot)
+
+    syncProjectSequences(nextSnapshot)
+    setSelectedRoot(nextSnapshot.selectedRoot)
+    setSelectedQuality(nextSnapshot.selectedQuality)
+    setSelectedFormId(nextSnapshot.selectedFormId)
+    setLayoutRows(nextSnapshot.layoutRows)
+    setBlocks(nextSnapshot.blocks)
+    setSelectedBlockId(nextSnapshot.selectedBlockId)
+    setSelectedLayoutRowId(nextSnapshot.selectedLayoutRowId)
+    setManualStartFret(Math.max(1, nextSnapshot.manualStartFret))
+    setManualFretCount(clampManualFretCount(nextSnapshot.manualFretCount))
+  }
 
   function syncManualViewportFromFretting(fretting: Fretting) {
     const viewport = summarizeChord(fretting).viewport
@@ -511,6 +581,53 @@ function App() {
     )
   }
 
+  function openProjectFilePicker() {
+    projectFileInputRef.current?.click()
+  }
+
+  function handleProjectExport() {
+    const projectJson = serializeProjectFile(createProjectSnapshot())
+    const projectBlob = new Blob([projectJson], { type: 'application/json' })
+    const objectUrl = URL.createObjectURL(projectBlob)
+    const downloadLink = document.createElement('a')
+
+    downloadLink.href = objectUrl
+    downloadLink.download = PROJECT_EXPORT_FILE_NAME
+    downloadLink.click()
+    URL.revokeObjectURL(objectUrl)
+    setProjectFeedback({
+      kind: 'success',
+      text: `${PROJECT_EXPORT_FILE_NAME} を書き出しました。`,
+    })
+  }
+
+  async function handleProjectImport(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.target
+    const file = input.files?.[0]
+
+    if (!file) {
+      return
+    }
+
+    try {
+      const nextSnapshot = parseProjectFile(await file.text())
+      applyProjectSnapshot(nextSnapshot)
+      setProjectFeedback({
+        kind: 'success',
+        text: `${file.name} を読み込みました。現在の project を置き換えています。`,
+      })
+    } catch (error) {
+      setProjectFeedback({
+        kind: 'error',
+        text: `インポートに失敗しました: ${
+          error instanceof Error ? error.message : '不明なエラー'
+        }`,
+      })
+    } finally {
+      input.value = ''
+    }
+  }
+
   return (
     <main className="app-shell">
       <header className="hero">
@@ -520,6 +637,43 @@ function App() {
           コード生成、押弦編集、コード名判定、歌詞上への配置をブラウザだけで完結させる
           chord editor の初期実装です。
         </p>
+
+        <div className="hero-actions">
+          <div className="project-actions">
+            <button
+              className="secondary-button"
+              onClick={handleProjectExport}
+              type="button"
+            >
+              プロジェクトを書き出し
+            </button>
+            <button
+              className="secondary-button"
+              onClick={openProjectFilePicker}
+              type="button"
+            >
+              プロジェクトを読み込む
+            </button>
+            <input
+              accept="application/json,.json"
+              aria-label="Project JSON file"
+              className="visually-hidden"
+              onChange={handleProjectImport}
+              ref={projectFileInputRef}
+              type="file"
+            />
+          </div>
+
+          <p
+            className={`project-feedback${
+              projectFeedback ? ` ${projectFeedback.kind}` : ''
+            }`}
+            role={projectFeedback?.kind === 'error' ? 'alert' : 'status'}
+          >
+            {projectFeedback?.text ??
+              '現在の project は JSON で書き出し・読み込みできます。'}
+          </p>
+        </div>
       </header>
 
       <section className="workspace-grid">

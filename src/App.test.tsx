@@ -3,10 +3,16 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { toFretting } from './music/chords'
+import {
+  serializeProjectFile,
+  type ProjectSnapshot,
+} from './project/projectFile'
 
 afterEach(() => {
   cleanup()
@@ -202,5 +208,132 @@ describe('App', () => {
     const bassInfo = screen.getByText('ベース音').closest('div')
 
     expect(bassInfo).toHaveTextContent('A')
+  })
+
+  it('exports the current project as JSON', async () => {
+    let exportedBlob: Blob | null = null
+    const createObjectURL = vi.fn((blob: Blob) => {
+      exportedBlob = blob
+      return 'blob:project-export'
+    })
+    const revokeObjectURL = vi.fn()
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
+    const originalCreateObjectURL = URL.createObjectURL
+    const originalRevokeObjectURL = URL.revokeObjectURL
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+      writable: true,
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revokeObjectURL,
+      writable: true,
+    })
+
+    try {
+      render(<App />)
+
+      fireEvent.change(screen.getByLabelText('Lyrics line 1'), {
+        target: { value: 'Exported line' },
+      })
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'プロジェクトを書き出し',
+        }),
+      )
+
+      expect(exportedBlob).not.toBeNull()
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:project-export')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'chordcanvas-project.json を書き出しました。',
+      )
+
+      const projectDocument = JSON.parse(await exportedBlob!.text())
+
+      expect(projectDocument.format).toBe('chordcanvas-project')
+      expect(projectDocument.version).toBe(1)
+      expect(projectDocument.state.layoutRows[0].lyrics).toBe('Exported line')
+    } finally {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        value: originalCreateObjectURL,
+        writable: true,
+      })
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        value: originalRevokeObjectURL,
+        writable: true,
+      })
+      clickSpy.mockRestore()
+    }
+  })
+
+  it('imports a saved project JSON', async () => {
+    const importedSnapshot: ProjectSnapshot = {
+      selectedRoot: 'A',
+      selectedQuality: 'minor',
+      selectedFormId: 'open-a-minor',
+      layoutRows: [
+        { id: 'row-12', lyrics: 'Verse line' },
+        { id: 'row-18', lyrics: 'Bridge line' },
+      ],
+      blocks: [
+        {
+          id: 'chord-40',
+          fretting: toFretting(['x', 0, 2, 2, 1, 0]),
+          xOffset: 12,
+          spacing: 24,
+          rowId: 'row-12',
+        },
+        {
+          id: 'chord-41',
+          fretting: toFretting(['x', 'x', 0, 2, 3, 1]),
+          xOffset: 5,
+          spacing: 48,
+          rowId: 'row-18',
+        },
+      ],
+      selectedBlockId: 'chord-41',
+      selectedLayoutRowId: 'row-18',
+      manualStartFret: 5,
+      manualFretCount: 4,
+    }
+
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Project JSON file'), {
+      target: {
+        files: [
+          new File(
+            [serializeProjectFile(importedSnapshot)],
+            'saved-project.json',
+            { type: 'application/json' },
+          ),
+        ],
+      },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Lyrics line 2')).toHaveValue('Bridge line')
+    })
+
+    expect(
+      screen.getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(2)
+    expect(screen.getByLabelText('Block row')).toHaveValue('row-18')
+    expect(screen.getByLabelText('Block horizontal offset')).toHaveValue(5)
+    expect(screen.getByLabelText('Block spacing')).toHaveValue(48)
+    expect(screen.getByLabelText('Manual start fret')).toHaveValue(5)
+    expect(screen.getByLabelText('Manual fret count')).toHaveValue(4)
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'saved-project.json を読み込みました。',
+    )
   })
 })
