@@ -120,6 +120,16 @@ function getLayoutBlockByName(displayName: string): HTMLElement {
   )
 }
 
+function getSelectedLayoutBlock(): HTMLElement {
+  const block = document.querySelector('.layout-chord-block.selected')
+
+  if (!(block instanceof HTMLElement)) {
+    throw new Error('Expected selected layout block')
+  }
+
+  return block
+}
+
 function dragLayoutBlock(
   block: HTMLElement,
   startClientX: number,
@@ -201,6 +211,22 @@ function openLayoutAddModal(index: number): HTMLElement {
 }
 
 function openEditModal(): HTMLElement {
+  if (
+    !screen.queryByRole('button', {
+      name: /^(編集|Edit)$/,
+    })
+  ) {
+    const selectedBlockButton = getSelectedLayoutBlock().querySelector(
+      '.layout-chord-block-button',
+    )
+
+    if (!(selectedBlockButton instanceof HTMLElement)) {
+      throw new Error('Expected selected layout block button')
+    }
+
+    fireEvent.click(selectedBlockButton)
+  }
+
   fireEvent.click(
     screen.getByRole('button', {
       name: /^(編集|Edit)$/,
@@ -487,35 +513,81 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
-  it('adds layout rows and assigns the selected block to another row', () => {
+  it('adds layout rows without exposing a row reassignment control', () => {
     render(<App />)
 
-    addChordBlockToRow(1)
     fireEvent.click(
       screen.getByRole('button', {
         name: '行を追加',
       }),
     )
 
-    const rowSelect = screen.getByLabelText('Block row') as HTMLSelectElement
+    expect(getLayoutRow(2)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Block row')).not.toBeInTheDocument()
+  })
 
-    fireEvent.change(rowSelect, {
-      target: { value: rowSelect.options[1]?.value ?? '' },
-    })
-
-    const firstRow = getLayoutRow(1)
-    const secondRow = getLayoutRow(2)
+  it('shows layout actions only after explicit block selection and keeps rows compact', () => {
+    render(<App />)
 
     expect(
-      within(firstRow).getAllByRole('button', {
+      screen.queryByRole('button', {
+        name: /^(編集|Edit)$/,
+      }),
+    ).toBeNull()
+
+    fireEvent.click(
+      within(getLayoutRow(1)).getByRole('button', {
         name: /^Select .* block$/,
       }),
-    ).toHaveLength(1)
+    )
+
     expect(
-      within(secondRow).getAllByRole('button', {
+      within(getLayoutRow(1)).getByRole('button', {
+        name: /^(編集|Edit)$/,
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '行を追加',
+      }),
+    )
+
+    expect(
+      screen.queryByRole('button', {
+        name: /^(編集|Edit)$/,
+      }),
+    ).toBeNull()
+
+    addChordBlockToRow(2)
+
+    expect(
+      screen.queryByRole('button', {
+        name: /^(編集|Edit)$/,
+      }),
+    ).toBeNull()
+
+    fireEvent.click(
+      within(getLayoutRow(2)).getByRole('button', {
         name: /^Select .* block$/,
       }),
-    ).toHaveLength(1)
+    )
+
+    expect(
+      within(getLayoutRow(2)).getByRole('button', {
+        name: /^(編集|Edit)$/,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(getLayoutRow(2)).getByRole('button', {
+        name: /^(複製|Duplicate)$/,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(getLayoutRow(1)).queryByRole('button', {
+        name: /^(編集|Edit)$/,
+      }),
+    ).toBeNull()
   })
 
   it('adds a generated chord to the selected empty layout row from that row modal', () => {
@@ -897,7 +969,7 @@ describe('App', () => {
         name: /^Select .* block$/,
       }),
     ).toHaveLength(2)
-    expect(screen.getByLabelText('Block row')).toHaveValue('row-18')
+    expect(screen.queryByLabelText('Block row')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', {
         name: 'Select Bridge F block',

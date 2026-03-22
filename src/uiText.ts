@@ -55,7 +55,6 @@ export interface UiText {
   removeLayoutChordAria: (name: string) => string
   moveLeft: string
   moveRight: string
-  selectedChordRow: string
   saveChordChanges: string
   layoutDragHint: string
   layoutRowLabel: (index: number) => string
@@ -133,7 +132,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     removeLayoutChordAria: (name) => `${name} をレイアウトから削除`,
     moveLeft: '左へ',
     moveRight: '右へ',
-    selectedChordRow: '配置行',
     saveChordChanges: '変更を保存',
     layoutDragHint:
       'コードブロックを左右にドラッグすると、その位置に合わせて横へ移動できます。',
@@ -213,7 +211,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     removeLayoutChordAria: (name) => `Remove ${name} from layout`,
     moveLeft: 'Move Left',
     moveRight: 'Move Right',
-    selectedChordRow: 'Row',
     saveChordChanges: 'Save Changes',
     layoutDragHint:
       'Drag a chord block left or right to slide it horizontally in the row.',

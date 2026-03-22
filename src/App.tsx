@@ -214,42 +214,6 @@ function getInsertionIndexForRow(
   return nextRowBlockIndex < 0 ? blocks.length : nextRowBlockIndex
 }
 
-function moveBlockToRow(
-  blocks: readonly ChordBlockState[],
-  layoutRows: readonly LayoutRowState[],
-  blockId: string,
-  rowId: string,
-): ChordBlockState[] {
-  const currentIndex = blocks.findIndex((block) => block.id === blockId)
-
-  if (currentIndex < 0) {
-    return [...blocks]
-  }
-
-  const currentBlock = blocks[currentIndex]
-
-  if (!currentBlock || currentBlock.rowId === rowId) {
-    return [...blocks]
-  }
-
-  const remainingBlocks = blocks.filter((block) => block.id !== blockId)
-  const insertionIndex = getInsertionIndexForRow(
-    remainingBlocks,
-    layoutRows,
-    rowId,
-  )
-  const movedBlock = {
-    ...currentBlock,
-    rowId,
-  }
-
-  return [
-    ...remainingBlocks.slice(0, insertionIndex),
-    movedBlock,
-    ...remainingBlocks.slice(insertionIndex),
-  ]
-}
-
 function getNextSequenceValue(
   ids: readonly string[],
   prefix: string,
@@ -335,6 +299,9 @@ function App() {
   const [chordModal, setChordModal] = useState<ChordModalState | null>(null)
   const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
+  const [visibleBlockToolbarId, setVisibleBlockToolbarId] = useState<
+    string | null
+  >(null)
   const text = UI_TEXT[locale]
 
   const selectedBlock =
@@ -355,6 +322,7 @@ function App() {
   const activeLayoutRowId = activeLayoutRow.id
   const selectedLayoutRow =
     layoutRows.find((row) => row.id === selectedLayoutRowId) ?? activeLayoutRow
+  const selectedBlockRowId = selectedBlock.rowId
   const activeRowBlockIds = blocks
     .filter((block) => block.rowId === activeLayoutRowId)
     .map((block) => block.id)
@@ -498,6 +466,46 @@ function App() {
   }, [draggingBlockId])
 
   useEffect(() => {
+    if (!visibleBlockToolbarId) {
+      return
+    }
+
+    if (!blocks.some((block) => block.id === visibleBlockToolbarId)) {
+      setVisibleBlockToolbarId(null)
+    }
+  }, [blocks, visibleBlockToolbarId])
+
+  useEffect(() => {
+    if (!visibleBlockToolbarId) {
+      return
+    }
+
+    function handleWindowPointerDown(event: PointerEvent) {
+      const target = event.target
+
+      if (!(target instanceof Node)) {
+        return
+      }
+
+      const activeBlock = layoutStageRef.current?.querySelector<HTMLElement>(
+        `[data-layout-block-id="${visibleBlockToolbarId}"]`,
+      )
+
+      if (activeBlock?.contains(target)) {
+        return
+      }
+
+      setVisibleBlockToolbarId(null)
+    }
+
+    window.addEventListener('pointerdown', handleWindowPointerDown)
+
+    return () => {
+      window.removeEventListener('pointerdown', handleWindowPointerDown)
+    }
+  }, [visibleBlockToolbarId])
+
+  useEffect(() => {
     if (!chordModal) {
       return
     }
@@ -537,6 +545,7 @@ function App() {
 
     syncProjectSequences(nextSnapshot)
     setEditingLyricsRowId(null)
+    setVisibleBlockToolbarId(null)
     setChordModal(null)
     setSelectedRoot(nextSnapshot.selectedRoot)
     setSelectedQuality(nextSnapshot.selectedQuality)
@@ -552,10 +561,14 @@ function App() {
     setManualFretCount(clampManualFretCount(nextSnapshot.manualFretCount))
   }
 
-  function activateBlock(block: ChordBlockState) {
+  function activateBlock(
+    block: ChordBlockState,
+    { revealToolbar = false }: { revealToolbar?: boolean } = {},
+  ) {
     setSelectedBlockId(block.id)
     setSelectedLayoutRowId(block.rowId)
     setEditingLyricsRowId(null)
+    setVisibleBlockToolbarId(revealToolbar ? block.id : null)
   }
 
   function selectLayoutRow(rowId: string) {
@@ -564,6 +577,7 @@ function App() {
     }
 
     setSelectedLayoutRowId(rowId)
+    setVisibleBlockToolbarId(null)
   }
 
   function startLyricsLineEditing(rowId: string) {
@@ -573,6 +587,7 @@ function App() {
 
     setSelectedLayoutRowId(rowId)
     setEditingLyricsRowId(rowId)
+    setVisibleBlockToolbarId(null)
   }
 
   function updateBlockById(
@@ -612,6 +627,7 @@ function App() {
   }
 
   function openStockChordModal() {
+    setVisibleBlockToolbarId(null)
     setChordModal({
       kind: 'stock',
       draft: createChordDraft({
@@ -633,6 +649,7 @@ function App() {
 
     setSelectedLayoutRowId(rowId)
     setEditingLyricsRowId(null)
+    setVisibleBlockToolbarId(null)
     setChordModal({
       kind: 'layout',
       draft: createChordDraft({
@@ -655,6 +672,7 @@ function App() {
       return
     }
 
+    setVisibleBlockToolbarId(null)
     setChordModal({
       blockId: blockToEdit.id,
       draft: createChordDraftFromBlock(blockToEdit, {
@@ -803,6 +821,7 @@ function App() {
   }
 
   function closeChordModal() {
+    setVisibleBlockToolbarId(null)
     setChordModal(null)
   }
 
@@ -941,6 +960,7 @@ function App() {
       return
     }
 
+    setVisibleBlockToolbarId(null)
     const nextBlock = createChordBlock(
       copyFretting(nextSelectedBlock.fretting),
       activeLayoutRowId,
@@ -970,6 +990,7 @@ function App() {
       return
     }
 
+    setVisibleBlockToolbarId(null)
     const nextBlocks = blocks.filter((block) => block.id !== blockId)
 
     if (blockId !== selectedBlockId) {
@@ -990,6 +1011,7 @@ function App() {
   }
 
   function handleMoveBlock(direction: -1 | 1) {
+    setVisibleBlockToolbarId(null)
     setBlocks((currentBlocks) => {
       const currentIndex = currentBlocks.findIndex(
         (block) => block.id === selectedBlockId,
@@ -1035,6 +1057,7 @@ function App() {
 
   function handleAddLayoutRow() {
     const nextRow = createLayoutRow()
+    setVisibleBlockToolbarId(null)
     setLayoutRows((currentRows) => [...currentRows, nextRow])
     setSelectedLayoutRowId(nextRow.id)
   }
@@ -1053,6 +1076,7 @@ function App() {
       return
     }
 
+    setVisibleBlockToolbarId(null)
     setLayoutRows((currentRows) =>
       currentRows.filter((row) => row.id !== rowToRemove.id),
     )
@@ -1068,7 +1092,7 @@ function App() {
     )
     if (
       selectedLayoutRowId === rowToRemove.id ||
-      selectedBlock.rowId === rowToRemove.id
+      selectedBlockRowId === rowToRemove.id
     ) {
       setSelectedLayoutRowId(fallbackRow.id)
     }
@@ -1088,19 +1112,6 @@ function App() {
         row.id === rowId ? { ...row, lyrics: nextLyrics } : row,
       ),
     )
-  }
-
-  function handleBlockRowChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextRowId = event.target.value
-
-    if (!layoutRows.some((row) => row.id === nextRowId)) {
-      return
-    }
-
-    setBlocks((currentBlocks) =>
-      moveBlockToRow(currentBlocks, layoutRows, selectedBlockId, nextRowId),
-    )
-    setSelectedLayoutRowId(nextRowId)
   }
 
   function handleLayoutBlockPointerDown(
@@ -1355,53 +1366,6 @@ function App() {
           <h2 id="layout-heading">{text.layoutHeading}</h2>
         </div>
 
-        <div className="layout-toolbar">
-          <button
-            className="secondary-button"
-            onClick={openEditChordModal}
-            type="button"
-          >
-            {text.editSelectedChord}
-          </button>
-          <button onClick={handleDuplicateBlock} type="button">
-            {text.duplicateSelectedChord}
-          </button>
-          <button
-            disabled={activeRowSelectionIndex <= 0}
-            onClick={() => handleMoveBlock(-1)}
-            type="button"
-          >
-            {text.moveLeft}
-          </button>
-          <button
-            disabled={
-              activeRowSelectionIndex < 0 ||
-              activeRowSelectionIndex === activeRowBlockIds.length - 1
-            }
-            onClick={() => handleMoveBlock(1)}
-            type="button"
-          >
-            {text.moveRight}
-          </button>
-        </div>
-
-        <div className="layout-controls">
-          <label className="field small">
-            <span>{text.selectedChordRow}</span>
-            <select
-              aria-label="Block row"
-              onChange={handleBlockRowChange}
-              value={selectedBlock.rowId}
-            >
-              {layoutRows.map((row, index) => (
-                <option key={row.id} value={row.id}>
-                  {text.layoutRowLabel(index)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
         <p className="layout-drag-hint">{text.layoutDragHint}</p>
 
         <div className="layout-stage-wrapper">
@@ -1448,9 +1412,44 @@ function App() {
                         data-dragging={
                           draggingBlockId === entry.block.id ? 'true' : undefined
                         }
+                        data-layout-block-id={entry.block.id}
                         key={entry.block.id}
                         style={{ left: `${entry.left}px` }}
                       >
+                        {!isExportingPdf &&
+                        entry.block.id === selectedBlockId &&
+                        visibleBlockToolbarId === entry.block.id ? (
+                          <div className="layout-block-toolbar">
+                            <button
+                              className="secondary-button"
+                              onClick={openEditChordModal}
+                              type="button"
+                            >
+                              {text.editSelectedChord}
+                            </button>
+                            <button onClick={handleDuplicateBlock} type="button">
+                              {text.duplicateSelectedChord}
+                            </button>
+                            <button
+                              disabled={activeRowSelectionIndex <= 0}
+                              onClick={() => handleMoveBlock(-1)}
+                              type="button"
+                            >
+                              {text.moveLeft}
+                            </button>
+                            <button
+                              disabled={
+                                activeRowSelectionIndex < 0 ||
+                                activeRowSelectionIndex ===
+                                  activeRowBlockIds.length - 1
+                              }
+                              onClick={() => handleMoveBlock(1)}
+                              type="button"
+                            >
+                              {text.moveRight}
+                            </button>
+                          </div>
+                        ) : null}
                         <button
                           aria-label={text.removeLayoutChordAria(
                             entry.displayName,
@@ -1469,7 +1468,9 @@ function App() {
                           aria-label={`Select ${entry.displayName} block`}
                           className="chord-preview-block layout-chord-block-button"
                           draggable={false}
-                          onClick={() => activateBlock(entry.block)}
+                          onClick={() =>
+                            activateBlock(entry.block, { revealToolbar: true })
+                          }
                           onPointerDown={(event) =>
                             handleLayoutBlockPointerDown(
                               entry.block,
