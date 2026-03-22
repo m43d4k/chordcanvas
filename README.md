@@ -6,6 +6,7 @@ Guitar chord diagram editor for creating, editing, arranging, and PDF-exporting 
 
 - Generate chord forms from root note and chord quality selections
 - Edit fretting directly from a unified chord diagram editor
+- Keep the chord diagram editor focused on the current chord, and only apply edits to an existing layout block after explicitly enabling block editing
 - Show chord-tone degrees such as `R`, `3`, `5`, `7`, and `9` inside fretted markers
 - Arrange chord blocks across multiple lyric rows
 - Save reusable chord voicings in a project stock and add them back to the selected row

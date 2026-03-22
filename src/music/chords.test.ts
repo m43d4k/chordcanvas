@@ -41,6 +41,18 @@ describe('music/chords', () => {
     })
   })
 
+  it('uses a shifted five-fret viewport when the shape extends past the fourth fret', () => {
+    const fretting = toFretting([4, 6, 6, 5, 4, 4])
+
+    expect(deriveViewport(fretting)).toEqual({
+      startFret: 4,
+      fretCount: 5,
+      isNutPosition: false,
+      visibleFrets: [4, 5, 6, 7, 8],
+      editableFrets: [4, 5, 6, 7, 8, 9],
+    })
+  })
+
   it('detects slash chords without forcing the bass as root', () => {
     const fretting = toFretting([0, 3, 2, 0, 1, 0])
 

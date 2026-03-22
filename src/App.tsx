@@ -245,6 +245,9 @@ function App() {
   const [selectedFormId, setSelectedFormId] = useState(
     initialState.initialFormId,
   )
+  const [currentFretting, setCurrentFretting] = useState<Fretting>(() =>
+    copyFretting(initialState.initialBlock.fretting),
+  )
   const [layoutRows, setLayoutRows] = useState<LayoutRowState[]>(() => [
     initialState.initialRow,
   ])
@@ -266,6 +269,7 @@ function App() {
   )
   const [appFeedback, setAppFeedback] = useState<AppFeedback | null>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
 
   const availableForms = getChordForms(selectedRoot, selectedQuality)
   const selectedForm =
@@ -280,8 +284,8 @@ function App() {
     throw new Error('At least one chord block must be present')
   }
 
-  const activeBlock = selectedBlock
-  const activeLayoutRow = layoutRows.find((row) => row.id === activeBlock.rowId)
+  const isEditingSelectedBlock = editingBlockId === selectedBlockId
+  const activeLayoutRow = layoutRows.find((row) => row.id === selectedBlock.rowId)
 
   if (!activeLayoutRow) {
     throw new Error('At least one layout row must be present')
@@ -301,20 +305,21 @@ function App() {
   const activeRowSelectionIndex = activeRowBlockIds.findIndex(
     (blockId) => blockId === selectedBlockId,
   )
-  const selectedSummary = summarizeChord(activeBlock.fretting)
+  const selectedBlockSummary = summarizeChord(selectedBlock.fretting)
+  const currentSummary = summarizeChord(currentFretting)
   const stockEntries = stockChords.map((stockChord) => ({
     stockChord,
     summary: summarizeChord(stockChord.fretting),
   }))
   const isCurrentChordStocked = stockChords.some((stockChord) =>
-    isSameFretting(stockChord.fretting, activeBlock.fretting),
+    isSameFretting(stockChord.fretting, currentFretting),
   )
   const manualVisibleFrets = createVisibleFrets(
     manualStartFret,
     manualFretCount,
   )
   const manualGridTemplate = `36px 36px 36px repeat(${manualVisibleFrets.length}, minmax(0, 1fr))`
-  const manualStringEntries = activeBlock.fretting
+  const manualStringEntries = currentFretting
     .map((state, stringIndex) => ({
       state,
       stringIndex,
@@ -335,6 +340,7 @@ function App() {
       selectedRoot,
       selectedQuality,
       selectedFormId,
+      currentFretting,
       layoutRows,
       stockChords,
       blocks,
@@ -349,9 +355,11 @@ function App() {
     const nextSnapshot = cloneProjectSnapshot(snapshot)
 
     syncProjectSequences(nextSnapshot)
+    setEditingBlockId(null)
     setSelectedRoot(nextSnapshot.selectedRoot)
     setSelectedQuality(nextSnapshot.selectedQuality)
     setSelectedFormId(nextSnapshot.selectedFormId)
+    setCurrentFretting(nextSnapshot.currentFretting)
     setLayoutRows(nextSnapshot.layoutRows)
     setStockChords(nextSnapshot.stockChords)
     setBlocks(nextSnapshot.blocks)
@@ -370,7 +378,27 @@ function App() {
   function activateBlock(block: ChordBlockState) {
     setSelectedBlockId(block.id)
     setSelectedLayoutRowId(block.rowId)
-    syncManualViewportFromFretting(block.fretting)
+    setEditingBlockId((currentEditingId) =>
+      currentEditingId === block.id ? currentEditingId : null,
+    )
+  }
+
+  function toggleSelectedBlockEditing() {
+    if (isEditingSelectedBlock) {
+      setEditingBlockId(null)
+      return
+    }
+
+    const nextSelectedBlock = blocks.find((block) => block.id === selectedBlockId)
+
+    if (!nextSelectedBlock) {
+      return
+    }
+
+    const nextFretting = copyFretting(nextSelectedBlock.fretting)
+    setCurrentFretting(nextFretting)
+    syncManualViewportFromFretting(nextFretting)
+    setEditingBlockId(selectedBlockId)
   }
 
   function selectLayoutRow(rowId: string) {
@@ -381,12 +409,21 @@ function App() {
     setSelectedLayoutRowId(rowId)
   }
 
-  function updateSelectedBlockFretting(fretting: Fretting) {
+  function updateBlockFretting(blockId: string, fretting: Fretting) {
     setBlocks((currentBlocks) =>
       currentBlocks.map((block) =>
-        block.id === selectedBlockId ? { ...block, fretting } : block,
+        block.id === blockId ? { ...block, fretting } : block,
       ),
     )
+  }
+
+  function applyCurrentFretting(fretting: Fretting) {
+    const nextFretting = copyFretting(fretting)
+    setCurrentFretting(nextFretting)
+
+    if (editingBlockId) {
+      updateBlockFretting(editingBlockId, nextFretting)
+    }
   }
 
   function updateSelectedBlock(
@@ -402,7 +439,7 @@ function App() {
   function applyGeneratedForm(form: ChordForm) {
     const fretting = copyFretting(form.fretting)
     setSelectedFormId(form.id)
-    updateSelectedBlockFretting(fretting)
+    applyCurrentFretting(fretting)
     syncManualViewportFromFretting(fretting)
   }
 
@@ -438,7 +475,7 @@ function App() {
 
     if (nextForm) {
       const fretting = copyFretting(nextForm.fretting)
-      updateSelectedBlockFretting(fretting)
+      applyCurrentFretting(fretting)
       syncManualViewportFromFretting(fretting)
     }
   }
@@ -453,7 +490,7 @@ function App() {
 
     if (nextForm) {
       const fretting = copyFretting(nextForm.fretting)
-      updateSelectedBlockFretting(fretting)
+      applyCurrentFretting(fretting)
       syncManualViewportFromFretting(fretting)
     }
   }
@@ -471,25 +508,25 @@ function App() {
   }
 
   function setStringState(stringIndex: number, nextState: StringState) {
-    const nextFretting = [...activeBlock.fretting]
+    const nextFretting = [...currentFretting]
     nextFretting[stringIndex] = nextState
-    updateSelectedBlockFretting(toFretting(nextFretting))
+    applyCurrentFretting(toFretting(nextFretting))
   }
 
   function handleAddGeneratedBlock() {
-    addBlockToSelectedLayoutRow(activeBlock.fretting)
+    addBlockToSelectedLayoutRow(currentFretting)
   }
 
   function handleAddCurrentChordToStock() {
     if (isCurrentChordStocked) {
       setAppFeedback({
         kind: 'success',
-        text: `${selectedSummary.currentName} はすでにストック済みです。`,
+        text: `${currentSummary.currentName} はすでにストック済みです。`,
       })
       return
     }
 
-    const nextStockChord = createStockChord(copyFretting(activeBlock.fretting))
+    const nextStockChord = createStockChord(copyFretting(currentFretting))
 
     setStockChords((currentStockChords) => [
       ...currentStockChords,
@@ -497,7 +534,7 @@ function App() {
     ])
     setAppFeedback({
       kind: 'success',
-      text: `${selectedSummary.currentName} をストックに追加しました。`,
+      text: `${currentSummary.currentName} をストックに追加しました。`,
     })
   }
 
@@ -533,17 +570,18 @@ function App() {
     const selectedIndex = blocks.findIndex(
       (block) => block.id === selectedBlockId,
     )
+    const nextSelectedBlock = blocks[selectedIndex]
 
-    if (selectedIndex < 0) {
+    if (selectedIndex < 0 || !nextSelectedBlock) {
       return
     }
 
     const nextBlock = createChordBlock(
-      copyFretting(activeBlock.fretting),
+      copyFretting(nextSelectedBlock.fretting),
       activeLayoutRowId,
       {
-        xOffset: activeBlock.xOffset,
-        spacing: activeBlock.spacing,
+        xOffset: nextSelectedBlock.xOffset,
+        spacing: nextSelectedBlock.spacing,
       },
     )
 
@@ -571,8 +609,13 @@ function App() {
       return
     }
 
+    if (editingBlockId === selectedBlockId) {
+      setEditingBlockId(null)
+    }
+
     setBlocks(nextBlocks)
-    activateBlock(fallbackBlock)
+    setSelectedBlockId(fallbackBlock.id)
+    setSelectedLayoutRowId(fallbackBlock.rowId)
   }
 
   function handleMoveBlock(direction: -1 | 1) {
@@ -762,7 +805,6 @@ function App() {
   return (
     <main className="app-shell">
       <header className="hero">
-        <p className="eyebrow">Local-first guitar chord workflow</p>
         <h1>ChordCanvas</h1>
         <p className="lead">
           コード生成、押弦編集、コード名判定、歌詞上への配置をブラウザだけで完結させる
@@ -821,7 +863,6 @@ function App() {
           aria-labelledby="generator-heading"
         >
           <div className="panel-heading">
-            <p className="panel-kicker">Phase 2</p>
             <h2 id="generator-heading">コード生成パネル</h2>
           </div>
 
@@ -886,8 +927,8 @@ function App() {
                 : 'ストックに追加'}
             </button>
             <p>
-              現在の選択は編集中のコードに即時反映されます。押弦の直接編集は右の
-              コードダイアグラム編集パネルで行えます。同じ押弦のコードは
+              ここでの選択と右の押弦編集は current chord に反映されます。レイアウト上の既存コードは
+              「選択コードを編集」を押した時だけ current chord と接続されます。同じ押弦のコードは
               ストックに 1 回だけ保存されます。
             </p>
           </div>
@@ -898,7 +939,6 @@ function App() {
           aria-labelledby="editor-heading"
         >
           <div className="panel-heading">
-            <p className="panel-kicker">Phase 1</p>
             <h2 id="editor-heading">コードダイアグラム編集</h2>
           </div>
 
@@ -906,30 +946,46 @@ function App() {
             <div className="diagram-card">
               <div className="diagram-card-header">
                 <div>
-                  <p className="meta-label">Selected block</p>
-                  <h3>{selectedSummary.currentName}</h3>
+                  <p className="meta-label">
+                    {isEditingSelectedBlock
+                      ? 'Editing layout block'
+                      : 'Current chord'}
+                  </p>
+                  <h3>{currentSummary.currentName}</h3>
                 </div>
-                <p className="meta-note">ID: {activeBlock.id}</p>
+                <div className="editor-mode-controls">
+                  <p
+                    className={`meta-note editor-mode-note${
+                      isEditingSelectedBlock ? ' editing' : ''
+                    }`}
+                  >
+                    {isEditingSelectedBlock
+                      ? `${selectedBlockSummary.currentName} を編集中`
+                      : '次に追加する current chord を編集中'}
+                  </p>
+                  <p className="meta-note">
+                    {isEditingSelectedBlock
+                      ? `ID: ${selectedBlock.id}`
+                      : 'レイアウトの選択とは独立して動作します。'}
+                  </p>
+                </div>
               </div>
 
               <ChordDiagram
-                fretting={activeBlock.fretting}
-                markerLabels={selectedSummary.stringDegreeLabels}
-                viewport={selectedSummary.viewport}
+                fretting={currentFretting}
+                markerLabels={currentSummary.stringDegreeLabels}
+                viewport={currentSummary.viewport}
               />
             </div>
 
             <div className="manual-builder">
               <div className="manual-builder-header">
                 <div>
-                  <p className="meta-label">Fretting editor</p>
                   <h3>押弦入力</h3>
                 </div>
                 <button
                   className="secondary-button"
-                  onClick={() =>
-                    syncManualViewportFromFretting(activeBlock.fretting)
-                  }
+                  onClick={() => syncManualViewportFromFretting(currentFretting)}
                   type="button"
                 >
                   表示範囲を自動調整
@@ -964,7 +1020,7 @@ function App() {
               <div
                 className="manual-grid"
                 role="group"
-                aria-label="Fretting editor"
+                aria-label="押弦入力"
               >
                 <div
                   className="manual-grid-header"
@@ -1025,8 +1081,9 @@ function App() {
               </div>
 
               <p className="manual-builder-note">
-                コード生成で選んだフォームも既存コードも、ここで同じ UI
-                から直接編集できます。
+                {isEditingSelectedBlock
+                  ? 'この押弦編集は選択中レイアウトコードに直接反映されています。'
+                  : 'この押弦編集は current chord にだけ反映されます。レイアウト上の既存コードは明示的に編集開始したときだけ変更されます。'}
               </p>
             </div>
           </div>
@@ -1034,20 +1091,19 @@ function App() {
 
         <section className="panel info-panel" aria-labelledby="info-heading">
           <div className="panel-heading">
-            <p className="panel-kicker">Phase 2</p>
             <h2 id="info-heading">コード情報</h2>
           </div>
 
           <dl className="info-list">
             <div>
               <dt>現在のコード名</dt>
-              <dd>{selectedSummary.currentName}</dd>
+              <dd>{currentSummary.currentName}</dd>
             </div>
             <div>
               <dt>候補コード名</dt>
               <dd>
-                {selectedSummary.candidates.length > 0
-                  ? selectedSummary.candidates
+                {currentSummary.candidates.length > 0
+                  ? currentSummary.candidates
                       .slice(0, 3)
                       .map((candidate) => candidate.label)
                       .join(', ')
@@ -1056,29 +1112,29 @@ function App() {
             </div>
             <div>
               <dt>ベース音</dt>
-              <dd>{selectedSummary.bassNote ?? '-'}</dd>
+              <dd>{currentSummary.bassNote ?? '-'}</dd>
             </div>
             <div>
               <dt>構成音</dt>
               <dd>
-                {selectedSummary.chordTones.length > 0
-                  ? selectedSummary.chordTones.join(', ')
+                {currentSummary.chordTones.length > 0
+                  ? currentSummary.chordTones.join(', ')
                   : '-'}
               </dd>
             </div>
             <div>
               <dt>ユニーク音</dt>
               <dd>
-                {selectedSummary.uniqueNotes.length > 0
-                  ? selectedSummary.uniqueNotes.join(', ')
+                {currentSummary.uniqueNotes.length > 0
+                  ? currentSummary.uniqueNotes.join(', ')
                   : '-'}
               </dd>
             </div>
             <div>
               <dt>発音音</dt>
               <dd>
-                {selectedSummary.playedNotes.length > 0
-                  ? selectedSummary.playedNotes
+                {currentSummary.playedNotes.length > 0
+                  ? currentSummary.playedNotes
                       .map((note) => note.note)
                       .join(', ')
                   : '-'}
@@ -1091,7 +1147,6 @@ function App() {
       <section className="panel stock-panel" aria-labelledby="stock-heading">
         <div className="panel-heading stock-panel-heading">
           <div>
-            <p className="panel-kicker">Project stock</p>
             <h2 id="stock-heading">コードストック</h2>
           </div>
           <p className="stock-selection-note">
@@ -1140,7 +1195,6 @@ function App() {
 
       <section className="panel layout-panel" aria-labelledby="layout-heading">
         <div className="panel-heading">
-          <p className="panel-kicker">Phase 3</p>
           <h2 id="layout-heading">レイアウト編集</h2>
         </div>
 
@@ -1202,12 +1256,25 @@ function App() {
             追加先の行: {selectedLayoutRowLabel}
           </p>
 
+          <p className="layout-selection-note">
+            選択コード: {selectedBlockSummary.currentName}
+          </p>
+
+          <button
+            aria-pressed={isEditingSelectedBlock}
+            className="secondary-button"
+            onClick={toggleSelectedBlockEditing}
+            type="button"
+          >
+            {isEditingSelectedBlock ? '選択コードの編集を終了' : '選択コードを編集'}
+          </button>
+
           <label className="field small">
             <span>選択コードの配置行</span>
             <select
               aria-label="Block row"
               onChange={handleBlockRowChange}
-              value={activeBlock.rowId}
+              value={selectedBlock.rowId}
             >
               {layoutRows.map((row, index) => (
                 <option key={row.id} value={row.id}>
@@ -1223,7 +1290,7 @@ function App() {
               aria-label="Block horizontal offset"
               onChange={(event) => handleNumberFieldChange('xOffset', event)}
               type="number"
-              value={activeBlock.xOffset}
+              value={selectedBlock.xOffset}
             />
           </label>
 
@@ -1234,9 +1301,29 @@ function App() {
               min="0"
               onChange={(event) => handleNumberFieldChange('spacing', event)}
               type="number"
-              value={activeBlock.spacing}
+              value={selectedBlock.spacing}
             />
           </label>
+        </div>
+
+        <div className="diagram-card layout-selection-preview-card">
+          <div className="diagram-card-header">
+            <div>
+              <p className="meta-label">Selected layout block</p>
+              <h3>{selectedBlockSummary.currentName}</h3>
+            </div>
+            <p className="meta-note">
+              {isEditingSelectedBlock
+                ? 'current chord と接続中'
+                : '表示のみ'}
+            </p>
+          </div>
+
+          <ChordDiagram
+            fretting={selectedBlock.fretting}
+            markerLabels={selectedBlockSummary.stringDegreeLabels}
+            viewport={selectedBlockSummary.viewport}
+          />
         </div>
 
         <div className="layout-stage-wrapper">

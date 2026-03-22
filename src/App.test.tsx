@@ -359,7 +359,7 @@ describe('App', () => {
 
     expect(
       screen.getAllByRole('group', {
-        name: 'Fretting editor',
+        name: '押弦入力',
       }),
     ).toHaveLength(1)
   })
@@ -396,6 +396,85 @@ describe('App', () => {
     const bassInfo = screen.getByText('ベース音').closest('div')
 
     expect(bassInfo).toHaveTextContent('A')
+  })
+
+  it('keeps editing the current chord after selecting a layout block', () => {
+    const { container } = render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Root note'), {
+      target: { value: 'A' },
+    })
+    fireEvent.change(screen.getByLabelText('Chord quality'), {
+      target: { value: 'minor' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Select E block',
+      }),
+    )
+
+    expect(
+      screen.getByRole('button', {
+        name: '選択コードを編集',
+      }),
+    ).toHaveAttribute('aria-pressed', 'false')
+    expect(
+      screen.getAllByRole('heading', {
+        name: 'Am',
+      })[0],
+    ).toBeInTheDocument()
+    expect(
+      within(
+        container.querySelector('.layout-selection-preview-card') as HTMLElement,
+      ).getByRole('heading', {
+        name: 'E',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('次に追加する current chord を編集中'),
+    ).toBeInTheDocument()
+  })
+
+  it('updates a selected layout block only after explicit edit mode is enabled', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Select E block',
+      }),
+    )
+    fireEvent.change(screen.getByLabelText('Root note'), {
+      target: { value: 'A' },
+    })
+    fireEvent.change(screen.getByLabelText('Chord quality'), {
+      target: { value: 'minor' },
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Select E block',
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '選択コードを編集',
+      }),
+    )
+    fireEvent.change(screen.getByLabelText('Chord quality'), {
+      target: { value: 'major' },
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Select A block',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: '選択コードの編集を終了',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('exports the current project as JSON', async () => {
@@ -445,6 +524,7 @@ describe('App', () => {
 
       expect(projectDocument.format).toBe('chordcanvas-project')
       expect(projectDocument.version).toBe(1)
+      expect(projectDocument.state.currentFretting).toEqual([0, 2, 2, 1, 0, 0])
       expect(projectDocument.state.layoutRows[0].lyrics).toBe('Exported line')
       expect(projectDocument.state.stockChords).toEqual([])
     } finally {
@@ -511,6 +591,7 @@ describe('App', () => {
       selectedRoot: 'A',
       selectedQuality: 'minor',
       selectedFormId: 'open-a-minor',
+      currentFretting: toFretting(['x', 0, 2, 2, 1, 0]),
       layoutRows: [
         { id: 'row-12', lyrics: 'Verse line' },
         { id: 'row-18', lyrics: 'Bridge line' },

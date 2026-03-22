@@ -33,6 +33,7 @@ export interface ProjectSnapshot {
   selectedRoot: PitchClassName
   selectedQuality: ChordQuality
   selectedFormId: string
+  currentFretting: Fretting
   layoutRows: LayoutRowState[]
   stockChords: StockChordState[]
   blocks: ChordBlockState[]
@@ -89,6 +90,7 @@ export function cloneProjectSnapshot(
 ): ProjectSnapshot {
   return {
     ...snapshot,
+    currentFretting: toFretting([...snapshot.currentFretting]),
     layoutRows: snapshot.layoutRows.map((row) => ({ ...row })),
     stockChords: snapshot.stockChords.map((stockChord) => ({
       ...stockChord,
@@ -126,10 +128,19 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
     throw new Error('selectedLayoutRowId が layoutRows に存在しません。')
   }
 
+  const currentFretting =
+    value.currentFretting === undefined
+      ? toFretting([
+          ...(blocks.find((block) => block.id === selectedBlockId)?.fretting ??
+            blocks[0]!.fretting),
+        ])
+      : parseFretting(value.currentFretting, 'currentFretting')
+
   return {
     selectedRoot: parsePitchClassName(value.selectedRoot),
     selectedQuality: parseChordQuality(value.selectedQuality),
     selectedFormId: parseString(value.selectedFormId, 'selectedFormId'),
+    currentFretting,
     layoutRows,
     stockChords,
     blocks,

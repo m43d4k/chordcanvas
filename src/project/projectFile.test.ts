@@ -11,6 +11,7 @@ function createProjectSnapshot(): ProjectSnapshot {
     selectedRoot: 'E',
     selectedQuality: 'major',
     selectedFormId: 'open-e-major',
+    currentFretting: toFretting([0, 2, 2, 1, 0, 0]),
     layoutRows: [{ id: 'row-1', lyrics: 'Intro line' }],
     stockChords: [
       {
@@ -77,5 +78,21 @@ describe('projectFile', () => {
 
     expect(stockChords).toHaveLength(1)
     expect(parseProjectFile(legacyDocument).stockChords).toEqual([])
+  })
+
+  it('falls back to the selected block fretting when currentFretting is missing', () => {
+    const snapshot = createProjectSnapshot()
+    const { currentFretting, ...legacySnapshot } = snapshot
+    const legacyDocument = JSON.stringify({
+      format: 'chordcanvas-project',
+      version: 1,
+      exportedAt: '2026-03-22T00:00:00.000Z',
+      state: legacySnapshot,
+    })
+
+    expect(currentFretting).toEqual(toFretting([0, 2, 2, 1, 0, 0]))
+    expect(parseProjectFile(legacyDocument).currentFretting).toEqual(
+      snapshot.blocks[0]!.fretting,
+    )
   })
 })

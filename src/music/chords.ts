@@ -695,7 +695,7 @@ export function deriveViewport(fretting: Fretting): DiagramViewport {
 
   const minFret = Math.min(...frettedValues)
   const maxFret = Math.max(...frettedValues)
-  const isNutPosition = minFret <= 4
+  const isNutPosition = maxFret <= 4
   const startFret = isNutPosition ? 1 : minFret
   const fretCount = Math.max(
     MINIMUM_DIAGRAM_FRET_COUNT,
