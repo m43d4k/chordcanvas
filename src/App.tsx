@@ -63,16 +63,21 @@ function createChordBlock(
   return {
     id: `chord-${blockSequence++}`,
     fretting,
+    displayName: overrides.displayName,
     xOffset: overrides.xOffset ?? 0,
     spacing: overrides.spacing ?? DEFAULT_SPACING,
     rowId,
   }
 }
 
-function createStockChord(fretting: Fretting): StockChordState {
+function createStockChord(
+  fretting: Fretting,
+  displayName?: string,
+): StockChordState {
   return {
     id: `stock-${stockSequence++}`,
     fretting,
+    displayName,
   }
 }
 
@@ -82,6 +87,24 @@ function copyFretting(fretting: Fretting): Fretting {
 
 function isSameFretting(left: Fretting, right: Fretting): boolean {
   return left.every((state, index) => state === right[index])
+}
+
+function normalizeDisplayName(value: string | undefined | null): string {
+  return value?.trim() ?? ''
+}
+
+function toStoredDisplayName(
+  value: string | undefined | null,
+): string | undefined {
+  const normalized = normalizeDisplayName(value)
+  return normalized === '' ? undefined : normalized
+}
+
+function getDisplayName(
+  automaticName: string,
+  displayName?: string | null,
+): string {
+  return normalizeDisplayName(displayName) || automaticName
 }
 
 function createInitialAppState() {
@@ -248,6 +271,7 @@ function App() {
   const [currentFretting, setCurrentFretting] = useState<Fretting>(() =>
     copyFretting(initialState.initialBlock.fretting),
   )
+  const [currentChordName, setCurrentChordName] = useState('')
   const [layoutRows, setLayoutRows] = useState<LayoutRowState[]>(() => [
     initialState.initialRow,
   ])
@@ -285,7 +309,9 @@ function App() {
   }
 
   const isEditingSelectedBlock = editingBlockId === selectedBlockId
-  const activeLayoutRow = layoutRows.find((row) => row.id === selectedBlock.rowId)
+  const activeLayoutRow = layoutRows.find(
+    (row) => row.id === selectedBlock.rowId,
+  )
 
   if (!activeLayoutRow) {
     throw new Error('At least one layout row must be present')
@@ -302,10 +328,23 @@ function App() {
   )
   const selectedBlockSummary = summarizeChord(selectedBlock.fretting)
   const currentSummary = summarizeChord(currentFretting)
-  const stockEntries = stockChords.map((stockChord) => ({
-    stockChord,
-    summary: summarizeChord(stockChord.fretting),
-  }))
+  const currentDisplayName = getDisplayName(
+    currentSummary.currentName,
+    currentChordName,
+  )
+  const selectedBlockDisplayName = getDisplayName(
+    selectedBlockSummary.currentName,
+    selectedBlock.displayName,
+  )
+  const stockEntries = stockChords.map((stockChord) => {
+    const summary = summarizeChord(stockChord.fretting)
+
+    return {
+      stockChord,
+      summary,
+      displayName: getDisplayName(summary.currentName, stockChord.displayName),
+    }
+  })
   const isCurrentChordStocked = stockChords.some((stockChord) =>
     isSameFretting(stockChord.fretting, currentFretting),
   )
@@ -336,6 +375,7 @@ function App() {
       selectedQuality,
       selectedFormId,
       currentFretting,
+      currentChordName,
       layoutRows,
       stockChords,
       blocks,
@@ -355,6 +395,7 @@ function App() {
     setSelectedQuality(nextSnapshot.selectedQuality)
     setSelectedFormId(nextSnapshot.selectedFormId)
     setCurrentFretting(nextSnapshot.currentFretting)
+    setCurrentChordName(nextSnapshot.currentChordName)
     setLayoutRows(nextSnapshot.layoutRows)
     setStockChords(nextSnapshot.stockChords)
     setBlocks(nextSnapshot.blocks)
@@ -384,7 +425,9 @@ function App() {
       return
     }
 
-    const nextSelectedBlock = blocks.find((block) => block.id === selectedBlockId)
+    const nextSelectedBlock = blocks.find(
+      (block) => block.id === selectedBlockId,
+    )
 
     if (!nextSelectedBlock) {
       return
@@ -392,6 +435,7 @@ function App() {
 
     const nextFretting = copyFretting(nextSelectedBlock.fretting)
     setCurrentFretting(nextFretting)
+    setCurrentChordName(nextSelectedBlock.displayName ?? '')
     syncManualViewportFromFretting(nextFretting)
     setEditingBlockId(selectedBlockId)
   }
@@ -408,6 +452,18 @@ function App() {
     setBlocks((currentBlocks) =>
       currentBlocks.map((block) =>
         block.id === blockId ? { ...block, fretting } : block,
+      ),
+    )
+  }
+
+  function updateBlockDisplayName(blockId: string, displayName: string) {
+    const storedDisplayName = toStoredDisplayName(displayName)
+
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) =>
+        block.id === blockId
+          ? { ...block, displayName: storedDisplayName }
+          : block,
       ),
     )
   }
@@ -431,6 +487,14 @@ function App() {
     )
   }
 
+  function applyCurrentChordName(nextName: string) {
+    setCurrentChordName(nextName)
+
+    if (editingBlockId) {
+      updateBlockDisplayName(editingBlockId, nextName)
+    }
+  }
+
   function applyGeneratedForm(form: ChordForm) {
     const fretting = copyFretting(form.fretting)
     setSelectedFormId(form.id)
@@ -438,10 +502,16 @@ function App() {
     syncManualViewportFromFretting(fretting)
   }
 
-  function addBlockToSelectedLayoutRow(fretting: Fretting) {
+  function addBlockToSelectedLayoutRow(
+    fretting: Fretting,
+    displayName = currentChordName,
+  ) {
     const nextBlock = createChordBlock(
       copyFretting(fretting),
       selectedLayoutRow.id,
+      {
+        displayName: toStoredDisplayName(displayName),
+      },
     )
 
     setBlocks((currentBlocks) => {
@@ -516,12 +586,15 @@ function App() {
     if (isCurrentChordStocked) {
       setAppFeedback({
         kind: 'success',
-        text: `${currentSummary.currentName} はすでにストック済みです。`,
+        text: `${currentDisplayName} はすでにストック済みです。`,
       })
       return
     }
 
-    const nextStockChord = createStockChord(copyFretting(currentFretting))
+    const nextStockChord = createStockChord(
+      copyFretting(currentFretting),
+      toStoredDisplayName(currentChordName),
+    )
 
     setStockChords((currentStockChords) => [
       ...currentStockChords,
@@ -529,7 +602,7 @@ function App() {
     ])
     setAppFeedback({
       kind: 'success',
-      text: `${currentSummary.currentName} をストックに追加しました。`,
+      text: `${currentDisplayName} をストックに追加しました。`,
     })
   }
 
@@ -540,7 +613,7 @@ function App() {
       return
     }
 
-    addBlockToSelectedLayoutRow(stockChord.fretting)
+    addBlockToSelectedLayoutRow(stockChord.fretting, stockChord.displayName)
   }
 
   function handleRemoveStockChord(stockChordId: string) {
@@ -551,13 +624,17 @@ function App() {
     }
 
     const stockSummary = summarizeChord(stockChord.fretting)
+    const stockDisplayName = getDisplayName(
+      stockSummary.currentName,
+      stockChord.displayName,
+    )
 
     setStockChords((currentStockChords) =>
       currentStockChords.filter((entry) => entry.id !== stockChordId),
     )
     setAppFeedback({
       kind: 'success',
-      text: `${stockSummary.currentName} をストックから削除しました。`,
+      text: `${stockDisplayName} をストックから削除しました。`,
     })
   }
 
@@ -575,6 +652,7 @@ function App() {
       copyFretting(nextSelectedBlock.fretting),
       activeLayoutRowId,
       {
+        displayName: nextSelectedBlock.displayName,
         xOffset: nextSelectedBlock.xOffset,
         spacing: nextSelectedBlock.spacing,
       },
@@ -735,6 +813,10 @@ function App() {
           ? Math.max(0, parsed)
           : parsed,
     }))
+  }
+
+  function handleCurrentChordNameChange(event: ChangeEvent<HTMLInputElement>) {
+    applyCurrentChordName(event.target.value)
   }
 
   function handleManualStartFretChange(event: ChangeEvent<HTMLInputElement>) {
@@ -972,12 +1054,23 @@ function App() {
                       ? 'Editing layout block'
                       : 'Current chord'}
                   </p>
-                  <h3>{currentSummary.currentName}</h3>
+                  <h3>{currentDisplayName}</h3>
+                  <label className="field small diagram-name-field">
+                    <span>表示コード名</span>
+                    <input
+                      aria-label="Chord name"
+                      onChange={handleCurrentChordNameChange}
+                      placeholder={currentSummary.currentName}
+                      type="text"
+                      value={currentChordName}
+                    />
+                  </label>
+                  <p className="meta-note">空欄なら自動判定名を使います。</p>
                 </div>
                 {isEditingSelectedBlock ? (
                   <div className="editor-mode-controls">
                     <p className="meta-note editor-mode-note editing">
-                      {selectedBlockSummary.currentName} を編集中
+                      {selectedBlockDisplayName} を編集中
                     </p>
                     <p className="meta-note">ID: {selectedBlock.id}</p>
                   </div>
@@ -998,7 +1091,9 @@ function App() {
                 </div>
                 <button
                   className="secondary-button"
-                  onClick={() => syncManualViewportFromFretting(currentFretting)}
+                  onClick={() =>
+                    syncManualViewportFromFretting(currentFretting)
+                  }
                   type="button"
                 >
                   表示範囲を自動調整
@@ -1030,11 +1125,7 @@ function App() {
                 </label>
               </div>
 
-              <div
-                className="manual-grid"
-                role="group"
-                aria-label="押弦入力"
-              >
+              <div className="manual-grid" role="group" aria-label="押弦入力">
                 <div
                   className="manual-grid-header"
                   style={{ gridTemplateColumns: manualGridTemplate }}
@@ -1052,47 +1143,50 @@ function App() {
                   ))}
                 </div>
 
-                {manualStringEntries.map(({ state, stringIndex, stringNumber }) => (
-                  <div
-                    className="manual-grid-row"
-                    key={`manual-row-${stringIndex}`}
-                    style={{ gridTemplateColumns: manualGridTemplate }}
-                  >
-                    <span className="manual-grid-string">{stringNumber}弦</span>
-                    <button
-                      aria-label={`${stringNumber}弦 ミュート`}
-                      aria-pressed={state === 'x'}
-                      className={state === 'x' ? 'active' : ''}
-                      onClick={() => setStringState(stringIndex, 'x')}
-                      type="button"
+                {manualStringEntries.map(
+                  ({ state, stringIndex, stringNumber }) => (
+                    <div
+                      className="manual-grid-row"
+                      key={`manual-row-${stringIndex}`}
+                      style={{ gridTemplateColumns: manualGridTemplate }}
                     >
-                      X
-                    </button>
-                    <button
-                      aria-label={`${stringNumber}弦 開放`}
-                      aria-pressed={state === 0}
-                      className={state === 0 ? 'active' : ''}
-                      onClick={() => setStringState(stringIndex, 0)}
-                      type="button"
-                    >
-                      O
-                    </button>
-                    {manualVisibleFrets.map((fret) => (
+                      <span className="manual-grid-string">
+                        {stringNumber}弦
+                      </span>
                       <button
-                        aria-label={`${stringNumber}弦 ${fret}フレット`}
-                        aria-pressed={state === fret}
-                        className={state === fret ? 'active' : ''}
-                        key={`manual-string-${stringIndex}-fret-${fret}`}
-                        onClick={() => setStringState(stringIndex, fret)}
+                        aria-label={`${stringNumber}弦 ミュート`}
+                        aria-pressed={state === 'x'}
+                        className={state === 'x' ? 'active' : ''}
+                        onClick={() => setStringState(stringIndex, 'x')}
                         type="button"
                       >
-                        {fret}
+                        X
                       </button>
-                    ))}
-                  </div>
-                ))}
+                      <button
+                        aria-label={`${stringNumber}弦 開放`}
+                        aria-pressed={state === 0}
+                        className={state === 0 ? 'active' : ''}
+                        onClick={() => setStringState(stringIndex, 0)}
+                        type="button"
+                      >
+                        O
+                      </button>
+                      {manualVisibleFrets.map((fret) => (
+                        <button
+                          aria-label={`${stringNumber}弦 ${fret}フレット`}
+                          aria-pressed={state === fret}
+                          className={state === fret ? 'active' : ''}
+                          key={`manual-string-${stringIndex}-fret-${fret}`}
+                          onClick={() => setStringState(stringIndex, fret)}
+                          type="button"
+                        >
+                          {fret}
+                        </button>
+                      ))}
+                    </div>
+                  ),
+                )}
               </div>
-
             </div>
           </div>
         </section>
@@ -1105,7 +1199,7 @@ function App() {
           <dl className="info-list">
             <div>
               <dt>現在のコード名</dt>
-              <dd>{currentSummary.currentName}</dd>
+              <dd>{currentDisplayName}</dd>
             </div>
             <div>
               <dt>候補コード名</dt>
@@ -1161,10 +1255,10 @@ function App() {
 
         {stockEntries.length > 0 ? (
           <div className="stock-grid">
-            {stockEntries.map(({ stockChord, summary }) => (
+            {stockEntries.map(({ stockChord, summary, displayName }) => (
               <article className="stock-card" key={stockChord.id}>
                 <div className="chord-preview-block stock-chord-preview">
-                  <h3 className="chord-preview-name">{summary.currentName}</h3>
+                  <h3 className="chord-preview-name">{displayName}</h3>
                   <ChordDiagram
                     compact
                     fretting={stockChord.fretting}
@@ -1243,7 +1337,9 @@ function App() {
             onClick={toggleSelectedBlockEditing}
             type="button"
           >
-            {isEditingSelectedBlock ? '選択コードの編集を終了' : '選択コードを編集'}
+            {isEditingSelectedBlock
+              ? '選択コードの編集を終了'
+              : '選択コードを編集'}
           </button>
           <button onClick={handleDuplicateBlock} type="button">
             選択コードを複製
@@ -1346,7 +1442,7 @@ function App() {
                 <div className="layout-chord-layer">
                   {rowEntry.entries.map((entry) => (
                     <button
-                      aria-label={`Select ${entry.summary.currentName} block`}
+                      aria-label={`Select ${entry.displayName} block`}
                       className={`chord-preview-block layout-chord-block${
                         entry.block.id === selectedBlockId ? ' selected' : ''
                       }`}
@@ -1356,7 +1452,7 @@ function App() {
                       type="button"
                     >
                       <span className="chord-preview-name">
-                        {entry.summary.currentName}
+                        {entry.displayName}
                       </span>
                       <ChordDiagram
                         compact
@@ -1398,12 +1494,17 @@ function buildLayoutEntries(
       .filter((block) => block.rowId === row.id)
       .map((block) => {
         const summary = summarizeChord(block.fretting)
+        const displayName = getDisplayName(
+          summary.currentName,
+          block.displayName,
+        )
         const left = Math.max(0, cursor + block.xOffset)
         cursor += LAYOUT_SLOT_WIDTH + block.spacing
 
         return {
           block,
           summary,
+          displayName,
           left,
         }
       })

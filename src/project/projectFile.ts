@@ -14,6 +14,7 @@ const PROJECT_FILE_VERSION = 1
 export interface ChordBlockState {
   id: string
   fretting: Fretting
+  displayName?: string
   xOffset: number
   spacing: number
   rowId: string
@@ -27,6 +28,7 @@ export interface LayoutRowState {
 export interface StockChordState {
   id: string
   fretting: Fretting
+  displayName?: string
 }
 
 export interface ProjectSnapshot {
@@ -34,6 +36,7 @@ export interface ProjectSnapshot {
   selectedQuality: ChordQuality
   selectedFormId: string
   currentFretting: Fretting
+  currentChordName: string
   layoutRows: LayoutRowState[]
   stockChords: StockChordState[]
   blocks: ChordBlockState[]
@@ -94,10 +97,12 @@ export function cloneProjectSnapshot(
     layoutRows: snapshot.layoutRows.map((row) => ({ ...row })),
     stockChords: snapshot.stockChords.map((stockChord) => ({
       ...stockChord,
+      displayName: stockChord.displayName,
       fretting: toFretting([...stockChord.fretting]),
     })),
     blocks: snapshot.blocks.map((block) => ({
       ...block,
+      displayName: block.displayName,
       fretting: toFretting([...block.fretting]),
     })),
   }
@@ -141,6 +146,10 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
     selectedQuality: parseChordQuality(value.selectedQuality),
     selectedFormId: parseString(value.selectedFormId, 'selectedFormId'),
     currentFretting,
+    currentChordName:
+      value.currentChordName === undefined
+        ? ''
+        : parseString(value.currentChordName, 'currentChordName'),
     layoutRows,
     stockChords,
     blocks,
@@ -194,6 +203,10 @@ function parseStockChords(value: unknown): StockChordState[] {
         stockChord.fretting,
         `stockChords[${index}].fretting`,
       ),
+      displayName: parseOptionalString(
+        stockChord.displayName,
+        `stockChords[${index}].displayName`,
+      ),
     }
   })
 }
@@ -220,6 +233,10 @@ function parseBlocks(
     return {
       id: parseString(block.id, `blocks[${index}].id`),
       fretting: parseFretting(block.fretting, `blocks[${index}].fretting`),
+      displayName: parseOptionalString(
+        block.displayName,
+        `blocks[${index}].displayName`,
+      ),
       xOffset: parseInteger(block.xOffset, `blocks[${index}].xOffset`),
       spacing: parseInteger(block.spacing, `blocks[${index}].spacing`),
       rowId,
@@ -297,6 +314,17 @@ function parseString(value: unknown, fieldName: string): string {
   }
 
   throw new Error(`${fieldName} は文字列である必要があります。`)
+}
+
+function parseOptionalString(
+  value: unknown,
+  fieldName: string,
+): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  return parseString(value, fieldName)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

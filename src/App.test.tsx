@@ -415,6 +415,46 @@ describe('App', () => {
     expect(diagramCard?.querySelectorAll('text.diagram-title').length).toBe(0)
   })
 
+  it('uses an edited chord name for the current chord, layout block, and stock', () => {
+    const { container } = render(<App />)
+    const diagramCard = container.querySelector('.diagram-card')
+
+    fireEvent.change(screen.getByLabelText('Chord name'), {
+      target: { value: 'E(add9)' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '現在のコードを追加',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'ストックに追加',
+      }),
+    )
+
+    expect(diagramCard).not.toBeNull()
+    expect(
+      within(diagramCard as HTMLElement).getByRole('heading', {
+        name: 'E(add9)',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Select E(add9) block',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('region', {
+          name: 'コードストック',
+        }),
+      ).getByRole('heading', {
+        name: 'E(add9)',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('keeps a single unified fretting editor', () => {
     render(<App />)
 
@@ -526,6 +566,26 @@ describe('App', () => {
         name: '選択コードの編集を終了',
       }),
     ).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('updates the selected layout block name while edit mode is active', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '選択コードを編集',
+      }),
+    )
+    fireEvent.change(screen.getByLabelText('Chord name'), {
+      target: { value: 'Intro E' },
+    })
+
+    expect(
+      screen.getByRole('button', {
+        name: 'Select Intro E block',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Intro E を編集中')).toBeInTheDocument()
   })
 
   it('exports the current project as JSON', async () => {
@@ -643,6 +703,7 @@ describe('App', () => {
       selectedQuality: 'minor',
       selectedFormId: 'open-a-minor',
       currentFretting: toFretting(['x', 0, 2, 2, 1, 0]),
+      currentChordName: 'Verse Am',
       layoutRows: [
         { id: 'row-12', lyrics: 'Verse line' },
         { id: 'row-18', lyrics: 'Bridge line' },
@@ -650,12 +711,14 @@ describe('App', () => {
       stockChords: [
         {
           id: 'stock-9',
+          displayName: 'Stock Am',
           fretting: toFretting(['x', 0, 2, 2, 1, 0]),
         },
       ],
       blocks: [
         {
           id: 'chord-40',
+          displayName: 'Verse Am',
           fretting: toFretting(['x', 0, 2, 2, 1, 0]),
           xOffset: 12,
           spacing: 24,
@@ -663,6 +726,7 @@ describe('App', () => {
         },
         {
           id: 'chord-41',
+          displayName: 'Bridge F',
           fretting: toFretting(['x', 'x', 0, 2, 3, 1]),
           xOffset: 5,
           spacing: 48,
@@ -703,13 +767,19 @@ describe('App', () => {
     expect(screen.getByLabelText('Block spacing')).toHaveValue(48)
     expect(screen.getByLabelText('Manual start fret')).toHaveValue(5)
     expect(screen.getByLabelText('Manual fret count')).toHaveValue(5)
+    expect(screen.getByLabelText('Chord name')).toHaveValue('Verse Am')
+    expect(
+      screen.getByRole('button', {
+        name: 'Select Bridge F block',
+      }),
+    ).toBeInTheDocument()
     expect(
       within(
         screen.getByRole('region', {
           name: 'コードストック',
         }),
       ).getByRole('heading', {
-        name: 'Am',
+        name: 'Stock Am',
       }),
     ).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(

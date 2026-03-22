@@ -419,6 +419,15 @@ button {
   margin-bottom: 0;
 }
 
+.diagram-name-field {
+  width: min(100%, 280px);
+  margin-top: 0.65rem;
+}
+
+.diagram-name-field + .meta-note {
+  margin-top: 0.35rem;
+}
+
 .diagram-card .chord-diagram {
   width: min(248px, 100%);
   margin: 0 auto;
