@@ -133,8 +133,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: '左へ',
     moveRight: '右へ',
     saveChordChanges: '変更を保存',
-    layoutDragHint:
-      'コードブロックを左右にドラッグすると、その位置に合わせて横へ移動できます。',
+    layoutDragHint: '左右にドラッグし、位置を調整できます。',
     layoutRowLabel: (index) => `${index + 1}行目`,
     chordBuilderModalTitle: 'ストック用コードを追加',
     layoutAddModalTitle: (rowLabel) => `${rowLabel} にコードを追加`,
@@ -212,8 +211,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: 'Move Left',
     moveRight: 'Move Right',
     saveChordChanges: 'Save Changes',
-    layoutDragHint:
-      'Drag a chord block left or right to slide it horizontally in the row.',
+    layoutDragHint: 'Drag left or right to adjust the position.',
     layoutRowLabel: (index) => `Row ${index + 1}`,
     chordBuilderModalTitle: 'Add Chord to Stock',
     layoutAddModalTitle: (rowLabel) => `Add Chord to ${rowLabel}`,

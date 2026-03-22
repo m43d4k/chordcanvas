@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -542,7 +543,7 @@ describe('App', () => {
     )
 
     expect(
-      within(getLayoutRow(1)).getByRole('button', {
+      screen.getByRole('button', {
         name: /^(編集|Edit)$/,
       }),
     ).toBeInTheDocument()
@@ -574,20 +575,48 @@ describe('App', () => {
     )
 
     expect(
-      within(getLayoutRow(2)).getByRole('button', {
+      screen.getByRole('button', {
         name: /^(編集|Edit)$/,
       }),
     ).toBeInTheDocument()
     expect(
-      within(getLayoutRow(2)).getByRole('button', {
+      screen.getByRole('button', {
         name: /^(複製|Duplicate)$/,
       }),
     ).toBeInTheDocument()
-    expect(
-      within(getLayoutRow(1)).queryByRole('button', {
-        name: /^(編集|Edit)$/,
-      }),
-    ).toBeNull()
+  })
+
+  it('renders the drag hint as a delayed custom hover tooltip on the layout block', () => {
+    vi.useFakeTimers()
+
+    try {
+      render(<App />)
+
+      const blockButton = within(getLayoutRow(1)).getByRole('button', {
+        name: /^Select .* block$/,
+      })
+
+      expect(blockButton).not.toHaveAttribute('title')
+      expect(
+        screen.queryByText('左右にドラッグし、位置を調整できます。'),
+      ).toBeNull()
+
+      fireEvent.mouseEnter(blockButton)
+
+      expect(
+        screen.queryByText('左右にドラッグし、位置を調整できます。'),
+      ).toBeNull()
+
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+
+      expect(
+        screen.getByText('左右にドラッグし、位置を調整できます。'),
+      ).toHaveClass('layout-block-hover-hint')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('adds a generated chord to the selected empty layout row from that row modal', () => {

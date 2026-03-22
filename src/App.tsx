@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type {
   CSSProperties,
   ChangeEvent,
@@ -37,6 +37,7 @@ const LAYOUT_STAGE_MIN_WIDTH = 640
 const LAYOUT_STAGE_PADDING_INLINE = 16
 const LAYOUT_ROW_PADDING_INLINE = 15.2
 const LAYOUT_ADD_BUTTON_WIDTH = 72
+const LAYOUT_HOVER_HINT_DELAY_MS = 350
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
@@ -54,6 +55,13 @@ interface LayoutBlockDragState {
   startSpacing: number
   startClientX: number
   startXOffset: number
+}
+
+interface LayoutOverlayAnchor {
+  height: number
+  left: number
+  top: number
+  width: number
 }
 
 interface ChordDraftState {
@@ -257,7 +265,10 @@ function syncProjectSequences(snapshot: ProjectSnapshot) {
 
 function App() {
   const [initialState] = useState(createInitialAppState)
+  const layoutStageFrameRef = useRef<HTMLDivElement | null>(null)
+  const layoutStageWrapperRef = useRef<HTMLDivElement | null>(null)
   const layoutStageRef = useRef<HTMLDivElement | null>(null)
+  const layoutToolbarRef = useRef<HTMLDivElement | null>(null)
   const lyricsInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const projectFileInputRef = useRef<HTMLInputElement | null>(null)
   const [locale, setLocale] = useState<Locale>('ja')
@@ -298,10 +309,18 @@ function App() {
   )
   const [chordModal, setChordModal] = useState<ChordModalState | null>(null)
   const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
+  const layoutHoverHintTimeoutRef = useRef<ReturnType<
+    typeof window.setTimeout
+  > | null>(null)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
   const [visibleBlockToolbarId, setVisibleBlockToolbarId] = useState<
     string | null
   >(null)
+  const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null)
+  const [layoutToolbarAnchor, setLayoutToolbarAnchor] =
+    useState<LayoutOverlayAnchor | null>(null)
+  const [layoutHintAnchor, setLayoutHintAnchor] =
+    useState<LayoutOverlayAnchor | null>(null)
   const text = UI_TEXT[locale]
 
   const selectedBlock =
@@ -391,6 +410,44 @@ function App() {
           isSameFretting(stockChord.fretting, modalDraft.fretting),
         )
       : false
+  const showLayoutHoverHint =
+    !isExportingPdf &&
+    !visibleBlockToolbarId &&
+    !draggingBlockId &&
+    !!hoveredBlockId &&
+    !!layoutHintAnchor
+
+  function clearLayoutHoverHintTimeout() {
+    const timeoutId = layoutHoverHintTimeoutRef.current
+
+    if (timeoutId === null) {
+      return
+    }
+
+    window.clearTimeout(timeoutId)
+    layoutHoverHintTimeoutRef.current = null
+  }
+
+  function hideLayoutHoverHint(blockId?: string) {
+    clearLayoutHoverHintTimeout()
+    setHoveredBlockId((currentId) =>
+      blockId && currentId !== blockId ? currentId : null,
+    )
+  }
+
+  function showLayoutHoverHintImmediately(blockId: string) {
+    clearLayoutHoverHintTimeout()
+    setHoveredBlockId(blockId)
+  }
+
+  function scheduleLayoutHoverHint(blockId: string) {
+    clearLayoutHoverHintTimeout()
+    setHoveredBlockId((currentId) => (currentId === blockId ? currentId : null))
+    layoutHoverHintTimeoutRef.current = window.setTimeout(() => {
+      setHoveredBlockId(blockId)
+      layoutHoverHintTimeoutRef.current = null
+    }, LAYOUT_HOVER_HINT_DELAY_MS)
+  }
 
   useEffect(() => {
     if (!editingLyricsRowId) {
@@ -407,6 +464,18 @@ function App() {
     const textLength = input.value.length
     input.setSelectionRange(textLength, textLength)
   }, [editingLyricsRowId])
+
+  useEffect(
+    () => () => {
+      const timeoutId = layoutHoverHintTimeoutRef.current
+
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+        layoutHoverHintTimeoutRef.current = null
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!draggingBlockId) {
@@ -491,7 +560,10 @@ function App() {
         `[data-layout-block-id="${visibleBlockToolbarId}"]`,
       )
 
-      if (activeBlock?.contains(target)) {
+      if (
+        activeBlock?.contains(target) ||
+        layoutToolbarRef.current?.contains(target)
+      ) {
         return
       }
 
@@ -504,6 +576,78 @@ function App() {
       window.removeEventListener('pointerdown', handleWindowPointerDown)
     }
   }, [visibleBlockToolbarId])
+
+  useEffect(() => {
+    if (!hoveredBlockId) {
+      return
+    }
+
+    if (!blocks.some((block) => block.id === hoveredBlockId)) {
+      setHoveredBlockId(null)
+    }
+  }, [blocks, hoveredBlockId])
+
+  useLayoutEffect(() => {
+    function getLayoutOverlayAnchor(
+      blockId: string | null,
+    ): LayoutOverlayAnchor | null {
+      if (!blockId) {
+        return null
+      }
+
+      const frameElement = layoutStageFrameRef.current
+      const blockElement = layoutStageRef.current?.querySelector<HTMLElement>(
+        `[data-layout-block-id="${blockId}"]`,
+      )
+
+      if (!frameElement || !blockElement) {
+        return null
+      }
+
+      const frameRect = frameElement.getBoundingClientRect()
+      const blockRect = blockElement.getBoundingClientRect()
+
+      return {
+        height: blockRect.height,
+        left: blockRect.left - frameRect.left,
+        top: blockRect.top - frameRect.top,
+        width: blockRect.width,
+      }
+    }
+
+    function updateLayoutOverlayAnchors() {
+      setLayoutToolbarAnchor(getLayoutOverlayAnchor(visibleBlockToolbarId))
+      setLayoutHintAnchor(getLayoutOverlayAnchor(hoveredBlockId))
+    }
+
+    updateLayoutOverlayAnchors()
+
+    if (!visibleBlockToolbarId && !hoveredBlockId) {
+      return
+    }
+
+    const wrapperElement = layoutStageWrapperRef.current
+
+    window.addEventListener('resize', updateLayoutOverlayAnchors)
+    wrapperElement?.addEventListener('scroll', updateLayoutOverlayAnchors, {
+      passive: true,
+    })
+
+    return () => {
+      window.removeEventListener('resize', updateLayoutOverlayAnchors)
+      wrapperElement?.removeEventListener(
+        'scroll',
+        updateLayoutOverlayAnchors,
+      )
+    }
+  }, [
+    blocks,
+    draggingBlockId,
+    hoveredBlockId,
+    layoutRows,
+    selectedBlockId,
+    visibleBlockToolbarId,
+  ])
 
   useEffect(() => {
     if (!chordModal) {
@@ -545,6 +689,7 @@ function App() {
 
     syncProjectSequences(nextSnapshot)
     setEditingLyricsRowId(null)
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setChordModal(null)
     setSelectedRoot(nextSnapshot.selectedRoot)
@@ -568,6 +713,7 @@ function App() {
     setSelectedBlockId(block.id)
     setSelectedLayoutRowId(block.rowId)
     setEditingLyricsRowId(null)
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(revealToolbar ? block.id : null)
   }
 
@@ -577,6 +723,7 @@ function App() {
     }
 
     setSelectedLayoutRowId(rowId)
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
   }
 
@@ -587,6 +734,7 @@ function App() {
 
     setSelectedLayoutRowId(rowId)
     setEditingLyricsRowId(rowId)
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
   }
 
@@ -627,6 +775,7 @@ function App() {
   }
 
   function openStockChordModal() {
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setChordModal({
       kind: 'stock',
@@ -649,6 +798,7 @@ function App() {
 
     setSelectedLayoutRowId(rowId)
     setEditingLyricsRowId(null)
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setChordModal({
       kind: 'layout',
@@ -672,6 +822,7 @@ function App() {
       return
     }
 
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setChordModal({
       blockId: blockToEdit.id,
@@ -821,6 +972,7 @@ function App() {
   }
 
   function closeChordModal() {
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setChordModal(null)
   }
@@ -960,6 +1112,7 @@ function App() {
       return
     }
 
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     const nextBlock = createChordBlock(
       copyFretting(nextSelectedBlock.fretting),
@@ -990,6 +1143,7 @@ function App() {
       return
     }
 
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     const nextBlocks = blocks.filter((block) => block.id !== blockId)
 
@@ -1011,6 +1165,7 @@ function App() {
   }
 
   function handleMoveBlock(direction: -1 | 1) {
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setBlocks((currentBlocks) => {
       const currentIndex = currentBlocks.findIndex(
@@ -1057,6 +1212,7 @@ function App() {
 
   function handleAddLayoutRow() {
     const nextRow = createLayoutRow()
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setLayoutRows((currentRows) => [...currentRows, nextRow])
     setSelectedLayoutRowId(nextRow.id)
@@ -1076,6 +1232,7 @@ function App() {
       return
     }
 
+    hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setLayoutRows((currentRows) =>
       currentRows.filter((row) => row.id !== rowToRemove.id),
@@ -1125,6 +1282,7 @@ function App() {
     }
 
     event.preventDefault()
+    hideLayoutHoverHint()
     activateBlock(block)
     layoutBlockDragStateRef.current = {
       blockId: block.id,
@@ -1366,197 +1524,227 @@ function App() {
           <h2 id="layout-heading">{text.layoutHeading}</h2>
         </div>
 
-        <p className="layout-drag-hint">{text.layoutDragHint}</p>
-
-        <div className="layout-stage-wrapper">
-          <div
-            className="layout-stage"
-            ref={layoutStageRef}
-            style={layoutStageStyle}
-          >
-            {layoutEntries.rows.map((rowEntry, index) => {
-              const rowLabel = text.layoutRowLabel(index)
-              const lyricsLineLabel = text.lyricsLineLabel(index)
-              const showLyricsPlaceholder =
-                rowEntry.row.lyrics === '' && !isExportingPdf
-
-              return (
-                <section
-                  aria-labelledby={`layout-row-heading-${rowEntry.row.id}`}
-                  className={`layout-row${
-                    rowEntry.row.id === selectedLayoutRow.id ? ' selected' : ''
-                  }`}
-                  key={rowEntry.row.id}
-                >
-                  <div className="layout-row-header">
-                    <h3 id={`layout-row-heading-${rowEntry.row.id}`}>
-                      {rowLabel}
-                    </h3>
-                    <button
-                      aria-label={text.removeLayoutRowAria(rowLabel)}
-                      className="layout-row-delete-button"
-                      disabled={layoutRows.length === 1}
-                      onClick={() => handleDeleteLayoutRow(rowEntry.row.id)}
-                      type="button"
-                    >
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  </div>
-
-                  <div className="layout-chord-layer">
-                    {rowEntry.entries.map((entry) => (
-                      <div
-                        className={`layout-chord-block dismissible-card${
-                          entry.block.id === selectedBlockId ? ' selected' : ''
-                        }`}
-                        data-dragging={
-                          draggingBlockId === entry.block.id ? 'true' : undefined
-                        }
-                        data-layout-block-id={entry.block.id}
-                        key={entry.block.id}
-                        style={{ left: `${entry.left}px` }}
-                      >
-                        {!isExportingPdf &&
-                        entry.block.id === selectedBlockId &&
-                        visibleBlockToolbarId === entry.block.id ? (
-                          <div className="layout-block-toolbar">
-                            <button
-                              className="secondary-button"
-                              onClick={openEditChordModal}
-                              type="button"
-                            >
-                              {text.editSelectedChord}
-                            </button>
-                            <button onClick={handleDuplicateBlock} type="button">
-                              {text.duplicateSelectedChord}
-                            </button>
-                            <button
-                              disabled={activeRowSelectionIndex <= 0}
-                              onClick={() => handleMoveBlock(-1)}
-                              type="button"
-                            >
-                              {text.moveLeft}
-                            </button>
-                            <button
-                              disabled={
-                                activeRowSelectionIndex < 0 ||
-                                activeRowSelectionIndex ===
-                                  activeRowBlockIds.length - 1
-                              }
-                              onClick={() => handleMoveBlock(1)}
-                              type="button"
-                            >
-                              {text.moveRight}
-                            </button>
-                          </div>
-                        ) : null}
-                        <button
-                          aria-label={text.removeLayoutChordAria(
-                            entry.displayName,
-                          )}
-                          className="card-dismiss-button"
-                          disabled={blocks.length === 1}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            handleDeleteBlock(entry.block.id)
-                          }}
-                          type="button"
-                        >
-                          <span aria-hidden="true">×</span>
-                        </button>
-                        <button
-                          aria-label={`Select ${entry.displayName} block`}
-                          className="chord-preview-block layout-chord-block-button"
-                          draggable={false}
-                          onClick={() =>
-                            activateBlock(entry.block, { revealToolbar: true })
-                          }
-                          onPointerDown={(event) =>
-                            handleLayoutBlockPointerDown(
-                              entry.block,
-                              entry.hasFollowingBlock,
-                              entry.minXOffset,
-                              event,
-                            )
-                          }
-                          title={text.layoutDragHint}
-                          type="button"
-                        >
-                          <span className="chord-preview-name">
-                            {entry.displayName}
-                          </span>
-                          <ChordDiagram
-                            compact
-                            fretting={entry.block.fretting}
-                            markerLabels={entry.summary.stringDegreeLabels}
-                            pdfExport={isExportingPdf}
-                            tightTopSpacing
-                            viewport={entry.summary.viewport}
-                          />
-                        </button>
-                      </div>
-                    ))}
-
-                    <button
-                      aria-label={text.openLayoutAddModal(rowLabel)}
-                      className="layout-add-button"
-                      onClick={() => openLayoutChordModal(rowEntry.row.id)}
-                      style={{ left: `${rowEntry.addButtonLeft}px` }}
-                      type="button"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  {isExportingPdf || editingLyricsRowId !== rowEntry.row.id ? (
-                    <div
-                      aria-label={lyricsLineLabel}
-                      className={`lyrics-line lyrics-line-text${
-                        showLyricsPlaceholder ? ' lyrics-line-placeholder' : ''
-                      }`}
-                      onClick={() => startLyricsLineEditing(rowEntry.row.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault()
-                          startLyricsLineEditing(rowEntry.row.id)
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      {showLyricsPlaceholder
-                        ? text.lyricsPlaceholder
-                        : rowEntry.row.lyrics || '\u00a0'}
-                    </div>
-                  ) : (
-                    <input
-                      aria-label={lyricsLineLabel}
-                      className="lyrics-line lyrics-line-input"
-                      onBlur={() => setEditingLyricsRowId(null)}
-                      onChange={(event) =>
-                        handleLyricsLineChange(rowEntry.row.id, event)
-                      }
-                      onFocus={() => selectLayoutRow(rowEntry.row.id)}
-                      placeholder={text.lyricsPlaceholder}
-                      ref={(node) => {
-                        lyricsInputRefs.current[rowEntry.row.id] = node
-                      }}
-                      type="text"
-                      value={rowEntry.row.lyrics}
-                    />
-                  )}
-                </section>
-              )
-            })}
-
-            <button
-              aria-label={text.addRow}
-              className="layout-row-add-button"
-              onClick={handleAddLayoutRow}
-              type="button"
+        <div className="layout-stage-frame" ref={layoutStageFrameRef}>
+          {!isExportingPdf &&
+          visibleBlockToolbarId &&
+          layoutToolbarAnchor ? (
+            <div
+              className="layout-block-toolbar"
+              ref={layoutToolbarRef}
+              style={{
+                left: `${layoutToolbarAnchor.left + layoutToolbarAnchor.width / 2}px`,
+                top: `${layoutToolbarAnchor.top}px`,
+              }}
             >
-              +
-            </button>
+              <button
+                className="secondary-button"
+                onClick={openEditChordModal}
+                type="button"
+              >
+                {text.editSelectedChord}
+              </button>
+              <button onClick={handleDuplicateBlock} type="button">
+                {text.duplicateSelectedChord}
+              </button>
+              <button
+                disabled={activeRowSelectionIndex <= 0}
+                onClick={() => handleMoveBlock(-1)}
+                type="button"
+              >
+                {text.moveLeft}
+              </button>
+              <button
+                disabled={
+                  activeRowSelectionIndex < 0 ||
+                  activeRowSelectionIndex === activeRowBlockIds.length - 1
+                }
+                onClick={() => handleMoveBlock(1)}
+                type="button"
+              >
+                {text.moveRight}
+              </button>
+            </div>
+          ) : null}
+          {showLayoutHoverHint && layoutHintAnchor ? (
+            <div
+              aria-hidden="true"
+              className="layout-block-hover-hint"
+              style={{
+                left: `${layoutHintAnchor.left + layoutHintAnchor.width / 2}px`,
+                top: `${layoutHintAnchor.top + layoutHintAnchor.height}px`,
+              }}
+            >
+              {text.layoutDragHint}
+            </div>
+          ) : null}
+
+          <div className="layout-stage-wrapper" ref={layoutStageWrapperRef}>
+            <div
+              className="layout-stage"
+              ref={layoutStageRef}
+              style={layoutStageStyle}
+            >
+              {layoutEntries.rows.map((rowEntry, index) => {
+                const rowLabel = text.layoutRowLabel(index)
+                const lyricsLineLabel = text.lyricsLineLabel(index)
+                const showLyricsPlaceholder =
+                  rowEntry.row.lyrics === '' && !isExportingPdf
+
+                return (
+                  <section
+                    aria-labelledby={`layout-row-heading-${rowEntry.row.id}`}
+                    className={`layout-row${
+                      rowEntry.row.id === selectedLayoutRow.id ? ' selected' : ''
+                    }`}
+                    key={rowEntry.row.id}
+                  >
+                    <div className="layout-row-header">
+                      <h3 id={`layout-row-heading-${rowEntry.row.id}`}>
+                        {rowLabel}
+                      </h3>
+                      <button
+                        aria-label={text.removeLayoutRowAria(rowLabel)}
+                        className="layout-row-delete-button"
+                        disabled={layoutRows.length === 1}
+                        onClick={() => handleDeleteLayoutRow(rowEntry.row.id)}
+                        type="button"
+                      >
+                        <span aria-hidden="true">×</span>
+                      </button>
+                    </div>
+
+                    <div className="layout-chord-layer">
+                      {rowEntry.entries.map((entry) => (
+                        <div
+                          className={`layout-chord-block dismissible-card${
+                            entry.block.id === selectedBlockId ? ' selected' : ''
+                          }`}
+                          data-dragging={
+                            draggingBlockId === entry.block.id
+                              ? 'true'
+                              : undefined
+                          }
+                          data-layout-block-id={entry.block.id}
+                          key={entry.block.id}
+                          style={{ left: `${entry.left}px` }}
+                        >
+                          <button
+                            aria-label={text.removeLayoutChordAria(
+                              entry.displayName,
+                            )}
+                            className="card-dismiss-button"
+                            disabled={blocks.length === 1}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleDeleteBlock(entry.block.id)
+                            }}
+                            type="button"
+                          >
+                            <span aria-hidden="true">×</span>
+                          </button>
+                          <button
+                            aria-label={`Select ${entry.displayName} block`}
+                            className="chord-preview-block layout-chord-block-button"
+                            draggable={false}
+                            onBlur={() => hideLayoutHoverHint(entry.block.id)}
+                            onClick={() =>
+                              activateBlock(entry.block, { revealToolbar: true })
+                            }
+                            onFocus={() =>
+                              showLayoutHoverHintImmediately(entry.block.id)
+                            }
+                            onMouseEnter={() =>
+                              scheduleLayoutHoverHint(entry.block.id)
+                            }
+                            onMouseLeave={() =>
+                              hideLayoutHoverHint(entry.block.id)
+                            }
+                            onPointerDown={(event) =>
+                              handleLayoutBlockPointerDown(
+                                entry.block,
+                                entry.hasFollowingBlock,
+                                entry.minXOffset,
+                                event,
+                              )
+                            }
+                            type="button"
+                          >
+                            <span className="chord-preview-name">
+                              {entry.displayName}
+                            </span>
+                            <ChordDiagram
+                              compact
+                              fretting={entry.block.fretting}
+                              markerLabels={entry.summary.stringDegreeLabels}
+                              pdfExport={isExportingPdf}
+                              tightTopSpacing
+                              viewport={entry.summary.viewport}
+                            />
+                          </button>
+                        </div>
+                      ))}
+
+                      <button
+                        aria-label={text.openLayoutAddModal(rowLabel)}
+                        className="layout-add-button"
+                        onClick={() => openLayoutChordModal(rowEntry.row.id)}
+                        style={{ left: `${rowEntry.addButtonLeft}px` }}
+                        type="button"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {isExportingPdf || editingLyricsRowId !== rowEntry.row.id ? (
+                      <div
+                        aria-label={lyricsLineLabel}
+                        className={`lyrics-line lyrics-line-text${
+                          showLyricsPlaceholder ? ' lyrics-line-placeholder' : ''
+                        }`}
+                        onClick={() => startLyricsLineEditing(rowEntry.row.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            startLyricsLineEditing(rowEntry.row.id)
+                          }
+                        }}
+                        role="button"
+                        tabIndex={0}
+                      >
+                        {showLyricsPlaceholder
+                          ? text.lyricsPlaceholder
+                          : rowEntry.row.lyrics || '\u00a0'}
+                      </div>
+                    ) : (
+                      <input
+                        aria-label={lyricsLineLabel}
+                        className="lyrics-line lyrics-line-input"
+                        onBlur={() => setEditingLyricsRowId(null)}
+                        onChange={(event) =>
+                          handleLyricsLineChange(rowEntry.row.id, event)
+                        }
+                        onFocus={() => selectLayoutRow(rowEntry.row.id)}
+                        placeholder={text.lyricsPlaceholder}
+                        ref={(node) => {
+                          lyricsInputRefs.current[rowEntry.row.id] = node
+                        }}
+                        type="text"
+                        value={rowEntry.row.lyrics}
+                      />
+                    )}
+                  </section>
+                )
+              })}
+
+              <button
+                aria-label={text.addRow}
+                className="layout-row-add-button"
+                onClick={handleAddLayoutRow}
+                type="button"
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
       </section>
