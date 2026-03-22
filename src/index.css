@@ -664,6 +664,13 @@ button {
   flex: 0 1 180px;
 }
 
+.layout-drag-hint {
+  margin: 0.7rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .layout-stage-wrapper {
   margin-top: 1rem;
   overflow-x: auto;
@@ -840,10 +847,17 @@ button {
   top: 0;
   width: var(--layout-block-width);
   background: var(--surface-strong);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
 }
 
 .layout-chord-block.chord-preview-block {
   gap: 0.16rem;
+}
+
+.layout-chord-block[data-dragging='true'] {
+  cursor: grabbing;
 }
 
 .layout-chord-block.selected {

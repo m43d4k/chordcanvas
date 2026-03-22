@@ -12,7 +12,7 @@ Guitar chord diagram editor for creating, editing, arranging, and PDF-exporting 
 - Show chord-tone degrees such as `R`, `3`, `5`, `7`, and `9` inside fretted markers
 - Arrange chord blocks across multiple lyric rows
 - Edit lyric rows in place on the layout while preserving spacing in PDF export
-- Adjust per-block horizontal offset and trailing spacing without overlapping later blocks
+- Adjust per-block horizontal offset and trailing spacing, and drag chord blocks horizontally while pushing later blocks out of the way
 - Save reusable chord voicings in a project stock and add them back to the selected row
 - Export and import project JSON, and export layout PDF
 

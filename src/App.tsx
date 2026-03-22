@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ChangeEvent } from 'react'
+import type {
+  CSSProperties,
+  ChangeEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react'
 import ChordDiagram from './components/ChordDiagram'
 import { exportLayoutStagePdf, LAYOUT_PDF_FILE_NAME } from './export/layoutPdf'
 import {
@@ -42,6 +46,16 @@ const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
 interface AppFeedback {
   kind: 'success' | 'error'
   text: string
+}
+
+interface LayoutBlockDragState {
+  blockId: string
+  hasFollowingBlock: boolean
+  minXOffset: number
+  pointerId: number
+  startSpacing: number
+  startClientX: number
+  startXOffset: number
 }
 
 let blockSequence = 1
@@ -295,6 +309,8 @@ function App() {
   const [editingLyricsRowId, setEditingLyricsRowId] = useState<string | null>(
     null,
   )
+  const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
+  const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
   const text = UI_TEXT[locale]
 
   const availableForms = getChordForms(selectedRoot, selectedQuality)
@@ -395,6 +411,63 @@ function App() {
     const textLength = input.value.length
     input.setSelectionRange(textLength, textLength)
   }, [editingLyricsRowId])
+
+  useEffect(() => {
+    if (!draggingBlockId) {
+      return
+    }
+
+    function handlePointerMove(event: PointerEvent) {
+      const dragState = layoutBlockDragStateRef.current
+
+      if (!dragState || event.pointerId !== dragState.pointerId) {
+        return
+      }
+
+      const deltaX = Math.round(event.clientX - dragState.startClientX)
+      const appliedDeltaX = Math.max(
+        dragState.minXOffset,
+        dragState.startXOffset + deltaX,
+      ) - dragState.startXOffset
+      const nextXOffset = dragState.startXOffset + appliedDeltaX
+      const nextSpacing = dragState.hasFollowingBlock
+        ? appliedDeltaX > 0
+          ? Math.max(0, dragState.startSpacing - appliedDeltaX)
+          : dragState.startSpacing
+        : dragState.startSpacing
+
+      updateBlockById(dragState.blockId, (block) =>
+        block.xOffset === nextXOffset && block.spacing === nextSpacing
+          ? block
+          : {
+              ...block,
+              xOffset: nextXOffset,
+              spacing: nextSpacing,
+            },
+      )
+    }
+
+    function finishDragging(event: PointerEvent) {
+      const dragState = layoutBlockDragStateRef.current
+
+      if (!dragState || event.pointerId !== dragState.pointerId) {
+        return
+      }
+
+      layoutBlockDragStateRef.current = null
+      setDraggingBlockId(null)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', finishDragging)
+    window.addEventListener('pointercancel', finishDragging)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', finishDragging)
+      window.removeEventListener('pointercancel', finishDragging)
+    }
+  }, [draggingBlockId])
 
   function createProjectSnapshot(): ProjectSnapshot {
     return cloneProjectSnapshot({
@@ -506,6 +579,17 @@ function App() {
     )
   }
 
+  function updateBlockById(
+    blockId: string,
+    updater: (block: ChordBlockState) => ChordBlockState,
+  ) {
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) =>
+        block.id === blockId ? updater(block) : block,
+      ),
+    )
+  }
+
   function applyCurrentFretting(fretting: Fretting) {
     const nextFretting = copyFretting(fretting)
     setCurrentFretting(nextFretting)
@@ -513,16 +597,6 @@ function App() {
     if (editingBlockId) {
       updateBlockFretting(editingBlockId, nextFretting)
     }
-  }
-
-  function updateSelectedBlock(
-    updater: (block: ChordBlockState) => ChordBlockState,
-  ) {
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.id === selectedBlockId ? updater(block) : block,
-      ),
-    )
   }
 
   function applyCurrentChordName(nextName: string) {
@@ -847,25 +921,28 @@ function App() {
     setSelectedLayoutRowId(nextRowId)
   }
 
-  function handleNumberFieldChange(
-    key: 'xOffset' | 'spacing',
-    event: ChangeEvent<HTMLInputElement>,
+  function handleLayoutBlockPointerDown(
+    block: ChordBlockState,
+    hasFollowingBlock: boolean,
+    minXOffset: number,
+    event: ReactPointerEvent<HTMLButtonElement>,
   ) {
-    const parsed = Number.parseInt(event.currentTarget.value, 10)
-    const nextValue = Number.isNaN(parsed)
-      ? 0
-      : key === 'spacing'
-        ? Math.max(0, parsed)
-        : parsed
-
-    if (!Number.isNaN(parsed)) {
-      event.currentTarget.value = String(nextValue)
+    if (event.button !== 0) {
+      return
     }
 
-    updateSelectedBlock((block) => ({
-      ...block,
-      [key]: nextValue,
-    }))
+    event.preventDefault()
+    activateBlock(block)
+    layoutBlockDragStateRef.current = {
+      blockId: block.id,
+      hasFollowingBlock,
+      minXOffset,
+      pointerId: event.pointerId,
+      startSpacing: block.spacing,
+      startClientX: event.clientX,
+      startXOffset: block.xOffset,
+    }
+    setDraggingBlockId(block.id)
   }
 
   function handleCurrentChordNameChange(event: ChangeEvent<HTMLInputElement>) {
@@ -1431,28 +1508,9 @@ function App() {
               ))}
             </select>
           </label>
-
-          <label className="field small">
-            <span>{text.horizontalOffset}</span>
-            <input
-              aria-label="Block horizontal offset"
-              onChange={(event) => handleNumberFieldChange('xOffset', event)}
-              type="number"
-              value={selectedBlock.xOffset}
-            />
-          </label>
-
-          <label className="field small">
-            <span>{text.spacingAfter}</span>
-            <input
-              aria-label="Block spacing"
-              min="0"
-              onChange={(event) => handleNumberFieldChange('spacing', event)}
-              type="number"
-              value={selectedBlock.spacing}
-            />
-          </label>
         </div>
+
+        <p className="layout-drag-hint">{text.layoutDragHint}</p>
 
         <div className="layout-stage-wrapper">
           <div
@@ -1499,9 +1557,22 @@ function App() {
                         className={`chord-preview-block layout-chord-block${
                           entry.block.id === selectedBlockId ? ' selected' : ''
                         }`}
+                        data-dragging={
+                          draggingBlockId === entry.block.id ? 'true' : undefined
+                        }
+                        draggable={false}
                         key={entry.block.id}
                         onClick={() => activateBlock(entry.block)}
+                        onPointerDown={(event) =>
+                          handleLayoutBlockPointerDown(
+                            entry.block,
+                            entry.hasFollowingBlock,
+                            entry.minXOffset,
+                            event,
+                          )
+                        }
                         style={{ left: `${entry.left}px` }}
+                        title={text.layoutDragHint}
                         type="button"
                       >
                         <span className="chord-preview-name">
@@ -1598,6 +1669,7 @@ function buildLayoutEntries(
           block.displayName,
         )
         const flowLeft = Math.max(cursor, nextFlowLeft)
+        const minXOffset = minLeft - flowLeft
         const left = Math.max(minLeft, flowLeft + block.xOffset)
         minLeft = left + LAYOUT_BLOCK_WIDTH
         nextFlowLeft = minLeft + block.spacing
@@ -1607,9 +1679,15 @@ function buildLayoutEntries(
           block,
           summary,
           displayName,
+          hasFollowingBlock: false,
           left,
+          minXOffset,
         }
       })
+
+    entries.forEach((entry, index) => {
+      entry.hasFollowingBlock = index < entries.length - 1
+    })
 
     const chordLayerWidth = Math.max(cursor, nextFlowLeft)
     const chordStageWidth =

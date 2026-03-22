@@ -91,6 +91,37 @@ function openLyricsLineInput(index: number): HTMLInputElement {
   ) as HTMLInputElement
 }
 
+function getLayoutBlocks(): HTMLElement[] {
+  return screen.getAllByRole('button', {
+    name: /^Select .* block$/,
+  })
+}
+
+function dragLayoutBlock(
+  block: HTMLElement,
+  startClientX: number,
+  endClientX: number,
+  pointerId = 1,
+) {
+  fireEvent.pointerDown(block, {
+    button: 0,
+    clientX: startClientX,
+    pointerId,
+  })
+  fireEvent.pointerMove(window, {
+    clientX: endClientX,
+    pointerId,
+  })
+  fireEvent.pointerUp(window, {
+    clientX: endClientX,
+    pointerId,
+  })
+}
+
+function getBlockLeft(block: HTMLElement): number {
+  return Number.parseFloat(block.style.left)
+}
+
 describe('App', () => {
   it('renders the chord editor panels', () => {
     render(<App />)
@@ -117,10 +148,11 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
-  it('uses a tighter default block spacing in the layout editor', () => {
+  it('does not render legacy layout number inputs', () => {
     render(<App />)
 
-    expect(screen.getByLabelText('Block spacing')).toHaveValue(6)
+    expect(screen.queryByLabelText('Block horizontal offset')).toBeNull()
+    expect(screen.queryByLabelText('Block spacing')).toBeNull()
   })
 
   it('switches visible UI copy to English from the header toggle', () => {
@@ -209,7 +241,7 @@ describe('App', () => {
     expect(secondBlock).toHaveStyle({ left: '174px' })
   })
 
-  it('pushes following blocks rightward to avoid overlap after a horizontal offset', () => {
+  it('pushes following blocks rightward when a block is dragged beyond its spacing', () => {
     render(<App />)
 
     for (let index = 0; index < 2; index += 1) {
@@ -220,36 +252,83 @@ describe('App', () => {
       )
     }
 
-    const blocks = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
+    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 1), 200, 320)
 
-    fireEvent.click(getItemOrThrow(blocks, 1))
-    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
-      target: { value: '120' },
-    })
-
-    const updatedBlocks = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
+    const updatedBlocks = getLayoutBlocks()
 
     expect(updatedBlocks[1]).toHaveStyle({ left: '294px' })
-    expect(updatedBlocks[2]).toHaveStyle({ left: '452px' })
+    expect(updatedBlocks[2]).toHaveStyle({ left: '446px' })
   })
 
-  it('removes leading zeroes from layout number inputs', () => {
+  it('slides a layout block horizontally by dragging it', () => {
     render(<App />)
 
-    const offsetInput = screen.getByLabelText('Block horizontal offset')
-    const spacingInput = screen.getByLabelText('Block spacing')
+    for (let index = 0; index < 2; index += 1) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'コードを追加',
+        }),
+      )
+    }
 
-    fireEvent.change(offsetInput, { target: { value: '6' } })
-    fireEvent.change(offsetInput, { target: { value: '06' } })
-    fireEvent.change(spacingInput, { target: { value: '24' } })
-    fireEvent.change(spacingInput, { target: { value: '024' } })
+    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 2), 300, 340)
 
-    expect(offsetInput).toHaveDisplayValue('6')
-    expect(spacingInput).toHaveDisplayValue('24')
+    const updatedBlocks = getLayoutBlocks()
+
+    expect(updatedBlocks[2]).toHaveStyle({ left: '372px' })
+  })
+
+  it('consumes spacing before pushing following blocks during drag', () => {
+    render(<App />)
+
+    for (let index = 0; index < 2; index += 1) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'コードを追加',
+        }),
+      )
+    }
+
+    const beforeDragBlocks = getLayoutBlocks()
+
+    dragLayoutBlock(getItemOrThrow(beforeDragBlocks, 1), 200, 204)
+
+    const updatedBlocks = getLayoutBlocks()
+
+    expect(updatedBlocks[1]).toHaveStyle({ left: '178px' })
+    expect(updatedBlocks[2]).toHaveStyle({
+      left: getItemOrThrow(beforeDragBlocks, 2).style.left,
+    })
+  })
+
+  it('does not increase spacing when dragging a block leftward', () => {
+    render(<App />)
+
+    for (let index = 0; index < 3; index += 1) {
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'コードを追加',
+        }),
+      )
+    }
+
+    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 2), 300, 340, 1)
+
+    const blocks = getLayoutBlocks()
+    const followingBlockLeftBeforeDrag = getItemOrThrow(blocks, 3).style.left
+
+    dragLayoutBlock(getItemOrThrow(blocks, 2), 340, 320, 2)
+
+    const updatedBlocks = getLayoutBlocks()
+    const updatedThirdBlock = getItemOrThrow(updatedBlocks, 2)
+    const updatedFourthBlock = getItemOrThrow(updatedBlocks, 3)
+
+    expect(updatedThirdBlock).toHaveStyle({ left: '352px' })
+    expect(updatedFourthBlock).toHaveStyle({ left: '504px' })
+    expect(getBlockLeft(updatedFourthBlock) - getBlockLeft(updatedThirdBlock)).toBe(
+      152,
+    )
+    expect(updatedFourthBlock.style.left).not.toBe(followingBlockLeftBeforeDrag)
   })
 
   it('applies each block horizontal offset from its pushed position', () => {
@@ -263,38 +342,15 @@ describe('App', () => {
       )
     }
 
-    let blocks = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
+    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 0), 100, 220, 1)
+    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 1), 200, 220, 2)
+    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 2), 300, 340, 3)
 
-    fireEvent.click(getItemOrThrow(blocks, 0))
-    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
-      target: { value: '120' },
-    })
-
-    blocks = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
-    fireEvent.click(getItemOrThrow(blocks, 1))
-    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
-      target: { value: '20' },
-    })
-
-    blocks = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
-    fireEvent.click(getItemOrThrow(blocks, 2))
-    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
-      target: { value: '40' },
-    })
-
-    const updatedBlocks = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
+    const updatedBlocks = getLayoutBlocks()
 
     expect(updatedBlocks[0]).toHaveStyle({ left: '136px' })
-    expect(updatedBlocks[1]).toHaveStyle({ left: '314px' })
-    expect(updatedBlocks[2]).toHaveStyle({ left: '512px' })
+    expect(updatedBlocks[1]).toHaveStyle({ left: '308px' })
+    expect(updatedBlocks[2]).toHaveStyle({ left: '500px' })
   })
 
   it('expands the stage enough to keep four blocks inside the row frame', () => {
@@ -324,13 +380,9 @@ describe('App', () => {
       )
     }
 
-    fireEvent.change(screen.getByLabelText('Block horizontal offset'), {
-      target: { value: '120' },
-    })
+    dragLayoutBlock(getItemOrThrow(getLayoutBlocks(), 3), 400, 520)
 
-    const blocks = screen.getAllByRole('button', {
-      name: /^Select .* block$/,
-    })
+    const blocks = getLayoutBlocks()
 
     expect(blocks[3]).toHaveStyle({ left: '610px' })
     expect(container.querySelector('.layout-stage')).toHaveStyle({
@@ -1097,8 +1149,6 @@ describe('App', () => {
       }),
     ).toHaveLength(2)
     expect(screen.getByLabelText('Block row')).toHaveValue('row-18')
-    expect(screen.getByLabelText('Block horizontal offset')).toHaveValue(5)
-    expect(screen.getByLabelText('Block spacing')).toHaveValue(48)
     expect(screen.getByLabelText('Manual start fret')).toHaveValue(5)
     expect(screen.getByLabelText('Manual fret count')).toHaveValue(5)
     expect(screen.getByLabelText('Chord name')).toHaveValue('Verse Am')
@@ -1107,6 +1157,16 @@ describe('App', () => {
         name: 'Select Bridge F block',
       }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Select Verse Am block',
+      }),
+    ).toHaveStyle({ left: '28px' })
+    expect(
+      screen.getByRole('button', {
+        name: 'Select Bridge F block',
+      }),
+    ).toHaveStyle({ left: '21px' })
     expect(
       within(
         screen.getByRole('region', {

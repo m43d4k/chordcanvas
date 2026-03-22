@@ -53,8 +53,7 @@ interface UiText {
   moveLeft: string
   moveRight: string
   selectedChordRow: string
-  horizontalOffset: string
-  spacingAfter: string
+  layoutDragHint: string
   layoutRowLabel: (index: number) => string
   setInsertionTargetAria: (rowLabel: string) => string
   alreadyStockedFeedback: (name: string) => string
@@ -125,8 +124,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: '左へ',
     moveRight: '右へ',
     selectedChordRow: '配置行',
-    horizontalOffset: '水平オフセット(px)',
-    spacingAfter: '後続との間隔(px)',
+    layoutDragHint:
+      'コードブロックを左右にドラッグすると、その位置に合わせて横へ移動できます。',
     layoutRowLabel: (index) => `${index + 1}行目`,
     setInsertionTargetAria: (rowLabel) => `${rowLabel} を追加先にする`,
     alreadyStockedFeedback: (name) => `${name} はすでにストック済みです。`,
@@ -198,8 +197,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: 'Move Left',
     moveRight: 'Move Right',
     selectedChordRow: 'Row',
-    horizontalOffset: 'Horizontal Offset (px)',
-    spacingAfter: 'Spacing After (px)',
+    layoutDragHint:
+      'Drag a chord block left or right to slide it horizontally in the row.',
     layoutRowLabel: (index) => `Row ${index + 1}`,
     setInsertionTargetAria: (rowLabel) =>
       `Set ${rowLabel} as the insertion target`,
