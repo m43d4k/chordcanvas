@@ -1,6 +1,6 @@
 # chordcanvas
 
-Guitar chord diagram editor for creating, editing, and arranging chord diagrams locally.
+Guitar chord diagram editor for creating, editing, arranging, and PDF-exporting chord layouts locally.
 
 ## Setup
 

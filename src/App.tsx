@@ -2,6 +2,10 @@ import { useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import ChordDiagram from './components/ChordDiagram'
 import {
+  exportLayoutStagePdf,
+  LAYOUT_PDF_FILE_NAME,
+} from './export/layoutPdf'
+import {
   CHORD_QUALITIES,
   CHORD_QUALITY_LABELS,
   PITCH_CLASSES,
@@ -32,7 +36,7 @@ const MIN_MANUAL_FRET_COUNT = 3
 const MAX_MANUAL_FRET_COUNT = 8
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
 
-interface ProjectFeedback {
+interface AppFeedback {
   kind: 'success' | 'error'
   text: string
 }
@@ -213,6 +217,7 @@ function syncProjectSequences(snapshot: ProjectSnapshot) {
 
 function App() {
   const [initialState] = useState(createInitialAppState)
+  const layoutStageRef = useRef<HTMLDivElement | null>(null)
   const projectFileInputRef = useRef<HTMLInputElement | null>(null)
 
   const [selectedRoot, setSelectedRoot] = useState<PitchClassName>(DEFAULT_ROOT)
@@ -239,8 +244,8 @@ function App() {
   const [manualFretCount, setManualFretCount] = useState(
     initialState.initialManualViewport.fretCount,
   )
-  const [projectFeedback, setProjectFeedback] =
-    useState<ProjectFeedback | null>(null)
+  const [appFeedback, setAppFeedback] = useState<AppFeedback | null>(null)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
 
   const availableForms = getChordForms(selectedRoot, selectedQuality)
   const selectedForm =
@@ -595,10 +600,41 @@ function App() {
     downloadLink.download = PROJECT_EXPORT_FILE_NAME
     downloadLink.click()
     URL.revokeObjectURL(objectUrl)
-    setProjectFeedback({
+    setAppFeedback({
       kind: 'success',
       text: `${PROJECT_EXPORT_FILE_NAME} を書き出しました。`,
     })
+  }
+
+  async function handlePdfExport() {
+    const layoutStageElement = layoutStageRef.current
+
+    if (!layoutStageElement) {
+      setAppFeedback({
+        kind: 'error',
+        text: 'PDF 出力に失敗しました: レイアウト領域を取得できませんでした。',
+      })
+      return
+    }
+
+    setIsExportingPdf(true)
+
+    try {
+      await exportLayoutStagePdf(layoutStageElement)
+      setAppFeedback({
+        kind: 'success',
+        text: `${LAYOUT_PDF_FILE_NAME} を書き出しました。`,
+      })
+    } catch (error) {
+      setAppFeedback({
+        kind: 'error',
+        text: `PDF 出力に失敗しました: ${
+          error instanceof Error ? error.message : '不明なエラー'
+        }`,
+      })
+    } finally {
+      setIsExportingPdf(false)
+    }
   }
 
   async function handleProjectImport(event: ChangeEvent<HTMLInputElement>) {
@@ -612,12 +648,12 @@ function App() {
     try {
       const nextSnapshot = parseProjectFile(await file.text())
       applyProjectSnapshot(nextSnapshot)
-      setProjectFeedback({
+      setAppFeedback({
         kind: 'success',
         text: `${file.name} を読み込みました。現在の project を置き換えています。`,
       })
     } catch (error) {
-      setProjectFeedback({
+      setAppFeedback({
         kind: 'error',
         text: `インポートに失敗しました: ${
           error instanceof Error ? error.message : '不明なエラー'
@@ -640,6 +676,14 @@ function App() {
 
         <div className="hero-actions">
           <div className="project-actions">
+            <button
+              className="secondary-button"
+              disabled={isExportingPdf}
+              onClick={handlePdfExport}
+              type="button"
+            >
+              {isExportingPdf ? 'PDF を書き出し中...' : 'レイアウトを PDF 出力'}
+            </button>
             <button
               className="secondary-button"
               onClick={handleProjectExport}
@@ -666,12 +710,12 @@ function App() {
 
           <p
             className={`project-feedback${
-              projectFeedback ? ` ${projectFeedback.kind}` : ''
+              appFeedback ? ` ${appFeedback.kind}` : ''
             }`}
-            role={projectFeedback?.kind === 'error' ? 'alert' : 'status'}
+            role={appFeedback?.kind === 'error' ? 'alert' : 'status'}
           >
-            {projectFeedback?.text ??
-              '現在の project は JSON で書き出し・読み込みできます。'}
+            {appFeedback?.text ??
+              '現在の project は JSON で書き出しでき、レイアウトは PDF に出力できます。'}
           </p>
         </div>
       </header>
@@ -1042,6 +1086,7 @@ function App() {
         <div className="layout-stage-wrapper">
           <div
             className="layout-stage"
+            ref={layoutStageRef}
             style={{ width: `${layoutEntries.stageWidth}px` }}
           >
             {layoutEntries.rows.map((rowEntry, index) => (

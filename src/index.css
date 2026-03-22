@@ -413,6 +413,11 @@ button {
   transform: none;
 }
 
+.project-actions button[disabled] {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .layout-controls {
   display: flex;
   flex-wrap: wrap;
@@ -453,6 +458,74 @@ button {
   background:
     linear-gradient(rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
     rgba(8, 12, 17, 0.72);
+}
+
+.layout-stage[data-exporting-pdf='true'] {
+  background: #fffdf8;
+  box-shadow: none;
+}
+
+.layout-stage[data-exporting-pdf='true'] .layout-row {
+  border: 1px solid rgba(77, 56, 29, 0.16);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.layout-stage[data-exporting-pdf='true'] .layout-row.selected {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.layout-stage[data-exporting-pdf='true'] .layout-row-header {
+  justify-content: flex-start;
+}
+
+.layout-stage[data-exporting-pdf='true'] .layout-row-header h3,
+.layout-stage[data-exporting-pdf='true'] .lyrics-line,
+.layout-stage[data-exporting-pdf='true'] .layout-block-name {
+  color: #21180f;
+}
+
+.layout-stage[data-exporting-pdf='true'] .layout-row-selector {
+  display: none;
+}
+
+.layout-stage[data-exporting-pdf='true'] .layout-chord-block,
+.layout-stage[data-exporting-pdf='true'] .layout-chord-block.selected {
+  border-color: rgba(174, 124, 62, 0.42);
+  background: #fff8ee;
+  box-shadow: none;
+}
+
+.layout-stage[data-exporting-pdf='true'] .lyrics-line {
+  border-top-color: rgba(77, 56, 29, 0.22);
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-title,
+.layout-stage[data-exporting-pdf='true'] .diagram-top-label,
+.layout-stage[data-exporting-pdf='true'] .diagram-marker-text {
+  fill: #21180f;
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-start-fret {
+  fill: #a85f18;
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-fret-label {
+  fill: #7d6a53;
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-string,
+.layout-stage[data-exporting-pdf='true'] .diagram-fret {
+  stroke: rgba(77, 56, 29, 0.38);
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-fret.nut {
+  stroke: rgba(77, 56, 29, 0.72);
+}
+
+.layout-stage[data-exporting-pdf='true'] .diagram-marker {
+  fill: rgba(232, 158, 62, 0.92);
+  stroke: rgba(255, 253, 248, 0.92);
 }
 
 .layout-row {

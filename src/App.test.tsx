@@ -7,6 +7,48 @@ import {
   within,
 } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const pdfMocks = vi.hoisted(() => {
+  const html2canvas = vi.fn()
+  const pdfInstances: Array<{
+    addImage: ReturnType<typeof vi.fn>
+    addPage: ReturnType<typeof vi.fn>
+    save: ReturnType<typeof vi.fn>
+    setDocumentProperties: ReturnType<typeof vi.fn>
+  }> = []
+  const jsPDF = vi.fn(function JsPdfMock() {
+    const instance = {
+      addImage: vi.fn(),
+      addPage: vi.fn(),
+      internal: {
+        pageSize: {
+          getHeight: () => 595.28,
+          getWidth: () => 841.89,
+        },
+      },
+      save: vi.fn().mockResolvedValue(undefined),
+      setDocumentProperties: vi.fn(),
+    }
+
+    pdfInstances.push(instance)
+    return instance
+  })
+
+  return {
+    html2canvas,
+    jsPDF,
+    pdfInstances,
+  }
+})
+
+vi.mock('html2canvas', () => ({
+  default: pdfMocks.html2canvas,
+}))
+
+vi.mock('jspdf', () => ({
+  jsPDF: pdfMocks.jsPDF,
+}))
+
 import App from './App'
 import { toFretting } from './music/chords'
 import {
@@ -16,6 +58,9 @@ import {
 
 afterEach(() => {
   cleanup()
+  pdfMocks.html2canvas.mockReset()
+  pdfMocks.jsPDF.mockClear()
+  pdfMocks.pdfInstances.length = 0
 })
 
 describe('App', () => {
@@ -270,6 +315,53 @@ describe('App', () => {
         writable: true,
       })
       clickSpy.mockRestore()
+    }
+  })
+
+  it('exports the current layout as PDF', async () => {
+    const exportCanvas = document.createElement('canvas')
+    const fakeContext = {
+      drawImage: vi.fn(),
+      fillRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockImplementation(() => fakeContext)
+
+    exportCanvas.width = 1200
+    exportCanvas.height = 1600
+    pdfMocks.html2canvas.mockResolvedValue(exportCanvas)
+
+    try {
+      const { container } = render(<App />)
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'レイアウトを PDF 出力',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(pdfMocks.html2canvas).toHaveBeenCalledTimes(1)
+      })
+
+      const layoutStage = container.querySelector('.layout-stage')
+      const pdfInstance = pdfMocks.pdfInstances[0]
+
+      expect(pdfInstance?.addImage).toHaveBeenCalled()
+      expect(pdfInstance?.addPage).toHaveBeenCalledTimes(1)
+      expect(pdfInstance?.save).toHaveBeenCalledWith(
+        'chordcanvas-layout.pdf',
+        {
+          returnPromise: true,
+        },
+      )
+      expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'chordcanvas-layout.pdf を書き出しました。',
+      )
+    } finally {
+      getContextSpy.mockRestore()
     }
   })
 
