@@ -364,6 +364,16 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
+  it('shows the first string on the top row of the fretting editor', () => {
+    const { container } = render(<App />)
+    const stringLabels = [
+      ...container.querySelectorAll<HTMLElement>('.manual-grid-string'),
+    ].map((label) => label.textContent)
+
+    expect(stringLabels[0]).toBe('1弦')
+    expect(stringLabels[stringLabels.length - 1]).toBe('6弦')
+  })
+
   it('allows direct manual fret selection from the editor panel', () => {
     render(<App />)
 

@@ -49,6 +49,11 @@ function ChordDiagram({
   const fretLabelY = gridTop - (compact ? 8 : 14)
   const statusLabelX = gridLeft - (compact ? 16 : 22)
   const startFretY = compact ? 28 : 32
+  const lastStringIndex = stringYs.length - 1
+
+  function getStringY(stringIndex: number): number | undefined {
+    return stringYs[lastStringIndex - stringIndex]
+  }
 
   return (
     <svg
@@ -119,7 +124,7 @@ function ChordDiagram({
       })}
 
       {fretting.map((state, stringIndex) => {
-        const y = stringYs[stringIndex]
+        const y = getStringY(stringIndex)
 
         if (y === undefined) {
           return null

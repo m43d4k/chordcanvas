@@ -313,6 +313,13 @@ function App() {
     manualFretCount,
   )
   const manualGridTemplate = `36px 36px 36px repeat(${manualVisibleFrets.length}, minmax(0, 1fr))`
+  const manualStringEntries = activeBlock.fretting
+    .map((state, stringIndex) => ({
+      state,
+      stringIndex,
+      stringNumber: 6 - stringIndex,
+    }))
+    .reverse()
 
   const layoutEntries = buildLayoutEntries(layoutRows, blocks)
   const layoutStageStyle = {
@@ -974,17 +981,15 @@ function App() {
                   ))}
                 </div>
 
-                {activeBlock.fretting.map((state, stringIndex) => (
+                {manualStringEntries.map(({ state, stringIndex, stringNumber }) => (
                   <div
                     className="manual-grid-row"
                     key={`manual-row-${stringIndex}`}
                     style={{ gridTemplateColumns: manualGridTemplate }}
                   >
-                    <span className="manual-grid-string">
-                      {6 - stringIndex}弦
-                    </span>
+                    <span className="manual-grid-string">{stringNumber}弦</span>
                     <button
-                      aria-label={`${6 - stringIndex}弦 ミュート`}
+                      aria-label={`${stringNumber}弦 ミュート`}
                       aria-pressed={state === 'x'}
                       className={state === 'x' ? 'active' : ''}
                       onClick={() => setStringState(stringIndex, 'x')}
@@ -993,7 +998,7 @@ function App() {
                       X
                     </button>
                     <button
-                      aria-label={`${6 - stringIndex}弦 開放`}
+                      aria-label={`${stringNumber}弦 開放`}
                       aria-pressed={state === 0}
                       className={state === 0 ? 'active' : ''}
                       onClick={() => setStringState(stringIndex, 0)}
@@ -1003,7 +1008,7 @@ function App() {
                     </button>
                     {manualVisibleFrets.map((fret) => (
                       <button
-                        aria-label={`${6 - stringIndex}弦 ${fret}フレット`}
+                        aria-label={`${stringNumber}弦 ${fret}フレット`}
                         aria-pressed={state === fret}
                         className={state === fret ? 'active' : ''}
                         key={`manual-string-${stringIndex}-fret-${fret}`}
@@ -1096,38 +1101,28 @@ function App() {
           <div className="stock-grid">
             {stockEntries.map(({ stockChord, summary }) => (
               <article className="stock-card" key={stockChord.id}>
-                <div className="stock-card-header">
-                  <div>
-                    <p className="meta-label">Saved chord</p>
-                    <h3>{summary.currentName}</h3>
-                  </div>
+                <div className="chord-preview-block stock-chord-preview">
+                  <h3 className="chord-preview-name">{summary.currentName}</h3>
+                  <ChordDiagram
+                    compact
+                    fretting={stockChord.fretting}
+                    viewport={summary.viewport}
+                  />
+                </div>
+
+                <div className="stock-card-actions">
+                  <button
+                    onClick={() => handleAddStockChordToLayout(stockChord.id)}
+                    type="button"
+                  >
+                    選択中の行に追加
+                  </button>
                   <button
                     className="secondary-button"
                     onClick={() => handleRemoveStockChord(stockChord.id)}
                     type="button"
                   >
                     削除
-                  </button>
-                </div>
-
-                <ChordDiagram
-                  compact
-                  fretting={stockChord.fretting}
-                  viewport={summary.viewport}
-                />
-
-                <div className="stock-card-footer">
-                  <p>
-                    ベース音: {summary.bassNote ?? '-'} / 構成音:{' '}
-                    {summary.chordTones.length > 0
-                      ? summary.chordTones.join(', ')
-                      : '-'}
-                  </p>
-                  <button
-                    onClick={() => handleAddStockChordToLayout(stockChord.id)}
-                    type="button"
-                  >
-                    選択中の行に追加
                   </button>
                 </div>
               </article>
@@ -1276,7 +1271,7 @@ function App() {
                   {rowEntry.entries.map((entry) => (
                     <button
                       aria-label={`Select ${entry.summary.currentName} block`}
-                      className={`layout-chord-block${
+                      className={`chord-preview-block layout-chord-block${
                         entry.block.id === selectedBlockId ? ' selected' : ''
                       }`}
                       key={entry.block.id}
@@ -1284,7 +1279,7 @@ function App() {
                       style={{ left: `${entry.left}px` }}
                       type="button"
                     >
-                      <span className="layout-block-name">
+                      <span className="chord-preview-name">
                         {entry.summary.currentName}
                       </span>
                       <ChordDiagram
