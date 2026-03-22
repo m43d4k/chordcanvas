@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ChangeEvent } from 'react'
 import ChordDiagram from './components/ChordDiagram'
 import { exportLayoutStagePdf, LAYOUT_PDF_FILE_NAME } from './export/layoutPdf'
@@ -257,6 +257,7 @@ function syncProjectSequences(snapshot: ProjectSnapshot) {
 function App() {
   const [initialState] = useState(createInitialAppState)
   const layoutStageRef = useRef<HTMLDivElement | null>(null)
+  const lyricsInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const projectFileInputRef = useRef<HTMLInputElement | null>(null)
   const [locale, setLocale] = useState<Locale>('ja')
 
@@ -292,6 +293,9 @@ function App() {
   const [appFeedback, setAppFeedback] = useState<AppFeedback | null>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [editingBlockId, setEditingBlockId] = useState<string | null>(null)
+  const [editingLyricsRowId, setEditingLyricsRowId] = useState<string | null>(
+    null,
+  )
   const text = UI_TEXT[locale]
 
   const availableForms = getChordForms(selectedRoot, selectedQuality)
@@ -364,9 +368,11 @@ function App() {
     ? 0
     : LAYOUT_STAGE_PADDING_INLINE
   const layoutRowPaddingInline = isExportingPdf ? 0 : LAYOUT_ROW_PADDING_INLINE
+  const layoutEntryStagePaddingInline = LAYOUT_STAGE_PADDING_INLINE
   const layoutEntries = buildLayoutEntries(layoutRows, blocks, {
     rowPaddingInline: layoutRowPaddingInline,
-    stagePaddingInline: layoutStagePaddingInline,
+    // Keep the block start position stable so PDF and on-screen lyrics align.
+    stagePaddingInline: layoutEntryStagePaddingInline,
   })
   const layoutStageStyle = {
     width: `${layoutEntries.stageWidth}px`,
@@ -374,6 +380,22 @@ function App() {
     '--layout-row-padding-inline': `${layoutRowPaddingInline}px`,
     '--layout-stage-padding-inline': `${layoutStagePaddingInline}px`,
   } as CSSProperties
+
+  useEffect(() => {
+    if (!editingLyricsRowId) {
+      return
+    }
+
+    const input = lyricsInputRefs.current[editingLyricsRowId]
+
+    if (!input) {
+      return
+    }
+
+    input.focus()
+    const textLength = input.value.length
+    input.setSelectionRange(textLength, textLength)
+  }, [editingLyricsRowId])
 
   function createProjectSnapshot(): ProjectSnapshot {
     return cloneProjectSnapshot({
@@ -397,6 +419,7 @@ function App() {
 
     syncProjectSequences(nextSnapshot)
     setEditingBlockId(null)
+    setEditingLyricsRowId(null)
     setSelectedRoot(nextSnapshot.selectedRoot)
     setSelectedQuality(nextSnapshot.selectedQuality)
     setSelectedFormId(nextSnapshot.selectedFormId)
@@ -420,6 +443,7 @@ function App() {
   function activateBlock(block: ChordBlockState) {
     setSelectedBlockId(block.id)
     setSelectedLayoutRowId(block.rowId)
+    setEditingLyricsRowId(null)
     setEditingBlockId((currentEditingId) =>
       currentEditingId === block.id ? currentEditingId : null,
     )
@@ -452,6 +476,15 @@ function App() {
     }
 
     setSelectedLayoutRowId(rowId)
+  }
+
+  function startLyricsLineEditing(rowId: string) {
+    if (!layoutRows.some((row) => row.id === rowId)) {
+      return
+    }
+
+    setSelectedLayoutRowId(rowId)
+    setEditingLyricsRowId(rowId)
   }
 
   function updateBlockFretting(blockId: string, fretting: Fretting) {
@@ -786,6 +819,7 @@ function App() {
       ),
     )
     setSelectedLayoutRowId(fallbackRow.id)
+    setEditingLyricsRowId(null)
   }
 
   function handleLyricsLineChange(
@@ -884,6 +918,16 @@ function App() {
       return
     }
 
+    const activeElement = document.activeElement
+
+    if (
+      activeElement instanceof HTMLElement &&
+      layoutStageElement.contains(activeElement)
+    ) {
+      activeElement.blur()
+    }
+
+    setEditingLyricsRowId(null)
     setIsExportingPdf(true)
 
     try {
@@ -1333,26 +1377,6 @@ function App() {
           </button>
         </div>
 
-        <div className="layout-row-fields">
-          {layoutRows.map((row, index) => (
-            <label
-              className={`field lyrics-field${
-                row.id === selectedLayoutRow.id ? ' active' : ''
-              }`}
-              key={row.id}
-            >
-              <span>{text.lyricsLineLabel(index)}</span>
-              <input
-                aria-label={`Lyrics line ${index + 1}`}
-                onChange={(event) => handleLyricsLineChange(row.id, event)}
-                onFocus={() => selectLayoutRow(row.id)}
-                type="text"
-                value={row.lyrics}
-              />
-            </label>
-          ))}
-        </div>
-
         <div className="layout-toolbar">
           <button
             aria-pressed={isEditingSelectedBlock}
@@ -1493,9 +1517,38 @@ function App() {
                     ))}
                   </div>
 
-                  <div className="lyrics-line">
-                    {rowEntry.row.lyrics || '\u00a0'}
-                  </div>
+                  {isExportingPdf || editingLyricsRowId !== rowEntry.row.id ? (
+                    <div
+                      aria-label={`Lyrics line ${index + 1}`}
+                      className="lyrics-line lyrics-line-text"
+                      onClick={() => startLyricsLineEditing(rowEntry.row.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          startLyricsLineEditing(rowEntry.row.id)
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      {rowEntry.row.lyrics || '\u00a0'}
+                    </div>
+                  ) : (
+                    <input
+                      aria-label={`Lyrics line ${index + 1}`}
+                      className="lyrics-line lyrics-line-input"
+                      onBlur={() => setEditingLyricsRowId(null)}
+                      onChange={(event) =>
+                        handleLyricsLineChange(rowEntry.row.id, event)
+                      }
+                      onFocus={() => selectLayoutRow(rowEntry.row.id)}
+                      ref={(node) => {
+                        lyricsInputRefs.current[rowEntry.row.id] = node
+                      }}
+                      type="text"
+                      value={rowEntry.row.lyrics}
+                    />
+                  )}
                 </section>
               )
             })}

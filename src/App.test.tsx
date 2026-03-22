@@ -75,6 +75,18 @@ function getItemOrThrow<T>(items: readonly T[], index: number): T {
   return item
 }
 
+function getLyricsLineButton(index: number): HTMLElement {
+  return screen.getByRole('button', {
+    name: `Lyrics line ${index}`,
+  })
+}
+
+function openLyricsLineInput(index: number): HTMLInputElement {
+  fireEvent.click(getLyricsLineButton(index))
+
+  return screen.getByLabelText(`Lyrics line ${index}`) as HTMLInputElement
+}
+
 describe('App', () => {
   it('renders the chord editor panels', () => {
     render(<App />)
@@ -361,7 +373,7 @@ describe('App', () => {
       target: { value: rowSelect.options[1]?.value ?? '' },
     })
 
-    expect(screen.getByLabelText('Lyrics line 2')).toBeInTheDocument()
+    expect(getLyricsLineButton(2)).toBeInTheDocument()
 
     const firstRow = screen.getByRole('region', {
       name: '1行目',
@@ -479,7 +491,11 @@ describe('App', () => {
       }),
     )
 
-    expect(screen.queryByLabelText('Lyrics line 2')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: 'Lyrics line 2',
+      }),
+    ).not.toBeInTheDocument()
     expect(
       within(
         screen.getByRole('region', {
@@ -557,17 +573,18 @@ describe('App', () => {
 
   it('preserves manual spacing in layout lyrics', () => {
     const { container } = render(<App />)
-    const lyricsInput = screen.getByLabelText('Lyrics line 1')
+    const lyricsInput = openLyricsLineInput(1)
 
     fireEvent.change(lyricsInput, {
       target: { value: '  la  la   line  ' },
     })
+    fireEvent.blur(lyricsInput)
 
-    const lyricsLine = container.querySelector('.lyrics-line')
+    const lyricsLine = container.querySelector<HTMLElement>('.lyrics-line')
 
     expect(lyricsLine).not.toBeNull()
     expect(lyricsLine?.textContent).toBe('  la  la   line  ')
-    expect(getComputedStyle(lyricsLine as HTMLElement).whiteSpace).toBe('pre')
+    expect(getComputedStyle(lyricsLine!).whiteSpace).toBe('pre')
   })
 
   it('shows the editor chord name only once', () => {
@@ -795,7 +812,7 @@ describe('App', () => {
     try {
       render(<App />)
 
-      fireEvent.change(screen.getByLabelText('Lyrics line 1'), {
+      fireEvent.change(openLyricsLineInput(1), {
         target: { value: 'Exported line' },
       })
       fireEvent.click(
@@ -836,6 +853,8 @@ describe('App', () => {
   it('exports the current layout as PDF', async () => {
     const exportCanvas = document.createElement('canvas')
     let capturedBlockLeft = ''
+    let capturedLyricsLineTagName = ''
+    let capturedLyricsText = ''
     let capturedRowPaddingInline = ''
     let capturedStagePaddingInline = ''
     const fakeContext = {
@@ -851,6 +870,7 @@ describe('App', () => {
     pdfMocks.html2canvas.mockImplementation(async (stageElement: HTMLElement) => {
       const layoutBlock =
         stageElement.querySelector<HTMLElement>('.layout-chord-block.selected')
+      const lyricsLine = stageElement.querySelector<HTMLElement>('.lyrics-line')
 
       capturedStagePaddingInline = stageElement.style.getPropertyValue(
         '--layout-stage-padding-inline',
@@ -859,12 +879,18 @@ describe('App', () => {
         '--layout-row-padding-inline',
       )
       capturedBlockLeft = layoutBlock?.style.left ?? ''
+      capturedLyricsLineTagName = lyricsLine?.tagName ?? ''
+      capturedLyricsText = lyricsLine?.textContent ?? ''
 
       return exportCanvas
     })
 
     try {
       const { container } = render(<App />)
+
+      fireEvent.change(openLyricsLineInput(1), {
+        target: { value: '  Exported line  ' },
+      })
 
       fireEvent.click(
         screen.getByRole('button', {
@@ -893,7 +919,9 @@ describe('App', () => {
       })
       expect(capturedStagePaddingInline).toBe('0px')
       expect(capturedRowPaddingInline).toBe('0px')
-      expect(capturedBlockLeft).toBe('0px')
+      expect(capturedBlockLeft).toBe('16px')
+      expect(capturedLyricsLineTagName).toBe('DIV')
+      expect(capturedLyricsText).toBe('  Exported line  ')
       expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
       expect(screen.getByRole('status')).toHaveTextContent(
         'chordcanvas-layout.pdf を書き出しました。',
@@ -1018,7 +1046,7 @@ describe('App', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Lyrics line 2')).toHaveValue('Bridge line')
+      expect(getLyricsLineButton(2)).toHaveTextContent('Bridge line')
     })
 
     expect(
