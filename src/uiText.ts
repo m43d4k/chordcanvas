@@ -45,6 +45,7 @@ interface UiText {
   addRow: string
   deleteSelectedRow: string
   lyricsLineLabel: (index: number) => string
+  lyricsPlaceholder: string
   editSelectedChord: string
   finishEditingSelectedChord: string
   duplicateSelectedChord: string
@@ -116,6 +117,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     addRow: '行を追加',
     deleteSelectedRow: '選択行を削除',
     lyricsLineLabel: (index) => `歌詞 ${index + 1} 行`,
+    lyricsPlaceholder: '歌詞を入力。スペースで位置を調整。',
     editSelectedChord: '編集',
     finishEditingSelectedChord: '編集を終了',
     duplicateSelectedChord: '複製',
@@ -188,6 +190,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     addRow: 'Add Row',
     deleteSelectedRow: 'Delete Selected Row',
     lyricsLineLabel: (index) => `Lyrics line ${index + 1}`,
+    lyricsPlaceholder: 'Enter lyrics. Use spaces to adjust alignment.',
     editSelectedChord: 'Edit',
     finishEditingSelectedChord: 'Stop Editing',
     duplicateSelectedChord: 'Duplicate',

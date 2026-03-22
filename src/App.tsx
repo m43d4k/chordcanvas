@@ -29,7 +29,6 @@ import { UI_TEXT, type Locale } from './uiText'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
-const DEFAULT_LYRICS = 'Shine a little light over the morning line'
 const DEFAULT_SPACING = 6
 const LAYOUT_BLOCK_WIDTH = 152
 const LAYOUT_SLOT_WIDTH = LAYOUT_BLOCK_WIDTH
@@ -111,7 +110,7 @@ function getDisplayName(
 function createInitialAppState() {
   const initialForms = getChordForms(DEFAULT_ROOT, DEFAULT_QUALITY)
   const initialForm = initialForms[0]
-  const initialRow = createLayoutRow(DEFAULT_LYRICS)
+  const initialRow = createLayoutRow()
   const initialBlock = createChordBlock(
     initialForm?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
     initialRow.id,
@@ -1463,6 +1462,9 @@ function App() {
           >
             {layoutEntries.rows.map((rowEntry, index) => {
               const rowLabel = text.layoutRowLabel(index)
+              const lyricsLineLabel = text.lyricsLineLabel(index)
+              const showLyricsPlaceholder =
+                rowEntry.row.lyrics === '' && !isExportingPdf
 
               return (
                 <section
@@ -1519,8 +1521,10 @@ function App() {
 
                   {isExportingPdf || editingLyricsRowId !== rowEntry.row.id ? (
                     <div
-                      aria-label={`Lyrics line ${index + 1}`}
-                      className="lyrics-line lyrics-line-text"
+                      aria-label={lyricsLineLabel}
+                      className={`lyrics-line lyrics-line-text${
+                        showLyricsPlaceholder ? ' lyrics-line-placeholder' : ''
+                      }`}
                       onClick={() => startLyricsLineEditing(rowEntry.row.id)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
@@ -1531,16 +1535,19 @@ function App() {
                       role="button"
                       tabIndex={0}
                     >
-                      {rowEntry.row.lyrics || '\u00a0'}
+                      {showLyricsPlaceholder
+                        ? text.lyricsPlaceholder
+                        : rowEntry.row.lyrics || '\u00a0'}
                     </div>
                   ) : (
                     <input
-                      aria-label={`Lyrics line ${index + 1}`}
+                      aria-label={lyricsLineLabel}
                       className="lyrics-line lyrics-line-input"
                       onBlur={() => setEditingLyricsRowId(null)}
                       onChange={(event) =>
                         handleLyricsLineChange(rowEntry.row.id, event)
                       }
+                      placeholder={text.lyricsPlaceholder}
                       onFocus={() => selectLayoutRow(rowEntry.row.id)}
                       ref={(node) => {
                         lyricsInputRefs.current[rowEntry.row.id] = node

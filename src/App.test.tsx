@@ -76,15 +76,19 @@ function getItemOrThrow<T>(items: readonly T[], index: number): T {
 }
 
 function getLyricsLineButton(index: number): HTMLElement {
+  const lineLabel = new RegExp(`^(歌詞 ${index} 行|Lyrics line ${index})$`)
+
   return screen.getByRole('button', {
-    name: `Lyrics line ${index}`,
+    name: lineLabel,
   })
 }
 
 function openLyricsLineInput(index: number): HTMLInputElement {
   fireEvent.click(getLyricsLineButton(index))
 
-  return screen.getByLabelText(`Lyrics line ${index}`) as HTMLInputElement
+  return screen.getByLabelText(
+    new RegExp(`^(歌詞 ${index} 行|Lyrics line ${index})$`),
+  ) as HTMLInputElement
 }
 
 describe('App', () => {
@@ -148,6 +152,44 @@ describe('App', () => {
         name: 'Add Current Chord',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('shows a localized placeholder hint for empty lyrics lines', () => {
+    render(<App />)
+
+    expect(
+      screen.getByText('歌詞を入力。スペースで位置を調整。'),
+    ).toBeInTheDocument()
+
+    const lyricsInput = openLyricsLineInput(1)
+
+    expect(lyricsInput).toHaveAttribute(
+      'placeholder',
+      '歌詞を入力。スペースで位置を調整。',
+    )
+    expect(lyricsInput).toHaveValue('')
+  })
+
+  it('switches the lyrics placeholder hint to English', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'English',
+      }),
+    )
+
+    expect(
+      screen.getByText('Enter lyrics. Use spaces to adjust alignment.'),
+    ).toBeInTheDocument()
+
+    const lyricsInput = openLyricsLineInput(1)
+
+    expect(lyricsInput).toHaveAttribute(
+      'placeholder',
+      'Enter lyrics. Use spaces to adjust alignment.',
+    )
+    expect(lyricsInput).toHaveValue('')
   })
 
   it('applies the configured spacing between adjacent layout blocks', () => {
@@ -493,7 +535,7 @@ describe('App', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: 'Lyrics line 2',
+        name: /^(歌詞 2 行|Lyrics line 2)$/,
       }),
     ).not.toBeInTheDocument()
     expect(

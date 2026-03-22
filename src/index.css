@@ -894,6 +894,11 @@ button {
   appearance: none;
 }
 
+.lyrics-line-input::placeholder,
+.lyrics-line-placeholder {
+  color: var(--text-dim);
+}
+
 .lyrics-line-input:focus {
   border-top-color: rgba(115, 103, 240, 0.44);
 }
