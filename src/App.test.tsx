@@ -66,6 +66,87 @@ describe('App', () => {
     ).toHaveLength(2)
   })
 
+  it('adds layout rows and assigns the selected block to another row', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '現在のコードを追加',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '行を追加',
+      }),
+    )
+
+    const rowSelect = screen.getByLabelText('Block row') as HTMLSelectElement
+
+    fireEvent.change(rowSelect, {
+      target: { value: rowSelect.options[1]?.value ?? '' },
+    })
+
+    expect(screen.getByLabelText('Lyrics line 2')).toBeInTheDocument()
+
+    const firstRow = screen.getByRole('region', {
+      name: '1行目',
+    })
+    const secondRow = screen.getByRole('region', {
+      name: '2行目',
+    })
+
+    expect(
+      within(firstRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+    expect(
+      within(secondRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+  })
+
+  it('adds a generated chord to the selected empty layout row', () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '行を追加',
+      }),
+    )
+
+    const secondRow = screen.getByRole('region', {
+      name: '2行目',
+    })
+
+    fireEvent.click(
+      within(secondRow).getByRole('button', {
+        name: '2行目 を追加先にする',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '現在のコードを追加',
+      }),
+    )
+
+    const firstRow = screen.getByRole('region', {
+      name: '1行目',
+    })
+
+    expect(
+      within(firstRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+    expect(
+      within(secondRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+  })
+
   it('shows the layout block name only once', () => {
     render(<App />)
 

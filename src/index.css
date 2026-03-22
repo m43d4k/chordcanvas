@@ -97,7 +97,10 @@ button {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(248px, 320px) minmax(0, 1.45fr) minmax(220px, 280px);
+  grid-template-columns: minmax(248px, 320px) minmax(0, 1.45fr) minmax(
+      220px,
+      280px
+    );
   gap: 1rem;
   margin-top: 1rem;
 }
@@ -133,6 +136,10 @@ button {
   font-size: 0.95rem;
 }
 
+.field.active span {
+  color: #fff6ea;
+}
+
 .field input,
 .field select,
 .layout-toolbar button,
@@ -151,6 +158,12 @@ button {
   width: 100%;
   padding: 0.72rem 0.82rem;
   outline: none;
+}
+
+.field.active input,
+.field.active select {
+  border-color: rgba(243, 173, 97, 0.54);
+  background: rgba(243, 173, 97, 0.1);
 }
 
 .field input:focus,
@@ -365,12 +378,27 @@ button {
 .layout-controls {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   gap: 0.9rem;
   margin-top: 1rem;
 }
 
-.layout-controls .field:first-child {
-  flex: 1 1 340px;
+.layout-row-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.layout-selection-note {
+  margin: 0;
+  min-width: 170px;
+  color: var(--text-soft);
+  font-size: 0.95rem;
+}
+
+.layout-controls .field.small {
+  flex: 0 1 180px;
 }
 
 .layout-stage-wrapper {
@@ -380,13 +408,54 @@ button {
 }
 
 .layout-stage {
-  position: relative;
-  min-height: 320px;
+  display: grid;
+  gap: 1rem;
   padding: 1rem 1rem 1.4rem;
   border-radius: 24px;
   background:
     linear-gradient(rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
     rgba(8, 12, 17, 0.72);
+}
+
+.layout-row {
+  padding: 0.95rem 0.95rem 1rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.layout-row.selected {
+  box-shadow: inset 0 0 0 1px rgba(243, 173, 97, 0.34);
+  background: rgba(243, 173, 97, 0.08);
+}
+
+.layout-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+
+.layout-row-header h3 {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.98rem;
+}
+
+.layout-row.selected .layout-row-header h3 {
+  color: #fff6ea;
+}
+
+.layout-row-selector {
+  padding: 0.42rem 0.68rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.layout-row-selector[aria-pressed='true'] {
+  border-color: rgba(243, 173, 97, 0.7);
+  background: rgba(243, 173, 97, 0.18);
+  color: #fff6ea;
 }
 
 .layout-chord-layer {
@@ -508,10 +577,11 @@ button {
 
   .layout-controls {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .layout-controls .field:first-child {
-    flex-basis: auto;
+  .layout-selection-note {
+    min-width: 0;
   }
 }
 

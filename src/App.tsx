@@ -20,6 +20,12 @@ interface ChordBlockState {
   fretting: Fretting
   xOffset: number
   spacing: number
+  rowId: string
+}
+
+interface LayoutRowState {
+  id: string
+  lyrics: string
 }
 
 const DEFAULT_ROOT: PitchClassName = 'E'
@@ -31,16 +37,26 @@ const MIN_MANUAL_FRET_COUNT = 3
 const MAX_MANUAL_FRET_COUNT = 8
 
 let blockSequence = 1
+let rowSequence = 1
+
+function createLayoutRow(lyrics = ''): LayoutRowState {
+  return {
+    id: `row-${rowSequence++}`,
+    lyrics,
+  }
+}
 
 function createChordBlock(
   fretting: Fretting,
-  overrides: Partial<Omit<ChordBlockState, 'id' | 'fretting'>> = {},
+  rowId: string,
+  overrides: Partial<Omit<ChordBlockState, 'id' | 'fretting' | 'rowId'>> = {},
 ): ChordBlockState {
   return {
     id: `chord-${blockSequence++}`,
     fretting,
     xOffset: overrides.xOffset ?? 0,
     spacing: overrides.spacing ?? DEFAULT_SPACING,
+    rowId,
   }
 }
 
@@ -48,26 +64,141 @@ function copyFretting(fretting: Fretting): Fretting {
   return toFretting([...fretting])
 }
 
-function App() {
+function createInitialAppState() {
   const initialForms = getChordForms(DEFAULT_ROOT, DEFAULT_QUALITY)
   const initialForm = initialForms[0]
+  const initialRow = createLayoutRow(DEFAULT_LYRICS)
   const initialBlock = createChordBlock(
     initialForm?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
+    initialRow.id,
   )
   const initialManualViewport = summarizeChord(initialBlock.fretting).viewport
+
+  return {
+    initialFormId: initialForm?.id ?? '',
+    initialRow,
+    initialBlock,
+    initialManualViewport,
+  }
+}
+
+function getLayoutRowLabel(index: number): string {
+  return `${index + 1}行目`
+}
+
+function getRowBlockIndices(
+  blocks: readonly ChordBlockState[],
+  rowId: string,
+): number[] {
+  const indices: number[] = []
+
+  blocks.forEach((block, index) => {
+    if (block.rowId === rowId) {
+      indices.push(index)
+    }
+  })
+
+  return indices
+}
+
+function getInsertionIndexForRow(
+  blocks: readonly ChordBlockState[],
+  layoutRows: readonly LayoutRowState[],
+  rowId: string,
+): number {
+  const rowOrder = new Map(layoutRows.map((row, index) => [row.id, index]))
+  const targetRowIndex = rowOrder.get(rowId)
+
+  if (targetRowIndex === undefined) {
+    return blocks.length
+  }
+
+  let insertionIndex = 0
+  let hasPreviousBlock = false
+
+  blocks.forEach((block, index) => {
+    const blockRowIndex = rowOrder.get(block.rowId)
+
+    if (blockRowIndex !== undefined && blockRowIndex <= targetRowIndex) {
+      insertionIndex = index + 1
+      hasPreviousBlock = true
+    }
+  })
+
+  if (hasPreviousBlock) {
+    return insertionIndex
+  }
+
+  const nextRowBlockIndex = blocks.findIndex((block) => {
+    const blockRowIndex = rowOrder.get(block.rowId)
+    return blockRowIndex !== undefined && blockRowIndex > targetRowIndex
+  })
+
+  return nextRowBlockIndex < 0 ? blocks.length : nextRowBlockIndex
+}
+
+function moveBlockToRow(
+  blocks: readonly ChordBlockState[],
+  layoutRows: readonly LayoutRowState[],
+  blockId: string,
+  rowId: string,
+): ChordBlockState[] {
+  const currentIndex = blocks.findIndex((block) => block.id === blockId)
+
+  if (currentIndex < 0) {
+    return [...blocks]
+  }
+
+  const currentBlock = blocks[currentIndex]
+
+  if (!currentBlock || currentBlock.rowId === rowId) {
+    return [...blocks]
+  }
+
+  const remainingBlocks = blocks.filter((block) => block.id !== blockId)
+  const insertionIndex = getInsertionIndexForRow(
+    remainingBlocks,
+    layoutRows,
+    rowId,
+  )
+  const movedBlock = {
+    ...currentBlock,
+    rowId,
+  }
+
+  return [
+    ...remainingBlocks.slice(0, insertionIndex),
+    movedBlock,
+    ...remainingBlocks.slice(insertionIndex),
+  ]
+}
+
+function App() {
+  const [initialState] = useState(createInitialAppState)
 
   const [selectedRoot, setSelectedRoot] = useState<PitchClassName>(DEFAULT_ROOT)
   const [selectedQuality, setSelectedQuality] =
     useState<ChordQuality>(DEFAULT_QUALITY)
-  const [selectedFormId, setSelectedFormId] = useState(initialForm?.id ?? '')
-  const [lyricsLine, setLyricsLine] = useState(DEFAULT_LYRICS)
-  const [blocks, setBlocks] = useState<ChordBlockState[]>([initialBlock])
-  const [selectedBlockId, setSelectedBlockId] = useState(initialBlock.id)
+  const [selectedFormId, setSelectedFormId] = useState(
+    initialState.initialFormId,
+  )
+  const [layoutRows, setLayoutRows] = useState<LayoutRowState[]>(() => [
+    initialState.initialRow,
+  ])
+  const [blocks, setBlocks] = useState<ChordBlockState[]>(() => [
+    initialState.initialBlock,
+  ])
+  const [selectedBlockId, setSelectedBlockId] = useState(
+    initialState.initialBlock.id,
+  )
+  const [selectedLayoutRowId, setSelectedLayoutRowId] = useState(
+    initialState.initialRow.id,
+  )
   const [manualStartFret, setManualStartFret] = useState(
-    initialManualViewport.startFret,
+    initialState.initialManualViewport.startFret,
   )
   const [manualFretCount, setManualFretCount] = useState(
-    initialManualViewport.fretCount,
+    initialState.initialManualViewport.fretCount,
   )
 
   const availableForms = getChordForms(selectedRoot, selectedQuality)
@@ -84,6 +215,26 @@ function App() {
   }
 
   const activeBlock = selectedBlock
+  const activeLayoutRow = layoutRows.find((row) => row.id === activeBlock.rowId)
+
+  if (!activeLayoutRow) {
+    throw new Error('At least one layout row must be present')
+  }
+
+  const activeLayoutRowId = activeLayoutRow.id
+  const selectedLayoutRow =
+    layoutRows.find((row) => row.id === selectedLayoutRowId) ?? activeLayoutRow
+  const selectedLayoutRowIndex = Math.max(
+    0,
+    layoutRows.findIndex((row) => row.id === selectedLayoutRow.id),
+  )
+  const selectedLayoutRowLabel = getLayoutRowLabel(selectedLayoutRowIndex)
+  const activeRowBlockIds = blocks
+    .filter((block) => block.rowId === activeLayoutRowId)
+    .map((block) => block.id)
+  const activeRowSelectionIndex = activeRowBlockIds.findIndex(
+    (blockId) => blockId === selectedBlockId,
+  )
   const selectedSummary = summarizeChord(activeBlock.fretting)
   const manualVisibleFrets = createVisibleFrets(
     manualStartFret,
@@ -91,7 +242,7 @@ function App() {
   )
   const manualGridTemplate = `36px 36px 36px repeat(${manualVisibleFrets.length}, minmax(0, 1fr))`
 
-  const layoutEntries = buildLayoutEntries(blocks, lyricsLine)
+  const layoutEntries = buildLayoutEntries(layoutRows, blocks)
 
   function syncManualViewportFromFretting(fretting: Fretting) {
     const viewport = summarizeChord(fretting).viewport
@@ -101,7 +252,16 @@ function App() {
 
   function activateBlock(block: ChordBlockState) {
     setSelectedBlockId(block.id)
+    setSelectedLayoutRowId(block.rowId)
     syncManualViewportFromFretting(block.fretting)
+  }
+
+  function selectLayoutRow(rowId: string) {
+    if (!layoutRows.some((row) => row.id === rowId)) {
+      return
+    }
+
+    setSelectedLayoutRowId(rowId)
   }
 
   function updateSelectedBlockFretting(fretting: Fretting) {
@@ -178,8 +338,24 @@ function App() {
   }
 
   function handleAddGeneratedBlock() {
-    const nextBlock = createChordBlock(copyFretting(activeBlock.fretting))
-    setBlocks((currentBlocks) => [...currentBlocks, nextBlock])
+    const nextBlock = createChordBlock(
+      copyFretting(activeBlock.fretting),
+      selectedLayoutRow.id,
+    )
+
+    setBlocks((currentBlocks) => {
+      const insertionIndex = getInsertionIndexForRow(
+        currentBlocks,
+        layoutRows,
+        selectedLayoutRow.id,
+      )
+
+      return [
+        ...currentBlocks.slice(0, insertionIndex),
+        nextBlock,
+        ...currentBlocks.slice(insertionIndex),
+      ]
+    })
     activateBlock(nextBlock)
   }
 
@@ -192,10 +368,14 @@ function App() {
       return
     }
 
-    const nextBlock = createChordBlock(copyFretting(activeBlock.fretting), {
-      xOffset: activeBlock.xOffset,
-      spacing: activeBlock.spacing,
-    })
+    const nextBlock = createChordBlock(
+      copyFretting(activeBlock.fretting),
+      activeLayoutRowId,
+      {
+        xOffset: activeBlock.xOffset,
+        spacing: activeBlock.spacing,
+      },
+    )
 
     setBlocks((currentBlocks) => {
       const before = currentBlocks.slice(0, selectedIndex + 1)
@@ -226,16 +406,34 @@ function App() {
   }
 
   function handleMoveBlock(direction: -1 | 1) {
-    const currentIndex = blocks.findIndex(
-      (block) => block.id === selectedBlockId,
-    )
-    const nextIndex = currentIndex + direction
-
-    if (nextIndex < 0 || nextIndex >= blocks.length) {
-      return
-    }
-
     setBlocks((currentBlocks) => {
+      const currentIndex = currentBlocks.findIndex(
+        (block) => block.id === selectedBlockId,
+      )
+
+      if (currentIndex < 0) {
+        return currentBlocks
+      }
+
+      const rowBlockIndices = getRowBlockIndices(
+        currentBlocks,
+        activeLayoutRowId,
+      )
+      const currentRowIndex = rowBlockIndices.findIndex(
+        (index) => index === currentIndex,
+      )
+      const nextRowIndex = currentRowIndex + direction
+
+      if (nextRowIndex < 0 || nextRowIndex >= rowBlockIndices.length) {
+        return currentBlocks
+      }
+
+      const nextIndex = rowBlockIndices[nextRowIndex]
+
+      if (nextIndex === undefined) {
+        return currentBlocks
+      }
+
       const nextBlocks = [...currentBlocks]
       const currentBlock = nextBlocks[currentIndex]
       const swapBlock = nextBlocks[nextIndex]
@@ -249,6 +447,38 @@ function App() {
 
       return nextBlocks
     })
+  }
+
+  function handleAddLayoutRow() {
+    const nextRow = createLayoutRow()
+    setLayoutRows((currentRows) => [...currentRows, nextRow])
+    setSelectedLayoutRowId(nextRow.id)
+  }
+
+  function handleLyricsLineChange(
+    rowId: string,
+    event: ChangeEvent<HTMLInputElement>,
+  ) {
+    const nextLyrics = event.target.value
+
+    setLayoutRows((currentRows) =>
+      currentRows.map((row) =>
+        row.id === rowId ? { ...row, lyrics: nextLyrics } : row,
+      ),
+    )
+  }
+
+  function handleBlockRowChange(event: ChangeEvent<HTMLSelectElement>) {
+    const nextRowId = event.target.value
+
+    if (!layoutRows.some((row) => row.id === nextRowId)) {
+      return
+    }
+
+    setBlocks((currentBlocks) =>
+      moveBlockToRow(currentBlocks, layoutRows, selectedBlockId, nextRowId),
+    )
+    setSelectedLayoutRowId(nextRowId)
   }
 
   function handleNumberFieldChange(
@@ -563,6 +793,9 @@ function App() {
         </div>
 
         <div className="layout-toolbar">
+          <button onClick={handleAddLayoutRow} type="button">
+            行を追加
+          </button>
           <button onClick={handleDuplicateBlock} type="button">
             選択コードを複製
           </button>
@@ -574,14 +807,17 @@ function App() {
             選択コードを削除
           </button>
           <button
-            disabled={blocks[0]?.id === selectedBlockId}
+            disabled={activeRowSelectionIndex <= 0}
             onClick={() => handleMoveBlock(-1)}
             type="button"
           >
             左へ並び替え
           </button>
           <button
-            disabled={blocks[blocks.length - 1]?.id === selectedBlockId}
+            disabled={
+              activeRowSelectionIndex < 0 ||
+              activeRowSelectionIndex === activeRowBlockIds.length - 1
+            }
             onClick={() => handleMoveBlock(1)}
             type="button"
           >
@@ -589,15 +825,42 @@ function App() {
           </button>
         </div>
 
+        <div className="layout-row-fields">
+          {layoutRows.map((row, index) => (
+            <label
+              className={`field${row.id === selectedLayoutRow.id ? ' active' : ''}`}
+              key={row.id}
+            >
+              <span>歌詞 {index + 1} 行</span>
+              <input
+                aria-label={`Lyrics line ${index + 1}`}
+                onChange={(event) => handleLyricsLineChange(row.id, event)}
+                onFocus={() => selectLayoutRow(row.id)}
+                type="text"
+                value={row.lyrics}
+              />
+            </label>
+          ))}
+        </div>
+
         <div className="layout-controls">
-          <label className="field">
-            <span>歌詞 1 行</span>
-            <input
-              aria-label="Lyrics line"
-              onChange={(event) => setLyricsLine(event.target.value)}
-              type="text"
-              value={lyricsLine}
-            />
+          <p className="layout-selection-note">
+            追加先の行: {selectedLayoutRowLabel}
+          </p>
+
+          <label className="field small">
+            <span>選択コードの配置行</span>
+            <select
+              aria-label="Block row"
+              onChange={handleBlockRowChange}
+              value={activeBlock.rowId}
+            >
+              {layoutRows.map((row, index) => (
+                <option key={row.id} value={row.id}>
+                  {getLayoutRowLabel(index)}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="field small">
@@ -627,31 +890,60 @@ function App() {
             className="layout-stage"
             style={{ width: `${layoutEntries.stageWidth}px` }}
           >
-            <div className="layout-chord-layer">
-              {layoutEntries.entries.map((entry) => (
-                <button
-                  aria-label={`Select ${entry.summary.currentName} block`}
-                  className={`layout-chord-block${
-                    entry.block.id === selectedBlockId ? ' selected' : ''
-                  }`}
-                  key={entry.block.id}
-                  onClick={() => activateBlock(entry.block)}
-                  style={{ left: `${entry.left}px` }}
-                  type="button"
-                >
-                  <span className="layout-block-name">
-                    {entry.summary.currentName}
-                  </span>
-                  <ChordDiagram
-                    compact
-                    fretting={entry.block.fretting}
-                    viewport={entry.summary.viewport}
-                  />
-                </button>
-              ))}
-            </div>
+            {layoutEntries.rows.map((rowEntry, index) => (
+              <section
+                aria-labelledby={`layout-row-heading-${rowEntry.row.id}`}
+                className={`layout-row${
+                  rowEntry.row.id === selectedLayoutRow.id ? ' selected' : ''
+                }`}
+                key={rowEntry.row.id}
+              >
+                <div className="layout-row-header">
+                  <h3 id={`layout-row-heading-${rowEntry.row.id}`}>
+                    {getLayoutRowLabel(index)}
+                  </h3>
+                  <button
+                    aria-label={`${getLayoutRowLabel(index)} を追加先にする`}
+                    aria-pressed={rowEntry.row.id === selectedLayoutRow.id}
+                    className="secondary-button layout-row-selector"
+                    onClick={() => selectLayoutRow(rowEntry.row.id)}
+                    type="button"
+                  >
+                    {rowEntry.row.id === selectedLayoutRow.id
+                      ? '追加先'
+                      : 'この行に追加'}
+                  </button>
+                </div>
 
-            <div className="lyrics-line">{lyricsLine}</div>
+                <div className="layout-chord-layer">
+                  {rowEntry.entries.map((entry) => (
+                    <button
+                      aria-label={`Select ${entry.summary.currentName} block`}
+                      className={`layout-chord-block${
+                        entry.block.id === selectedBlockId ? ' selected' : ''
+                      }`}
+                      key={entry.block.id}
+                      onClick={() => activateBlock(entry.block)}
+                      style={{ left: `${entry.left}px` }}
+                      type="button"
+                    >
+                      <span className="layout-block-name">
+                        {entry.summary.currentName}
+                      </span>
+                      <ChordDiagram
+                        compact
+                        fretting={entry.block.fretting}
+                        viewport={entry.summary.viewport}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="lyrics-line">
+                  {rowEntry.row.lyrics || '\u00a0'}
+                </div>
+              </section>
+            ))}
           </div>
         </div>
       </section>
@@ -668,28 +960,40 @@ function createVisibleFrets(startFret: number, fretCount: number): number[] {
 }
 
 function buildLayoutEntries(
+  layoutRows: readonly LayoutRowState[],
   blocks: readonly ChordBlockState[],
-  lyricsLine: string,
 ) {
-  let cursor = 20
+  const rows = layoutRows.map((row) => {
+    let cursor = 20
+    const entries = blocks
+      .filter((block) => block.rowId === row.id)
+      .map((block) => {
+        const summary = summarizeChord(block.fretting)
+        const left = Math.max(0, cursor + block.xOffset)
+        cursor += LAYOUT_SLOT_WIDTH + block.spacing
 
-  const entries = blocks.map((block) => {
-    const summary = summarizeChord(block.fretting)
-    const left = Math.max(0, cursor + block.xOffset)
-    cursor += LAYOUT_SLOT_WIDTH + block.spacing
+        return {
+          block,
+          summary,
+          left,
+        }
+      })
+
+    const lyricWidth = Math.max(640, row.lyrics.length * 11 + 80)
 
     return {
-      block,
-      summary,
-      left,
+      row,
+      entries,
+      stageWidth: Math.max(cursor + 40, lyricWidth),
     }
   })
 
-  const lyricWidth = Math.max(640, lyricsLine.length * 11 + 80)
-
   return {
-    entries,
-    stageWidth: Math.max(cursor + 40, lyricWidth),
+    rows,
+    stageWidth: rows.reduce(
+      (maxWidth, rowEntry) => Math.max(maxWidth, rowEntry.stageWidth),
+      640,
+    ),
   }
 }
 
