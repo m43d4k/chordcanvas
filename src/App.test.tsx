@@ -267,6 +267,67 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
+  it('deletes the selected layout row and moves its blocks to an adjacent row', () => {
+    render(<App />)
+
+    expect(
+      screen.getByRole('button', {
+        name: '選択中の行を削除',
+      }),
+    ).toBeDisabled()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '行を追加',
+      }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '現在のコードを追加',
+      }),
+    )
+
+    const firstRow = screen.getByRole('region', {
+      name: '1行目',
+    })
+    const secondRow = screen.getByRole('region', {
+      name: '2行目',
+    })
+
+    expect(
+      within(firstRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+    expect(
+      within(secondRow).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(1)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: '選択中の行を削除',
+      }),
+    )
+
+    expect(screen.queryByLabelText('Lyrics line 2')).not.toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('region', {
+          name: '1行目',
+        }),
+      ).getAllByRole('button', {
+        name: /^Select .* block$/,
+      }),
+    ).toHaveLength(2)
+    expect(
+      screen.getByRole('button', {
+        name: '選択中の行を削除',
+      }),
+    ).toBeDisabled()
+  })
+
   it('adds a stocked chord to the selected layout row', () => {
     render(<App />)
 
@@ -399,7 +460,7 @@ describe('App', () => {
   })
 
   it('keeps editing the current chord after selecting a layout block', () => {
-    const { container } = render(<App />)
+    render(<App />)
 
     fireEvent.change(screen.getByLabelText('Root note'), {
       target: { value: 'A' },
@@ -422,16 +483,6 @@ describe('App', () => {
       screen.getAllByRole('heading', {
         name: 'Am',
       })[0],
-    ).toBeInTheDocument()
-    expect(
-      within(
-        container.querySelector('.layout-selection-preview-card') as HTMLElement,
-      ).getByRole('heading', {
-        name: 'E',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('次に追加する current chord を編集中'),
     ).toBeInTheDocument()
   })
 

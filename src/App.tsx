@@ -294,11 +294,6 @@ function App() {
   const activeLayoutRowId = activeLayoutRow.id
   const selectedLayoutRow =
     layoutRows.find((row) => row.id === selectedLayoutRowId) ?? activeLayoutRow
-  const selectedLayoutRowIndex = Math.max(
-    0,
-    layoutRows.findIndex((row) => row.id === selectedLayoutRow.id),
-  )
-  const selectedLayoutRowLabel = getLayoutRowLabel(selectedLayoutRowIndex)
   const activeRowBlockIds = blocks
     .filter((block) => block.rowId === activeLayoutRowId)
     .map((block) => block.id)
@@ -668,6 +663,38 @@ function App() {
     setSelectedLayoutRowId(nextRow.id)
   }
 
+  function handleDeleteSelectedLayoutRow() {
+    if (layoutRows.length === 1) {
+      return
+    }
+
+    const selectedRowIndex = layoutRows.findIndex(
+      (row) => row.id === selectedLayoutRow.id,
+    )
+    const rowToRemove = layoutRows[selectedRowIndex]
+    const fallbackRow =
+      layoutRows[selectedRowIndex - 1] ?? layoutRows[selectedRowIndex + 1]
+
+    if (!rowToRemove || !fallbackRow) {
+      return
+    }
+
+    setLayoutRows((currentRows) =>
+      currentRows.filter((row) => row.id !== rowToRemove.id),
+    )
+    setBlocks((currentBlocks) =>
+      currentBlocks.map((block) =>
+        block.rowId === rowToRemove.id
+          ? {
+              ...block,
+              rowId: fallbackRow.id,
+            }
+          : block,
+      ),
+    )
+    setSelectedLayoutRowId(fallbackRow.id)
+  }
+
   function handleLyricsLineChange(
     rowId: string,
     event: ChangeEvent<HTMLInputElement>,
@@ -845,15 +872,14 @@ function App() {
             />
           </div>
 
-          <p
-            className={`project-feedback${
-              appFeedback ? ` ${appFeedback.kind}` : ''
-            }`}
-            role={appFeedback?.kind === 'error' ? 'alert' : 'status'}
-          >
-            {appFeedback?.text ??
-              '現在の project は JSON で書き出しでき、レイアウトは PDF に出力できます。'}
-          </p>
+          {appFeedback ? (
+            <p
+              className={`project-feedback ${appFeedback.kind}`}
+              role={appFeedback.kind === 'error' ? 'alert' : 'status'}
+            >
+              {appFeedback.text}
+            </p>
+          ) : null}
         </div>
       </header>
 
@@ -926,11 +952,6 @@ function App() {
                 ? 'このコードはストック済み'
                 : 'ストックに追加'}
             </button>
-            <p>
-              ここでの選択と右の押弦編集は current chord に反映されます。レイアウト上の既存コードは
-              「選択コードを編集」を押した時だけ current chord と接続されます。同じ押弦のコードは
-              ストックに 1 回だけ保存されます。
-            </p>
           </div>
         </section>
 
@@ -953,22 +974,14 @@ function App() {
                   </p>
                   <h3>{currentSummary.currentName}</h3>
                 </div>
-                <div className="editor-mode-controls">
-                  <p
-                    className={`meta-note editor-mode-note${
-                      isEditingSelectedBlock ? ' editing' : ''
-                    }`}
-                  >
-                    {isEditingSelectedBlock
-                      ? `${selectedBlockSummary.currentName} を編集中`
-                      : '次に追加する current chord を編集中'}
-                  </p>
-                  <p className="meta-note">
-                    {isEditingSelectedBlock
-                      ? `ID: ${selectedBlock.id}`
-                      : 'レイアウトの選択とは独立して動作します。'}
-                  </p>
-                </div>
+                {isEditingSelectedBlock ? (
+                  <div className="editor-mode-controls">
+                    <p className="meta-note editor-mode-note editing">
+                      {selectedBlockSummary.currentName} を編集中
+                    </p>
+                    <p className="meta-note">ID: {selectedBlock.id}</p>
+                  </div>
+                ) : null}
               </div>
 
               <ChordDiagram
@@ -1080,11 +1093,6 @@ function App() {
                 ))}
               </div>
 
-              <p className="manual-builder-note">
-                {isEditingSelectedBlock
-                  ? 'この押弦編集は選択中レイアウトコードに直接反映されています。'
-                  : 'この押弦編集は current chord にだけ反映されます。レイアウト上の既存コードは明示的に編集開始したときだけ変更されます。'}
-              </p>
             </div>
           </div>
         </section>
@@ -1149,9 +1157,6 @@ function App() {
           <div>
             <h2 id="stock-heading">コードストック</h2>
           </div>
-          <p className="stock-selection-note">
-            追加先の行: {selectedLayoutRowLabel}
-          </p>
         </div>
 
         {stockEntries.length > 0 ? (
@@ -1202,6 +1207,44 @@ function App() {
           <button onClick={handleAddLayoutRow} type="button">
             行を追加
           </button>
+          <button
+            disabled={layoutRows.length === 1}
+            onClick={handleDeleteSelectedLayoutRow}
+            type="button"
+          >
+            選択中の行を削除
+          </button>
+        </div>
+
+        <div className="layout-row-fields">
+          {layoutRows.map((row, index) => (
+            <label
+              className={`field lyrics-field${
+                row.id === selectedLayoutRow.id ? ' active' : ''
+              }`}
+              key={row.id}
+            >
+              <span>歌詞 {index + 1} 行</span>
+              <input
+                aria-label={`Lyrics line ${index + 1}`}
+                onChange={(event) => handleLyricsLineChange(row.id, event)}
+                onFocus={() => selectLayoutRow(row.id)}
+                type="text"
+                value={row.lyrics}
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="layout-toolbar">
+          <button
+            aria-pressed={isEditingSelectedBlock}
+            className="secondary-button"
+            onClick={toggleSelectedBlockEditing}
+            type="button"
+          >
+            {isEditingSelectedBlock ? '選択コードの編集を終了' : '選択コードを編集'}
+          </button>
           <button onClick={handleDuplicateBlock} type="button">
             選択コードを複製
           </button>
@@ -1231,44 +1274,7 @@ function App() {
           </button>
         </div>
 
-        <div className="layout-row-fields">
-          {layoutRows.map((row, index) => (
-            <label
-              className={`field lyrics-field${
-                row.id === selectedLayoutRow.id ? ' active' : ''
-              }`}
-              key={row.id}
-            >
-              <span>歌詞 {index + 1} 行</span>
-              <input
-                aria-label={`Lyrics line ${index + 1}`}
-                onChange={(event) => handleLyricsLineChange(row.id, event)}
-                onFocus={() => selectLayoutRow(row.id)}
-                type="text"
-                value={row.lyrics}
-              />
-            </label>
-          ))}
-        </div>
-
         <div className="layout-controls">
-          <p className="layout-selection-note">
-            追加先の行: {selectedLayoutRowLabel}
-          </p>
-
-          <p className="layout-selection-note">
-            選択コード: {selectedBlockSummary.currentName}
-          </p>
-
-          <button
-            aria-pressed={isEditingSelectedBlock}
-            className="secondary-button"
-            onClick={toggleSelectedBlockEditing}
-            type="button"
-          >
-            {isEditingSelectedBlock ? '選択コードの編集を終了' : '選択コードを編集'}
-          </button>
-
           <label className="field small">
             <span>選択コードの配置行</span>
             <select
@@ -1304,26 +1310,6 @@ function App() {
               value={selectedBlock.spacing}
             />
           </label>
-        </div>
-
-        <div className="diagram-card layout-selection-preview-card">
-          <div className="diagram-card-header">
-            <div>
-              <p className="meta-label">Selected layout block</p>
-              <h3>{selectedBlockSummary.currentName}</h3>
-            </div>
-            <p className="meta-note">
-              {isEditingSelectedBlock
-                ? 'current chord と接続中'
-                : '表示のみ'}
-            </p>
-          </div>
-
-          <ChordDiagram
-            fretting={selectedBlock.fretting}
-            markerLabels={selectedBlockSummary.stringDegreeLabels}
-            viewport={selectedBlockSummary.viewport}
-          />
         </div>
 
         <div className="layout-stage-wrapper">
