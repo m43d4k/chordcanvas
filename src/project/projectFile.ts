@@ -11,6 +11,45 @@ import {
 const PROJECT_FILE_FORMAT = 'chordcanvas-project'
 const PROJECT_FILE_VERSION = 1
 
+export type ProjectFileErrorCode =
+  | 'invalidJson'
+  | 'invalidProjectDocument'
+  | 'unsupportedProjectFormat'
+  | 'unsupportedProjectVersion'
+  | 'invalidProjectState'
+  | 'layoutRowsRequired'
+  | 'invalidStockChords'
+  | 'blocksRequired'
+  | 'missingSelectedBlock'
+  | 'missingSelectedLayoutRow'
+  | 'duplicateLayoutRowId'
+  | 'duplicateStockChordId'
+  | 'duplicateBlockId'
+  | 'missingBlockRow'
+  | 'invalidField'
+
+interface ProjectFileErrorOptions {
+  fieldName?: string
+  id?: string
+}
+
+export class ProjectFileError extends Error {
+  code: ProjectFileErrorCode
+  fieldName?: string
+  id?: string
+
+  constructor(
+    code: ProjectFileErrorCode,
+    options: ProjectFileErrorOptions = {},
+  ) {
+    super(code)
+    this.name = 'ProjectFileError'
+    this.code = code
+    this.fieldName = options.fieldName
+    this.id = options.id
+  }
+}
+
 export interface ChordBlockState {
   id: string
   fretting: Fretting
@@ -70,19 +109,19 @@ export function parseProjectFile(text: string): ProjectSnapshot {
   try {
     document = JSON.parse(text)
   } catch {
-    throw new Error('JSON の解析に失敗しました。')
+    throw new ProjectFileError('invalidJson')
   }
 
   if (!isRecord(document)) {
-    throw new Error('project JSON の形式が不正です。')
+    throw new ProjectFileError('invalidProjectDocument')
   }
 
   if (document.format !== PROJECT_FILE_FORMAT) {
-    throw new Error('ChordCanvas project JSON ではありません。')
+    throw new ProjectFileError('unsupportedProjectFormat')
   }
 
   if (document.version !== PROJECT_FILE_VERSION) {
-    throw new Error('未対応の project version です。')
+    throw new ProjectFileError('unsupportedProjectVersion')
   }
 
   return parseProjectSnapshot(document.state)
@@ -110,7 +149,7 @@ export function cloneProjectSnapshot(
 
 function parseProjectSnapshot(value: unknown): ProjectSnapshot {
   if (!isRecord(value)) {
-    throw new Error('project state の形式が不正です。')
+    throw new ProjectFileError('invalidProjectState')
   }
 
   const layoutRows = parseLayoutRows(value.layoutRows)
@@ -126,11 +165,11 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
   )
 
   if (!blocks.some((block) => block.id === selectedBlockId)) {
-    throw new Error('selectedBlockId が blocks に存在しません。')
+    throw new ProjectFileError('missingSelectedBlock')
   }
 
   if (!layoutRows.some((row) => row.id === selectedLayoutRowId)) {
-    throw new Error('selectedLayoutRowId が layoutRows に存在しません。')
+    throw new ProjectFileError('missingSelectedLayoutRow')
   }
 
   const currentFretting =
@@ -168,12 +207,16 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
 
 function parseLayoutRows(value: unknown): LayoutRowState[] {
   if (!Array.isArray(value) || value.length === 0) {
-    throw new Error('layoutRows は 1 件以上必要です。')
+    throw new ProjectFileError('layoutRowsRequired')
   }
 
-  return value.map((row, index) => {
+  const layoutRows = value.map((row, index) => {
+    const entryFieldName = `layoutRows[${index}]`
+
     if (!isRecord(row)) {
-      throw new Error(`layoutRows[${index}] の形式が不正です。`)
+      throw new ProjectFileError('invalidField', {
+        fieldName: entryFieldName,
+      })
     }
 
     return {
@@ -181,6 +224,10 @@ function parseLayoutRows(value: unknown): LayoutRowState[] {
       lyrics: parseString(row.lyrics, `layoutRows[${index}].lyrics`),
     }
   })
+
+  assertUniqueIds(layoutRows, 'layoutRows', 'duplicateLayoutRowId')
+
+  return layoutRows
 }
 
 function parseStockChords(value: unknown): StockChordState[] {
@@ -189,12 +236,16 @@ function parseStockChords(value: unknown): StockChordState[] {
   }
 
   if (!Array.isArray(value)) {
-    throw new Error('stockChords の形式が不正です。')
+    throw new ProjectFileError('invalidStockChords')
   }
 
-  return value.map((stockChord, index) => {
+  const stockChords = value.map((stockChord, index) => {
+    const entryFieldName = `stockChords[${index}]`
+
     if (!isRecord(stockChord)) {
-      throw new Error(`stockChords[${index}] の形式が不正です。`)
+      throw new ProjectFileError('invalidField', {
+        fieldName: entryFieldName,
+      })
     }
 
     return {
@@ -209,6 +260,10 @@ function parseStockChords(value: unknown): StockChordState[] {
       ),
     }
   })
+
+  assertUniqueIds(stockChords, 'stockChords', 'duplicateStockChordId')
+
+  return stockChords
 }
 
 function parseBlocks(
@@ -216,18 +271,24 @@ function parseBlocks(
   rowIds: ReadonlySet<string>,
 ): ChordBlockState[] {
   if (!Array.isArray(value) || value.length === 0) {
-    throw new Error('blocks は 1 件以上必要です。')
+    throw new ProjectFileError('blocksRequired')
   }
 
-  return value.map((block, index) => {
+  const blocks = value.map((block, index) => {
+    const entryFieldName = `blocks[${index}]`
+
     if (!isRecord(block)) {
-      throw new Error(`blocks[${index}] の形式が不正です。`)
+      throw new ProjectFileError('invalidField', {
+        fieldName: entryFieldName,
+      })
     }
 
     const rowId = parseString(block.rowId, `blocks[${index}].rowId`)
 
     if (!rowIds.has(rowId)) {
-      throw new Error(`blocks[${index}] が存在しない rowId を参照しています。`)
+      throw new ProjectFileError('missingBlockRow', {
+        fieldName: `blocks[${index}].rowId`,
+      })
     }
 
     return {
@@ -242,6 +303,10 @@ function parseBlocks(
       rowId,
     }
   })
+
+  assertUniqueIds(blocks, 'blocks', 'duplicateBlockId')
+
+  return blocks
 }
 
 function parsePitchClassName(value: unknown): PitchClassName {
@@ -252,7 +317,9 @@ function parsePitchClassName(value: unknown): PitchClassName {
     return value as PitchClassName
   }
 
-  throw new Error('selectedRoot が不正です。')
+  throw new ProjectFileError('invalidField', {
+    fieldName: 'selectedRoot',
+  })
 }
 
 function parseChordQuality(value: unknown): ChordQuality {
@@ -263,12 +330,16 @@ function parseChordQuality(value: unknown): ChordQuality {
     return value as ChordQuality
   }
 
-  throw new Error('selectedQuality が不正です。')
+  throw new ProjectFileError('invalidField', {
+    fieldName: 'selectedQuality',
+  })
 }
 
 function parseFretting(value: unknown, fieldName: string): Fretting {
   if (!Array.isArray(value) || value.length !== 6) {
-    throw new Error(`${fieldName} は 6 弦分必要です。`)
+    throw new ProjectFileError('invalidField', {
+      fieldName,
+    })
   }
 
   const stringStates = value.map((state, index) =>
@@ -287,14 +358,18 @@ function parseStringState(value: unknown, fieldName: string): StringState {
     return value
   }
 
-  throw new Error(`${fieldName} が不正です。`)
+  throw new ProjectFileError('invalidField', {
+    fieldName,
+  })
 }
 
 function parsePositiveInteger(value: unknown, fieldName: string): number {
   const parsed = parseInteger(value, fieldName)
 
   if (parsed < 1) {
-    throw new Error(`${fieldName} は 1 以上である必要があります。`)
+    throw new ProjectFileError('invalidField', {
+      fieldName,
+    })
   }
 
   return parsed
@@ -305,7 +380,9 @@ function parseInteger(value: unknown, fieldName: string): number {
     return value
   }
 
-  throw new Error(`${fieldName} は整数である必要があります。`)
+  throw new ProjectFileError('invalidField', {
+    fieldName,
+  })
 }
 
 function parseString(value: unknown, fieldName: string): string {
@@ -313,7 +390,9 @@ function parseString(value: unknown, fieldName: string): string {
     return value
   }
 
-  throw new Error(`${fieldName} は文字列である必要があります。`)
+  throw new ProjectFileError('invalidField', {
+    fieldName,
+  })
 }
 
 function parseOptionalString(
@@ -329,4 +408,23 @@ function parseOptionalString(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function assertUniqueIds<T extends { id: string }>(
+  items: readonly T[],
+  collectionName: 'layoutRows' | 'stockChords' | 'blocks',
+  code: 'duplicateLayoutRowId' | 'duplicateStockChordId' | 'duplicateBlockId',
+) {
+  const seenIds = new Set<string>()
+
+  items.forEach((item, index) => {
+    if (seenIds.has(item.id)) {
+      throw new ProjectFileError(code, {
+        fieldName: `${collectionName}[${index}].id`,
+        id: item.id,
+      })
+    }
+
+    seenIds.add(item.id)
+  })
 }

@@ -169,7 +169,12 @@ describe('exportLayoutStagePdf', () => {
       }),
     )
     expect(html2CanvasOptions?.scale).toBeCloseTo(1.845, 3)
-    expect(pdfInstance?.setDocumentProperties).toHaveBeenCalled()
+    expect(pdfInstance?.setDocumentProperties).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subject: 'ChordCanvas layout export',
+        title: 'ChordCanvas Layout',
+      }),
+    )
     expect(pdfInstance?.setDisplayMode).toHaveBeenCalledWith('fullwidth')
     expect(pdfInstance?.addImage).toHaveBeenCalledTimes(2)
     expect(pdfInstance?.addPage).toHaveBeenCalledTimes(1)
@@ -201,6 +206,7 @@ describe('exportLayoutStagePdf', () => {
       value: vi.fn(),
       writable: true,
     })
+
     Object.defineProperty(stageElement, 'scrollWidth', {
       configurable: true,
       value: 1200,
@@ -304,6 +310,7 @@ describe('exportLayoutStagePdf', () => {
       value: vi.fn(),
       writable: true,
     })
+
     Object.defineProperty(stageElement, 'scrollWidth', {
       configurable: true,
       value: 1200,
@@ -344,6 +351,42 @@ describe('exportLayoutStagePdf', () => {
       })
       clickSpy.mockRestore()
       toDataUrlSpy.mockRestore()
+    }
+  })
+
+  it('throws a PdfExportError when a page slice canvas context is unavailable', async () => {
+    const stageElement = document.createElement('div')
+    const sourceCanvas = document.createElement('canvas')
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null)
+
+    Object.defineProperty(stageElement, 'scrollWidth', {
+      configurable: true,
+      value: 1200,
+    })
+    Object.defineProperty(stageElement, 'scrollHeight', {
+      configurable: true,
+      value: 900,
+    })
+    stageElement.getBoundingClientRect = () =>
+      ({
+        height: 900,
+        width: 1200,
+      }) as DOMRect
+    sourceCanvas.width = 1200
+    sourceCanvas.height = 2500
+    pdfMocks.html2canvas.mockResolvedValue(sourceCanvas)
+
+    try {
+      await expect(
+        exportLayoutStagePdf(stageElement, 'layout-export.pdf'),
+      ).rejects.toMatchObject({
+        code: 'canvasContextUnavailable',
+      })
+      expect(stageElement).not.toHaveAttribute('data-exporting-pdf')
+    } finally {
+      getContextSpy.mockRestore()
     }
   })
 })

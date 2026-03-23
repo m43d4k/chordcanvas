@@ -8,6 +8,7 @@ import ChordModal from './components/ChordModal'
 import LayoutStage from './components/LayoutStage'
 import StockPanel from './components/StockPanel'
 import {
+  PdfExportError,
   exportLayoutStageLongPdf,
   exportLayoutStagePdf,
 } from './export/layoutPdf'
@@ -42,10 +43,11 @@ import {
   parseProjectFile,
   serializeProjectFile,
   type ChordBlockState,
+  ProjectFileError,
   type ProjectSnapshot,
 } from './project/projectFile'
 import { createProjectState, projectReducer } from './state/projectReducer'
-import { UI_TEXT, type Locale } from './uiText'
+import { UI_TEXT, type Locale, type UiText } from './uiText'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
@@ -56,6 +58,26 @@ const LAYOUT_HOVER_HINT_DELAY_MS = 350
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
+
+function getProjectImportErrorMessage(error: unknown, text: UiText): string {
+  if (error instanceof ProjectFileError) {
+    return text.describeProjectImportError(
+      error.code,
+      error.fieldName,
+      error.id,
+    )
+  }
+
+  return error instanceof Error ? error.message : text.unknownError
+}
+
+function getPdfExportErrorMessage(error: unknown, text: UiText): string {
+  if (error instanceof PdfExportError) {
+    return text.describePdfExportError(error.code)
+  }
+
+  return error instanceof Error ? error.message : text.unknownError
+}
 
 interface LayoutBlockDragState {
   blockId: string
@@ -100,7 +122,8 @@ function createInitialProjectState(): ProjectSnapshot {
   }
   const initialBlock: ChordBlockState = {
     id: INITIAL_BLOCK_ID,
-    fretting: initialForm?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
+    fretting:
+      initialForm?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
     displayName: undefined,
     rowId: initialRow.id,
     spacing: DEFAULT_SPACING,
@@ -850,11 +873,7 @@ function App() {
 
       setAppError(null)
     } catch (error) {
-      setAppError(
-        text.pdfExportFailed(
-          error instanceof Error ? error.message : text.unknownError,
-        ),
-      )
+      setAppError(text.pdfExportFailed(getPdfExportErrorMessage(error, text)))
     } finally {
       setPdfExportKind(null)
     }
@@ -873,11 +892,7 @@ function App() {
       applyProjectSnapshot(nextSnapshot)
       setAppError(null)
     } catch (error) {
-      setAppError(
-        text.importFailed(
-          error instanceof Error ? error.message : text.unknownError,
-        ),
-      )
+      setAppError(text.importFailed(getProjectImportErrorMessage(error, text)))
     } finally {
       input.value = ''
     }
@@ -965,7 +980,7 @@ function App() {
             </button>
             <input
               accept="application/json,.json"
-              aria-label="Project JSON file"
+              aria-label={text.projectFileInputAriaLabel}
               className="visually-hidden"
               onChange={handleProjectImport}
               ref={projectFileInputRef}
@@ -1081,7 +1096,6 @@ function App() {
           title={modalTitle}
           valueChordName={modalDraft.chordName}
           valueFretting={modalDraft.fretting}
-          visible
         />
       ) : null}
     </main>

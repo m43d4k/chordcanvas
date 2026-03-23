@@ -1,6 +1,18 @@
 export const LAYOUT_PDF_FILE_NAME = 'chordcanvas-layout.pdf'
 export const LAYOUT_LONG_PDF_FILE_NAME = 'chordcanvas-layout-long.pdf'
 
+export type PdfExportErrorCode = 'canvasContextUnavailable'
+
+export class PdfExportError extends Error {
+  code: PdfExportErrorCode
+
+  constructor(code: PdfExportErrorCode) {
+    super(code)
+    this.name = 'PdfExportError'
+    this.code = code
+  }
+}
+
 const EXPORT_BACKGROUND = '#fffdf8'
 const EXPORT_MARGIN = 32
 const EXPORT_TARGET_DPI = 300
@@ -74,7 +86,7 @@ function createPageSlice(
   const context = pageCanvas.getContext('2d')
 
   if (!context) {
-    throw new Error('PDF 出力用の canvas context を初期化できませんでした。')
+    throw new PdfExportError('canvasContextUnavailable')
   }
 
   pageCanvas.width = sourceCanvas.width
@@ -274,10 +286,7 @@ export async function exportLayoutStageLongPdf(
     const pdfBuffer = new Uint8Array(pdfBytes.byteLength)
 
     pdfBuffer.set(pdfBytes)
-    downloadBlob(
-      new Blob([pdfBuffer], { type: 'application/pdf' }),
-      fileName,
-    )
+    downloadBlob(new Blob([pdfBuffer], { type: 'application/pdf' }), fileName)
   } finally {
     stageElement.removeAttribute('data-exporting-pdf')
   }

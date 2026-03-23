@@ -1,6 +1,13 @@
 import ChordDiagram from './ChordDiagram'
 import ChordComposer, { type ManualStringEntry } from './ChordComposer'
-import type { ChordForm, ChordSummary, ChordQuality, Fretting, PitchClassName, StringState } from '../music/chords'
+import type {
+  ChordForm,
+  ChordSummary,
+  ChordQuality,
+  Fretting,
+  PitchClassName,
+  StringState,
+} from '../music/chords'
 import type { StockEntryViewModel } from './viewModels'
 import type { UiText } from '../uiText'
 import type { ChangeEvent, FormEvent } from 'react'
@@ -28,7 +35,6 @@ interface ChordModalProps {
   title: string
   valueChordName: string
   valueFretting: Fretting
-  visible: boolean
   availableForms: readonly ChordForm[]
   onAddChordDraftToStock: () => void
   onAddStockChordFromModal: (stockChordId: string) => void
@@ -67,7 +73,6 @@ function ChordModal({
   title,
   valueChordName,
   valueFretting,
-  visible,
   availableForms,
   onAddChordDraftToStock,
   onAddStockChordFromModal,
@@ -82,10 +87,6 @@ function ChordModal({
   onSubmit,
   onViewportSync,
 }: ChordModalProps) {
-  if (!visible) {
-    return null
-  }
-
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div
@@ -148,7 +149,10 @@ function ChordModal({
           {chordModalKind === 'layout' ? (
             <>
               <div className="modal-actions modal-layout-actions">
-                <button className="accent-button modal-submit-button" type="submit">
+                <button
+                  className="accent-button modal-submit-button"
+                  type="submit"
+                >
                   {submitLabel}
                 </button>
                 <button
@@ -173,29 +177,35 @@ function ChordModal({
 
                 {stockEntries.length > 0 ? (
                   <div className="stock-grid modal-stock-grid">
-                    {stockEntries.map(({ stockChord, summary, displayName }) => (
-                      <article className="stock-card" key={stockChord.id}>
-                        <div className="chord-preview-block stock-chord-preview">
-                          <h3 className="chord-preview-name">{displayName}</h3>
-                          <ChordDiagram
-                            compact
-                            fretting={stockChord.fretting}
-                            markerLabels={summary.stringDegreeLabels}
-                            tightTopSpacing
-                            viewport={summary.viewport}
-                          />
-                        </div>
+                    {stockEntries.map(
+                      ({ stockChord, summary, displayName }) => (
+                        <article className="stock-card" key={stockChord.id}>
+                          <div className="chord-preview-block stock-chord-preview">
+                            <h3 className="chord-preview-name">
+                              {displayName}
+                            </h3>
+                            <ChordDiagram
+                              compact
+                              fretting={stockChord.fretting}
+                              markerLabels={summary.stringDegreeLabels}
+                              tightTopSpacing
+                              viewport={summary.viewport}
+                            />
+                          </div>
 
-                        <div className="stock-card-actions">
-                          <button
-                            onClick={() => onAddStockChordFromModal(stockChord.id)}
-                            type="button"
-                          >
-                            {text.addToRow}
-                          </button>
-                        </div>
-                      </article>
-                    ))}
+                          <div className="stock-card-actions">
+                            <button
+                              onClick={() =>
+                                onAddStockChordFromModal(stockChord.id)
+                              }
+                              type="button"
+                            >
+                              {text.addToRow}
+                            </button>
+                          </div>
+                        </article>
+                      ),
+                    )}
                   </div>
                 ) : (
                   <p className="stock-empty">{text.stockEmpty}</p>

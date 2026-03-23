@@ -1,3 +1,6 @@
+import type { PdfExportErrorCode } from './export/layoutPdf'
+import type { ProjectFileErrorCode } from './project/projectFile'
+
 export type Locale = 'ja' | 'en'
 
 export interface UiText {
@@ -9,15 +12,14 @@ export interface UiText {
   exportingPdf: string
   exportProject: string
   importProject: string
+  projectFileInputAriaLabel: string
   generatorHeading: string
   rootNote: string
   chordQuality: string
   chordForm: string
-  addCurrentChord: string
   alreadyStockedButton: string
   addToStock: string
   editorHeading: string
-  editingLayoutBlock: string
   currentChord: string
   displayChordName: string
   useAutoDetectedName: string
@@ -42,7 +44,6 @@ export interface UiText {
   openStockAddModal: string
   stockAddTooltip: string
   addToRow: string
-  delete: string
   removeStockChordAria: (name: string) => string
   stockEmpty: string
   layoutHeading: string
@@ -52,9 +53,9 @@ export interface UiText {
   lyricsLineLabel: (index: number) => string
   lyricsPlaceholder: string
   editSelectedChord: string
-  finishEditingSelectedChord: string
   duplicateSelectedChord: string
   removeLayoutChordAria: (name: string) => string
+  selectLayoutBlockAria: (name: string) => string
   moveLeft: string
   moveRight: string
   saveChordChanges: string
@@ -65,8 +66,14 @@ export interface UiText {
   layoutEditModalTitle: string
   modalClose: string
   pdfExportFailedMissingStage: string
+  describePdfExportError: (code: PdfExportErrorCode) => string
   pdfExportFailed: (message: string) => string
   unknownError: string
+  describeProjectImportError: (
+    code: ProjectFileErrorCode,
+    fieldName?: string,
+    id?: string,
+  ) => string
   importFailed: (message: string) => string
 }
 
@@ -80,15 +87,14 @@ export const UI_TEXT: Record<Locale, UiText> = {
     exportingPdf: 'PDF を書き出し中...',
     exportProject: 'プロジェクトを保存',
     importProject: 'プロジェクトを開く',
+    projectFileInputAriaLabel: 'プロジェクト JSON ファイル',
     generatorHeading: 'コード選択',
     rootNote: 'ルート',
     chordQuality: 'コード種別',
     chordForm: '候補フォーム',
-    addCurrentChord: 'コードを追加',
     alreadyStockedButton: 'このコードはストック済み',
     addToStock: 'ストックに追加',
     editorHeading: 'コードダイアグラム',
-    editingLayoutBlock: 'レイアウト上のコードを編集中',
     currentChord: '現在のコード',
     displayChordName: '任意コード名',
     useAutoDetectedName: '空欄なら検出したコード名を使用。',
@@ -114,7 +120,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     openStockAddModal: 'ストックにコードを追加',
     stockAddTooltip: 'ストックを追加',
     addToRow: '追加',
-    delete: '削除',
     removeStockChordAria: (name) => `${name} をストックから削除`,
     stockEmpty: 'ストックはまだ空です。繰り返し使うコードを追加できます。',
     layoutHeading: 'コード譜編集',
@@ -124,9 +129,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     lyricsLineLabel: (index) => `歌詞 ${index + 1} 行`,
     lyricsPlaceholder: '歌詞を入力。スペースで位置を調整。',
     editSelectedChord: '編集',
-    finishEditingSelectedChord: '編集を終了',
     duplicateSelectedChord: '複製',
     removeLayoutChordAria: (name) => `${name} をレイアウトから削除`,
+    selectLayoutBlockAria: (name) => `${name} を選択`,
     moveLeft: '左へ',
     moveRight: '右へ',
     saveChordChanges: '変更を保存',
@@ -138,8 +143,48 @@ export const UI_TEXT: Record<Locale, UiText> = {
     modalClose: '閉じる',
     pdfExportFailedMissingStage:
       'PDF 出力に失敗しました: レイアウト領域を取得できませんでした。',
+    describePdfExportError: (code) => {
+      switch (code) {
+        case 'canvasContextUnavailable':
+          return 'PDF 出力用の canvas context を初期化できませんでした。'
+      }
+    },
     pdfExportFailed: (message) => `PDF 出力に失敗しました: ${message}`,
     unknownError: '不明なエラー',
+    describeProjectImportError: (code, fieldName, id) => {
+      switch (code) {
+        case 'invalidJson':
+          return 'JSON の解析に失敗しました。'
+        case 'invalidProjectDocument':
+          return 'project JSON の形式が不正です。'
+        case 'unsupportedProjectFormat':
+          return 'ChordCanvas project JSON ではありません。'
+        case 'unsupportedProjectVersion':
+          return '未対応の project version です。'
+        case 'invalidProjectState':
+          return 'project state の形式が不正です。'
+        case 'layoutRowsRequired':
+          return 'layoutRows は 1 件以上必要です。'
+        case 'invalidStockChords':
+          return 'stockChords の形式が不正です。'
+        case 'blocksRequired':
+          return 'blocks は 1 件以上必要です。'
+        case 'missingSelectedBlock':
+          return 'selectedBlockId が blocks に存在しません。'
+        case 'missingSelectedLayoutRow':
+          return 'selectedLayoutRowId が layoutRows に存在しません。'
+        case 'duplicateLayoutRowId':
+          return `layoutRows に重複した id${id ? ` (${id})` : ''} があります。`
+        case 'duplicateStockChordId':
+          return `stockChords に重複した id${id ? ` (${id})` : ''} があります。`
+        case 'duplicateBlockId':
+          return `blocks に重複した id${id ? ` (${id})` : ''} があります。`
+        case 'missingBlockRow':
+          return `${fieldName ?? 'rowId'} が存在しない rowId を参照しています。`
+        case 'invalidField':
+          return `${fieldName ?? 'field'} が不正です。`
+      }
+    },
     importFailed: (message) => `インポートに失敗しました: ${message}`,
   },
   en: {
@@ -151,15 +196,14 @@ export const UI_TEXT: Record<Locale, UiText> = {
     exportingPdf: 'Exporting PDF...',
     exportProject: 'Export Project',
     importProject: 'Import Project',
+    projectFileInputAriaLabel: 'Project JSON file',
     generatorHeading: 'Chord Selection',
     rootNote: 'Root',
     chordQuality: 'Chord Quality',
     chordForm: 'Chord Shape',
-    addCurrentChord: 'Add Current Chord',
     alreadyStockedButton: 'Already in Stock',
     addToStock: 'Add to Stock',
     editorHeading: 'Chord Diagram',
-    editingLayoutBlock: 'Editing Layout Block',
     currentChord: 'Current Chord',
     displayChordName: 'Custom Chord Name',
     useAutoDetectedName: 'Leave blank to use the detected name.',
@@ -185,7 +229,6 @@ export const UI_TEXT: Record<Locale, UiText> = {
     openStockAddModal: 'Add chord to stock',
     stockAddTooltip: 'Add to stock',
     addToRow: 'Add',
-    delete: 'Delete',
     removeStockChordAria: (name) => `Remove ${name} from stock`,
     stockEmpty: 'Chord stock is empty. Add chords to reuse.',
     layoutHeading: 'Chord Chart Editor',
@@ -195,9 +238,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     lyricsLineLabel: (index) => `Lyrics line ${index + 1}`,
     lyricsPlaceholder: 'Enter lyrics. Use spaces to adjust alignment.',
     editSelectedChord: 'Edit',
-    finishEditingSelectedChord: 'Stop Editing',
     duplicateSelectedChord: 'Duplicate',
     removeLayoutChordAria: (name) => `Remove ${name} from layout`,
+    selectLayoutBlockAria: (name) => `Select ${name} block`,
     moveLeft: 'Move Left',
     moveRight: 'Move Right',
     saveChordChanges: 'Save Changes',
@@ -209,8 +252,48 @@ export const UI_TEXT: Record<Locale, UiText> = {
     modalClose: 'Close',
     pdfExportFailedMissingStage:
       'PDF export failed: could not access the layout stage.',
+    describePdfExportError: (code) => {
+      switch (code) {
+        case 'canvasContextUnavailable':
+          return 'Could not initialize the canvas context for PDF export.'
+      }
+    },
     pdfExportFailed: (message) => `PDF export failed: ${message}`,
     unknownError: 'Unknown error',
+    describeProjectImportError: (code, fieldName, id) => {
+      switch (code) {
+        case 'invalidJson':
+          return 'Could not parse the JSON file.'
+        case 'invalidProjectDocument':
+          return 'The project JSON document is invalid.'
+        case 'unsupportedProjectFormat':
+          return 'This file is not a ChordCanvas project JSON.'
+        case 'unsupportedProjectVersion':
+          return 'This project version is not supported.'
+        case 'invalidProjectState':
+          return 'The project state is invalid.'
+        case 'layoutRowsRequired':
+          return 'layoutRows must contain at least one entry.'
+        case 'invalidStockChords':
+          return 'stockChords is invalid.'
+        case 'blocksRequired':
+          return 'blocks must contain at least one entry.'
+        case 'missingSelectedBlock':
+          return 'selectedBlockId does not reference an existing block.'
+        case 'missingSelectedLayoutRow':
+          return 'selectedLayoutRowId does not reference an existing row.'
+        case 'duplicateLayoutRowId':
+          return `layoutRows contains a duplicate id${id ? ` (${id})` : ''}.`
+        case 'duplicateStockChordId':
+          return `stockChords contains a duplicate id${id ? ` (${id})` : ''}.`
+        case 'duplicateBlockId':
+          return `blocks contains a duplicate id${id ? ` (${id})` : ''}.`
+        case 'missingBlockRow':
+          return `${fieldName ?? 'rowId'} references a rowId that does not exist.`
+        case 'invalidField':
+          return `${fieldName ?? 'field'} is invalid.`
+      }
+    },
     importFailed: (message) => `Import failed: ${message}`,
   },
 }

@@ -1,4 +1,9 @@
-import type { CSSProperties, ChangeEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react'
+import type {
+  CSSProperties,
+  ChangeEvent,
+  PointerEvent as ReactPointerEvent,
+  RefObject,
+} from 'react'
 import ChordDiagram from './ChordDiagram'
 import type { LayoutOverlayAnchor } from '../hooks/useLayoutOverlayAnchors'
 import type { LayoutEntriesResult } from '../layout/layoutEntries'
@@ -246,7 +251,9 @@ function LayoutStage({
                           entry.block.id === selectedBlockId ? ' selected' : ''
                         }`}
                         data-dragging={
-                          draggingBlockId === entry.block.id ? 'true' : undefined
+                          draggingBlockId === entry.block.id
+                            ? 'true'
+                            : undefined
                         }
                         data-layout-block-id={entry.block.id}
                         key={entry.block.id}
@@ -267,7 +274,9 @@ function LayoutStage({
                           <span aria-hidden="true">×</span>
                         </button>
                         <button
-                          aria-label={`Select ${entry.displayName} block`}
+                          aria-label={text.selectLayoutBlockAria(
+                            entry.displayName,
+                          )}
                           className="chord-preview-block layout-chord-block-button"
                           draggable={false}
                           onBlur={() => onHideLayoutHoverHint(entry.block.id)}

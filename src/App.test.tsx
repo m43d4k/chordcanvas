@@ -134,6 +134,18 @@ afterEach(() => {
   pdfLibMocks.documents.length = 0
 })
 
+const layoutBlockButtonNamePattern = /^(.+ を選択|Select .+ block)$/
+
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function getLayoutBlockButtonName(displayName: string): RegExp {
+  const escapedName = escapeForRegExp(displayName)
+
+  return new RegExp(`^(${escapedName} を選択|Select ${escapedName} block)$`)
+}
+
 function getItemOrThrow<T>(items: readonly T[], index: number): T {
   const item = items[index]
 
@@ -175,7 +187,7 @@ function getLayoutBlockContainer(element: HTMLElement): HTMLElement {
 function getLayoutBlocks(): HTMLElement[] {
   return screen
     .getAllByRole('button', {
-      name: /^Select .* block$/,
+      name: layoutBlockButtonNamePattern,
     })
     .map((button) => getLayoutBlockContainer(button))
 }
@@ -183,7 +195,7 @@ function getLayoutBlocks(): HTMLElement[] {
 function getLayoutBlockByName(displayName: string): HTMLElement {
   return getLayoutBlockContainer(
     screen.getByRole('button', {
-      name: `Select ${displayName} block`,
+      name: getLayoutBlockButtonName(displayName),
     }),
   )
 }
@@ -409,6 +421,88 @@ describe('App', () => {
     expect(getLayoutAddButton(1)).toHaveAccessibleName('Add chord')
   })
 
+  it('localizes the project file input aria label', () => {
+    render(<App />)
+
+    expect(
+      screen.getByLabelText(UI_TEXT.ja.projectFileInputAriaLabel),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'English',
+      }),
+    )
+
+    expect(
+      screen.getByLabelText(UI_TEXT.en.projectFileInputAriaLabel),
+    ).toBeInTheDocument()
+  })
+
+  it('shows localized project import errors in English', async () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'English',
+      }),
+    )
+
+    fireEvent.change(
+      screen.getByLabelText(UI_TEXT.en.projectFileInputAriaLabel),
+      {
+        target: {
+          files: [
+            new File(['{invalid json'], 'invalid-project.json', {
+              type: 'application/json',
+            }),
+          ],
+        },
+      },
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Import failed: Could not parse the JSON file.',
+      )
+    })
+  })
+
+  it('shows localized pdf export errors in English', async () => {
+    const exportCanvas = document.createElement('canvas')
+    const getContextSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(null)
+
+    exportCanvas.width = 1200
+    exportCanvas.height = 2500
+    pdfMocks.html2canvas.mockResolvedValue(exportCanvas)
+
+    try {
+      render(<App />)
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'English',
+        }),
+      )
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: 'Print PDF',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          'PDF export failed: Could not initialize the canvas context for PDF export.',
+        )
+      })
+    } finally {
+      getContextSpy.mockRestore()
+    }
+  })
+
   it('shows a localized placeholder hint for empty lyrics lines', () => {
     render(<App />)
 
@@ -613,7 +707,7 @@ describe('App', () => {
 
     fireEvent.click(
       within(getLayoutRow(1)).getByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     )
 
@@ -645,7 +739,7 @@ describe('App', () => {
 
     fireEvent.click(
       within(getLayoutRow(2)).getByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     )
 
@@ -668,7 +762,7 @@ describe('App', () => {
       render(<App />)
 
       const blockButton = within(getLayoutRow(1)).getByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       })
 
       expect(blockButton).not.toHaveAttribute('title')
@@ -789,12 +883,12 @@ describe('App', () => {
 
     expect(
       within(firstRow).getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(1)
     expect(
       within(secondRow).getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(1)
   })
@@ -814,12 +908,12 @@ describe('App', () => {
 
     expect(
       within(firstRow).getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(1)
     expect(
       within(secondRow).getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(1)
 
@@ -832,7 +926,7 @@ describe('App', () => {
     ).not.toBeInTheDocument()
     expect(
       within(getLayoutRow(1)).getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(2)
   })
@@ -863,12 +957,12 @@ describe('App', () => {
 
     expect(
       within(firstRow).getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(1)
     expect(
       within(secondRow).getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(1)
   })
@@ -922,7 +1016,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('button', {
-        name: 'Select Intro E block',
+        name: getLayoutBlockButtonName('Intro E'),
       }),
     ).toBeInTheDocument()
   })
@@ -947,7 +1041,7 @@ describe('App', () => {
 
     expect(
       screen.queryByRole('button', {
-        name: 'Select Intro E block',
+        name: getLayoutBlockButtonName('Intro E'),
       }),
     ).not.toBeInTheDocument()
     expect(getLayoutBlocks()).toHaveLength(1)
@@ -1318,17 +1412,20 @@ describe('App', () => {
 
     render(<App />)
 
-    fireEvent.change(screen.getByLabelText('Project JSON file'), {
-      target: {
-        files: [
-          new File(
-            [serializeProjectFile(importedSnapshot)],
-            'saved-project.json',
-            { type: 'application/json' },
-          ),
-        ],
+    fireEvent.change(
+      screen.getByLabelText(UI_TEXT.ja.projectFileInputAriaLabel),
+      {
+        target: {
+          files: [
+            new File(
+              [serializeProjectFile(importedSnapshot)],
+              'saved-project.json',
+              { type: 'application/json' },
+            ),
+          ],
+        },
       },
-    })
+    )
 
     await waitFor(() => {
       expect(getLyricsLineButton(2)).toHaveTextContent('Bridge line')
@@ -1336,13 +1433,13 @@ describe('App', () => {
 
     expect(
       screen.getAllByRole('button', {
-        name: /^Select .* block$/,
+        name: layoutBlockButtonNamePattern,
       }),
     ).toHaveLength(2)
     expect(screen.queryByLabelText('Block row')).not.toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'Select Bridge F block',
+        name: getLayoutBlockButtonName('Bridge F'),
       }),
     ).toBeInTheDocument()
     expect(getLayoutBlockByName('Verse Am')).toHaveStyle({ left: '28px' })
