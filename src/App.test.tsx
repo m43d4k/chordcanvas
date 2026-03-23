@@ -348,17 +348,17 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
-        name: 'レイアウト編集',
+        name: 'コード譜編集',
       }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', {
-        name: 'コード生成',
+        name: 'コード選択',
       }),
     ).toBeNull()
     expect(
       screen.queryByRole('heading', {
-        name: 'コードダイアグラム編集',
+        name: 'コードダイアグラム',
       }),
     ).toBeNull()
     expect(
@@ -387,12 +387,12 @@ describe('App', () => {
 
     expect(
       within(dialog).getByRole('heading', {
-        name: 'Chord Generator',
+        name: 'Chord Selection',
       }),
     ).toBeInTheDocument()
     expect(
       within(dialog).getByRole('heading', {
-        name: 'Chord Diagram Editor',
+        name: 'Chord Diagram',
       }),
     ).toBeInTheDocument()
     expect(
@@ -914,7 +914,7 @@ describe('App', () => {
 
     const dialog = openEditModal()
 
-    fireEvent.change(within(dialog).getByLabelText('Chord name'), {
+    fireEvent.change(within(dialog).getByLabelText('任意コード名'), {
       target: { value: 'Intro E' },
     })
     submitModal(dialog, '変更を保存')
@@ -933,7 +933,7 @@ describe('App', () => {
 
     const dialog = openEditModal()
 
-    fireEvent.change(within(dialog).getByLabelText('Chord name'), {
+    fireEvent.change(within(dialog).getByLabelText('任意コード名'), {
       target: { value: 'Intro E' },
     })
     submitModal(dialog, '変更を保存')
@@ -1033,7 +1033,7 @@ describe('App', () => {
       })
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'プロジェクトを書き出し',
+          name: 'プロジェクトを保存',
         }),
       )
 
@@ -1111,7 +1111,7 @@ describe('App', () => {
 
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'A4レイアウトを PDF 出力',
+          name: '印刷用PDF',
         }),
       )
 
@@ -1207,7 +1207,7 @@ describe('App', () => {
 
       fireEvent.click(
         screen.getByRole('button', {
-          name: '縦長レイアウトを PDF 出力',
+          name: '表示用PDF',
         }),
       )
 
@@ -1358,7 +1358,7 @@ describe('App', () => {
 
     const stockDialog = openStockModal()
 
-    expect(within(stockDialog).getByLabelText('Root note')).toHaveValue('A')
+    expect(within(stockDialog).getByLabelText('Root')).toHaveValue('A')
     expect(within(stockDialog).getByLabelText('Chord quality')).toHaveValue(
       'minor',
     )
@@ -1368,7 +1368,7 @@ describe('App', () => {
     expect(within(stockDialog).getByLabelText('Manual fret count')).toHaveValue(
       5,
     )
-    expect(within(stockDialog).getByLabelText('Chord name')).toHaveValue(
+    expect(within(stockDialog).getByLabelText('任意コード名')).toHaveValue(
       'Verse Am',
     )
 
@@ -1376,7 +1376,7 @@ describe('App', () => {
 
     const editDialog = openEditModal()
 
-    expect(within(editDialog).getByLabelText('Chord name')).toHaveValue(
+    expect(within(editDialog).getByLabelText('任意コード名')).toHaveValue(
       'Bridge F',
     )
     expect(screen.queryByRole('status')).not.toBeInTheDocument()

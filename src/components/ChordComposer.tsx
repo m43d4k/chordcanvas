@@ -90,7 +90,7 @@ function ChordComposer({
         <div className="field-grid">
           <label className="field">
             <span>{text.rootNote}</span>
-            <select aria-label="Root note" onChange={onRootChange} value={selectedRoot}>
+            <select aria-label={text.rootNote} onChange={onRootChange} value={selectedRoot}>
               {PITCH_CLASSES.map((pitchClass) => (
                 <option key={pitchClass} value={pitchClass}>
                   {pitchClass}
@@ -117,7 +117,7 @@ function ChordComposer({
           <label className="field">
             <span>{text.chordForm}</span>
             <select
-              aria-label="Chord form"
+              aria-label={text.chordForm}
               onChange={onFormChange}
               value={selectedFormId}
             >
@@ -148,7 +148,7 @@ function ChordComposer({
                   <label className="field small diagram-name-field">
                     <span>{text.displayChordName}</span>
                     <input
-                      aria-label="Chord name"
+                      aria-label={text.displayChordName}
                       onChange={onChordNameChange}
                       placeholder={summary.currentName}
                       type="text"
