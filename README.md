@@ -9,12 +9,13 @@ Guitar chord diagram editor for creating, editing, arranging, and exporting chor
 - Use the shared chord builder modal for chord generation, direct fretting edits, and chord information review
 - Switch the visible UI language between Japanese and English from the header
 - Reopen the chord builder as a block edit modal when updating an existing layout chord
+- Select a layout chord block to edit it, duplicate it, move it within the row, or remove it
 - Override the displayed chord name for the current chord, layout blocks, and stocked chords when needed
 - Show chord-tone degrees such as `R`, `3`, `5`, `7`, and `9` inside fretted markers
 - Arrange chord blocks across multiple lyric rows
-- Edit lyric rows in place on the layout while preserving spacing in PDF export
+- Edit lyric rows in place on the layout while preserving spacing in PDF export, and add or remove lyric rows as needed
 - Adjust per-block horizontal offset and trailing spacing, and drag chord blocks horizontally while pushing later blocks out of the way
-- Save reusable chord voicings in a project stock and add them back from the layout add modal
+- Save reusable chord voicings in a project stock, remove them when no longer needed, and add them back from the layout add modal
 - Export and import project JSON, and export layout PDF as either A4 portrait or a tall single-page layout
 
 ## Setup
