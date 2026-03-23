@@ -180,9 +180,13 @@ function getLayoutRowDeleteButton(index: number): HTMLElement {
 }
 
 function getStockPanel(): HTMLElement {
-  return screen.getByRole('region', {
-    name: /^(コードストック|Chord Stock)$/,
-  })
+  const panel = document.querySelector('.stock-panel')
+
+  if (!(panel instanceof HTMLElement)) {
+    throw new Error('Expected stock panel')
+  }
+
+  return panel
 }
 
 function getOpenStockModalButton(): HTMLElement {
@@ -724,6 +728,43 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
+  it('adds the current draft to stock from the layout add modal without closing it', () => {
+    render(<App />)
+
+    const dialog = openLayoutAddModal(1)
+
+    fireEvent.click(
+      within(getModalActions(dialog)).getByRole('button', {
+        name: /^(ストックに追加|Add to Stock)$/,
+      }),
+    )
+
+    const modalStockRegion = within(dialog).getByRole('region', {
+      name: 'コードストック',
+    })
+
+    expect(
+      within(getStockPanel()).getByRole('heading', {
+        name: 'E',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(modalStockRegion).getByRole('heading', {
+        name: 'E',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(getModalActions(dialog)).getByRole('button', {
+        name: /^(このコードはストック済み|Already in Stock)$/,
+      }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('dialog', {
+        name: /^(コードを追加|Add Chord)$/,
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('updates a selected layout block from the edit modal', () => {
     render(<App />)
 
@@ -853,9 +894,7 @@ describe('App', () => {
       expect(exportedBlob).not.toBeNull()
       expect(clickSpy).toHaveBeenCalledTimes(1)
       expect(revokeObjectURL).toHaveBeenCalledWith('blob:project-export')
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'chordcanvas-project.json を書き出しました。',
-      )
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
       const projectDocument = JSON.parse(await exportedBlob!.text())
 
@@ -952,9 +991,7 @@ describe('App', () => {
       expect(capturedLyricsLineTagName).toBe('DIV')
       expect(capturedLyricsText).toBe('  Exported line  ')
       expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'chordcanvas-layout.pdf を書き出しました。',
-      )
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     } finally {
       getContextSpy.mockRestore()
     }
@@ -1066,8 +1103,6 @@ describe('App', () => {
     expect(within(editDialog).getByLabelText('Chord name')).toHaveValue(
       'Bridge F',
     )
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'saved-project.json を読み込みました。',
-    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

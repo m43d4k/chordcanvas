@@ -6,7 +6,7 @@ import type {
 } from 'react'
 import ChordComposer from './components/ChordComposer'
 import ChordDiagram from './components/ChordDiagram'
-import { exportLayoutStagePdf, LAYOUT_PDF_FILE_NAME } from './export/layoutPdf'
+import { exportLayoutStagePdf } from './export/layoutPdf'
 import {
   MINIMUM_DIAGRAM_FRET_COUNT,
   type ChordQuality,
@@ -41,11 +41,6 @@ const LAYOUT_HOVER_HINT_DELAY_MS = 350
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
-
-interface AppFeedback {
-  kind: 'success' | 'error'
-  text: string
-}
 
 interface LayoutBlockDragState {
   blockId: string
@@ -302,7 +297,7 @@ function App() {
   const [manualFretCount, setManualFretCount] = useState(
     initialState.initialManualViewport.fretCount,
   )
-  const [appFeedback, setAppFeedback] = useState<AppFeedback | null>(null)
+  const [appError, setAppError] = useState<string | null>(null)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [editingLyricsRowId, setEditingLyricsRowId] = useState<string | null>(
     null,
@@ -401,12 +396,13 @@ function App() {
         }))
         .reverse()
     : []
+  const isModalDraftStocked = modalDraft
+    ? stockChords.some((stockChord) =>
+        isSameFretting(stockChord.fretting, modalDraft.fretting),
+      )
+    : false
   const isModalChordStocked =
-    chordModal?.kind === 'stock' && modalDraft
-      ? stockChords.some((stockChord) =>
-          isSameFretting(stockChord.fretting, modalDraft.fretting),
-        )
-      : false
+    chordModal?.kind === 'stock' && isModalDraftStocked
   const showLayoutHoverHint =
     !isExportingPdf &&
     !visibleBlockToolbarId &&
@@ -968,6 +964,37 @@ function App() {
     activateBlock(nextBlock)
   }
 
+  function addChordDraftToStock(draft: ChordDraftState): boolean {
+    if (
+      stockChords.some((stockChord) =>
+        isSameFretting(stockChord.fretting, draft.fretting),
+      )
+    ) {
+      return false
+    }
+
+    commitChordDraft(draft)
+    setStockChords((currentStockChords) => {
+      if (
+        currentStockChords.some((stockChord) =>
+          isSameFretting(stockChord.fretting, draft.fretting),
+        )
+      ) {
+        return currentStockChords
+      }
+
+      return [
+        ...currentStockChords,
+        createStockChord(
+          copyFretting(draft.fretting),
+          toStoredDisplayName(draft.chordName),
+        ),
+      ]
+    })
+    setAppError(null)
+    return true
+  }
+
   function closeChordModal() {
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
@@ -982,39 +1009,19 @@ function App() {
     }
 
     const { draft } = chordModal
-    const draftSummary = summarizeChord(draft.fretting)
-    const draftDisplayName = getDisplayName(
-      draftSummary.currentName,
-      draft.chordName,
-    )
 
     if (chordModal.kind === 'stock') {
-      if (isModalChordStocked) {
-        setAppFeedback({
-          kind: 'success',
-          text: text.alreadyStockedFeedback(draftDisplayName),
-        })
+      if (!addChordDraftToStock(draft)) {
         return
       }
 
-      commitChordDraft(draft)
-      setStockChords((currentStockChords) => [
-        ...currentStockChords,
-        createStockChord(
-          copyFretting(draft.fretting),
-          toStoredDisplayName(draft.chordName),
-        ),
-      ])
-      setAppFeedback({
-        kind: 'success',
-        text: text.addedToStockFeedback(draftDisplayName),
-      })
       closeChordModal()
       return
     }
 
     if (chordModal.kind === 'layout') {
       commitChordDraft(draft)
+      setAppError(null)
       addBlockToLayoutRow(
         chordModal.targetRowId,
         draft.fretting,
@@ -1037,6 +1044,7 @@ function App() {
       displayName: toStoredDisplayName(draft.chordName),
       fretting: copyFretting(draft.fretting),
     }))
+    setAppError(null)
     activateBlock({
       ...blockToEdit,
       displayName: toStoredDisplayName(draft.chordName),
@@ -1051,7 +1059,7 @@ function App() {
     }
 
     setLocale(nextLocale)
-    setAppFeedback(null)
+    setAppError(null)
   }
 
   function handleAddStockChordToLayout(stockChordId: string, rowId?: string) {
@@ -1077,6 +1085,14 @@ function App() {
     closeChordModal()
   }
 
+  function handleAddChordModalDraftToStock() {
+    if (!chordModal || chordModal.kind !== 'layout') {
+      return
+    }
+
+    addChordDraftToStock(chordModal.draft)
+  }
+
   function handleRemoveStockChord(stockChordId: string) {
     const stockChord = stockChords.find((entry) => entry.id === stockChordId)
 
@@ -1084,19 +1100,10 @@ function App() {
       return
     }
 
-    const stockSummary = summarizeChord(stockChord.fretting)
-    const stockDisplayName = getDisplayName(
-      stockSummary.currentName,
-      stockChord.displayName,
-    )
-
     setStockChords((currentStockChords) =>
       currentStockChords.filter((entry) => entry.id !== stockChordId),
     )
-    setAppFeedback({
-      kind: 'success',
-      text: text.removedFromStockFeedback(stockDisplayName),
-    })
+    setAppError(null)
   }
 
   function handleDuplicateBlock() {
@@ -1307,20 +1314,14 @@ function App() {
     downloadLink.download = PROJECT_EXPORT_FILE_NAME
     downloadLink.click()
     URL.revokeObjectURL(objectUrl)
-    setAppFeedback({
-      kind: 'success',
-      text: text.projectExportedFeedback(PROJECT_EXPORT_FILE_NAME),
-    })
+    setAppError(null)
   }
 
   async function handlePdfExport() {
     const layoutStageElement = layoutStageRef.current
 
     if (!layoutStageElement) {
-      setAppFeedback({
-        kind: 'error',
-        text: text.pdfExportFailedMissingStage,
-      })
+      setAppError(text.pdfExportFailedMissingStage)
       return
     }
 
@@ -1338,17 +1339,13 @@ function App() {
 
     try {
       await exportLayoutStagePdf(layoutStageElement)
-      setAppFeedback({
-        kind: 'success',
-        text: text.pdfExportedFeedback(LAYOUT_PDF_FILE_NAME),
-      })
+      setAppError(null)
     } catch (error) {
-      setAppFeedback({
-        kind: 'error',
-        text: text.pdfExportFailed(
+      setAppError(
+        text.pdfExportFailed(
           error instanceof Error ? error.message : text.unknownError,
         ),
-      })
+      )
     } finally {
       setIsExportingPdf(false)
     }
@@ -1365,17 +1362,13 @@ function App() {
     try {
       const nextSnapshot = parseProjectFile(await file.text())
       applyProjectSnapshot(nextSnapshot)
-      setAppFeedback({
-        kind: 'success',
-        text: text.projectImportedFeedback(file.name),
-      })
+      setAppError(null)
     } catch (error) {
-      setAppFeedback({
-        kind: 'error',
-        text: text.importFailed(
+      setAppError(
+        text.importFailed(
           error instanceof Error ? error.message : text.unknownError,
         ),
-      })
+      )
     } finally {
       input.value = ''
     }
@@ -1461,12 +1454,9 @@ function App() {
             />
           </div>
 
-          {appFeedback ? (
-            <p
-              className={`project-feedback ${appFeedback.kind}`}
-              role={appFeedback.kind === 'error' ? 'alert' : 'status'}
-            >
-              {appFeedback.text}
+          {appError ? (
+            <p className="project-feedback error" role="alert">
+              {appError}
             </p>
           ) : null}
         </div>
@@ -1822,57 +1812,80 @@ function App() {
               />
 
               {chordModal.kind === 'layout' ? (
-                <section
-                  aria-labelledby="modal-stock-heading"
-                  className="composer-section modal-stock-section"
-                >
-                  <div className="panel-heading">
-                    <h2 id="modal-stock-heading">{text.stockHeading}</h2>
+                <>
+                  <div className="modal-actions modal-layout-actions">
+                    <button
+                      className="accent-button modal-submit-button"
+                      type="submit"
+                    >
+                      {modalSubmitLabel}
+                    </button>
+                    <button
+                      className="accent-button modal-submit-button"
+                      disabled={isModalDraftStocked}
+                      onClick={handleAddChordModalDraftToStock}
+                      type="button"
+                    >
+                      {isModalDraftStocked
+                        ? text.alreadyStockedButton
+                        : text.addToStock}
+                    </button>
                   </div>
 
-                  {stockEntries.length > 0 ? (
-                    <div className="stock-grid modal-stock-grid">
-                      {stockEntries.map(({ stockChord, summary, displayName }) => (
-                        <article className="stock-card" key={stockChord.id}>
-                          <div className="chord-preview-block stock-chord-preview">
-                            <h3 className="chord-preview-name">{displayName}</h3>
-                            <ChordDiagram
-                              compact
-                              fretting={stockChord.fretting}
-                              markerLabels={summary.stringDegreeLabels}
-                              tightTopSpacing
-                              viewport={summary.viewport}
-                            />
-                          </div>
-
-                          <div className="stock-card-actions">
-                            <button
-                              onClick={() =>
-                                handleAddStockChordFromModal(stockChord.id)
-                              }
-                              type="button"
-                            >
-                              {text.addToRow}
-                            </button>
-                          </div>
-                        </article>
-                      ))}
+                  <section
+                    aria-labelledby="modal-stock-heading"
+                    className="composer-section modal-stock-section"
+                  >
+                    <div className="panel-heading">
+                      <h2 id="modal-stock-heading">{text.stockHeading}</h2>
                     </div>
-                  ) : (
-                    <p className="stock-empty">{text.stockEmpty}</p>
-                  )}
-                </section>
+
+                    {stockEntries.length > 0 ? (
+                      <div className="stock-grid modal-stock-grid">
+                        {stockEntries.map(({ stockChord, summary, displayName }) => (
+                          <article className="stock-card" key={stockChord.id}>
+                            <div className="chord-preview-block stock-chord-preview">
+                              <h3 className="chord-preview-name">{displayName}</h3>
+                              <ChordDiagram
+                                compact
+                                fretting={stockChord.fretting}
+                                markerLabels={summary.stringDegreeLabels}
+                                tightTopSpacing
+                                viewport={summary.viewport}
+                              />
+                            </div>
+
+                            <div className="stock-card-actions">
+                              <button
+                                onClick={() =>
+                                  handleAddStockChordFromModal(stockChord.id)
+                                }
+                                type="button"
+                              >
+                                {text.addToRow}
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="stock-empty">{text.stockEmpty}</p>
+                    )}
+                  </section>
+                </>
               ) : null}
 
-              <div className="modal-actions">
-                <button
-                  className="accent-button modal-submit-button"
-                  disabled={chordModal.kind === 'stock' && isModalChordStocked}
-                  type="submit"
-                >
-                  {modalSubmitLabel}
-                </button>
-              </div>
+              {chordModal.kind !== 'layout' ? (
+                <div className="modal-actions">
+                  <button
+                    className="accent-button modal-submit-button"
+                    disabled={chordModal.kind === 'stock' && isModalChordStocked}
+                    type="submit"
+                  >
+                    {modalSubmitLabel}
+                  </button>
+                </div>
+              ) : null}
             </form>
           </div>
         </div>

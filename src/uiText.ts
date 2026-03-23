@@ -62,15 +62,9 @@ export interface UiText {
   layoutAddModalTitle: string
   layoutEditModalTitle: string
   modalClose: string
-  alreadyStockedFeedback: (name: string) => string
-  addedToStockFeedback: (name: string) => string
-  removedFromStockFeedback: (name: string) => string
-  projectExportedFeedback: (fileName: string) => string
   pdfExportFailedMissingStage: string
-  pdfExportedFeedback: (fileName: string) => string
   pdfExportFailed: (message: string) => string
   unknownError: string
-  projectImportedFeedback: (fileName: string) => string
   importFailed: (message: string) => string
 }
 
@@ -139,18 +133,10 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutAddModalTitle: 'コードを追加',
     layoutEditModalTitle: 'コードブロックを編集',
     modalClose: '閉じる',
-    alreadyStockedFeedback: (name) => `${name} はすでにストック済みです。`,
-    addedToStockFeedback: (name) => `${name} をストックに追加しました。`,
-    removedFromStockFeedback: (name) =>
-      `${name} をストックから削除しました。`,
-    projectExportedFeedback: (fileName) => `${fileName} を書き出しました。`,
     pdfExportFailedMissingStage:
       'PDF 出力に失敗しました: レイアウト領域を取得できませんでした。',
-    pdfExportedFeedback: (fileName) => `${fileName} を書き出しました。`,
     pdfExportFailed: (message) => `PDF 出力に失敗しました: ${message}`,
     unknownError: '不明なエラー',
-    projectImportedFeedback: (fileName) =>
-      `${fileName} を読み込みました。現在の project を置き換えています。`,
     importFailed: (message) => `インポートに失敗しました: ${message}`,
   },
   en: {
@@ -217,17 +203,10 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutAddModalTitle: 'Add Chord',
     layoutEditModalTitle: 'Edit Chord Block',
     modalClose: 'Close',
-    alreadyStockedFeedback: (name) => `${name} is already in stock.`,
-    addedToStockFeedback: (name) => `Added ${name} to stock.`,
-    removedFromStockFeedback: (name) => `Removed ${name} from stock.`,
-    projectExportedFeedback: (fileName) => `Exported ${fileName}.`,
     pdfExportFailedMissingStage:
       'PDF export failed: could not access the layout stage.',
-    pdfExportedFeedback: (fileName) => `Exported ${fileName}.`,
     pdfExportFailed: (message) => `PDF export failed: ${message}`,
     unknownError: 'Unknown error',
-    projectImportedFeedback: (fileName) =>
-      `Imported ${fileName}. Replaced the current project.`,
     importFailed: (message) => `Import failed: ${message}`,
   },
 }

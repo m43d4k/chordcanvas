@@ -149,10 +149,6 @@ button {
   font-size: 0.92rem;
 }
 
-.project-feedback.success {
-  color: var(--success);
-}
-
 .project-feedback.error {
   color: var(--error);
 }
@@ -778,6 +774,12 @@ button {
   transform: none;
 }
 
+.secondary-button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
 .project-actions button[disabled] {
   cursor: wait;
   opacity: 0.62;
@@ -1358,6 +1360,11 @@ button {
   gap: 0.75rem;
 }
 
+.modal-layout-actions {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .modal-submit-button {
   min-width: min(100%, 11rem);
   padding-inline: 1.25rem;
@@ -1472,8 +1479,16 @@ button {
     flex-direction: column-reverse;
   }
 
+  .modal-layout-actions {
+    flex-direction: row;
+  }
+
   .modal-actions button {
     width: 100%;
+  }
+
+  .modal-layout-actions button {
+    width: auto;
   }
 }
 
