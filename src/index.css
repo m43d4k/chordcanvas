@@ -293,6 +293,8 @@ button {
 .layout-row-add-button:focus,
 .generator-actions button:focus,
 .stock-card-actions button:focus,
+.card-add-button:focus-visible,
+.accent-button:focus,
 .secondary-button:focus,
 .panel-icon-button:focus,
 .manual-grid button:focus,
@@ -333,6 +335,7 @@ button {
 .generator-actions button,
 .layout-block-toolbar button,
 .stock-card-actions button,
+.accent-button,
 .secondary-button,
 .panel-icon-button {
   display: inline-flex;
@@ -356,7 +359,8 @@ button {
 
 .generator-actions button:first-child,
 .layout-block-toolbar button:first-child,
-.stock-card-actions button:first-child {
+.stock-card-actions button:first-child,
+.accent-button {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--accent-ink);
@@ -374,7 +378,8 @@ button {
 
 .generator-actions button:first-child:hover,
 .layout-block-toolbar button:first-child:hover,
-.stock-card-actions button:first-child:hover {
+.stock-card-actions button:first-child:hover,
+.accent-button:hover {
   border-color: var(--accent-strong);
   background: var(--accent-strong);
   color: var(--accent-ink);
@@ -578,10 +583,10 @@ button {
 
 .stock-panel-heading {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
 }
 
 .panel-icon-button {
@@ -649,25 +654,39 @@ button {
 }
 
 .stock-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+  align-items: flex-start;
+}
+
+.stock-empty-state {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
-  gap: 0.8rem;
+  justify-items: center;
+  gap: 0.85rem;
   margin-top: 0.85rem;
 }
 
 .stock-card {
   display: grid;
   gap: 0.65rem;
-  padding: 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface-strong);
-  box-shadow: none;
+  align-content: start;
+  justify-items: center;
+  flex: 0 0 auto;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .stock-chord-preview {
-  width: min(100%, 156px);
+  width: 156px;
+  max-width: 100%;
   justify-self: center;
+  gap: 0.16rem;
+}
+
+.stock-chord-preview .chord-preview-name {
+  margin-bottom: 0;
 }
 
 .stock-card-actions {
@@ -683,10 +702,29 @@ button {
   font-size: 0.82rem;
 }
 
+.stock-add-button {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 3.4rem;
+  min-width: 3.4rem;
+  height: 6.8rem;
+}
+
+.stock-add-button-empty {
+  width: 3rem;
+  min-width: 0;
+  height: 3rem;
+}
+
 .stock-empty {
   margin: 1rem 0 0;
   color: var(--text-dim);
   font-size: 0.9rem;
+}
+
+.stock-empty-state .stock-empty {
+  margin: 0;
+  text-align: center;
 }
 
 .layout-block-toolbar button[disabled] {
@@ -704,6 +742,12 @@ button {
 
 .generator-actions button[disabled] {
   cursor: default;
+  opacity: 0.6;
+  transform: none;
+}
+
+.accent-button[disabled] {
+  cursor: not-allowed;
   opacity: 0.6;
   transform: none;
 }
@@ -815,6 +859,7 @@ button {
 }
 
 .layout-row {
+  position: relative;
   width: 100%;
   max-width: 100%;
   padding: 0.9rem var(--layout-row-padding-inline);
@@ -831,11 +876,14 @@ button {
 }
 
 .layout-row-header {
+  position: absolute;
+  top: 0.6rem;
+  right: var(--layout-row-padding-inline);
+  z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.75rem;
-  margin-bottom: 0.8rem;
 }
 
 .layout-row-header h3 {
@@ -931,6 +979,33 @@ button {
   transform: translate(-50%, 0.45rem);
 }
 
+.card-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px dashed var(--border-hover);
+  border-radius: 4px;
+  background: rgba(115, 103, 240, 0.08);
+  color: var(--accent-strong);
+  box-shadow: none;
+  font-size: 1.9rem;
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.card-add-button:hover,
+.card-add-button:focus-visible {
+  border-color: var(--accent-strong);
+  background: rgba(115, 103, 240, 0.16);
+  color: var(--accent-ink);
+  outline: none;
+}
+
 .layout-add-button {
   position: absolute;
   top: 18px;
@@ -941,6 +1016,7 @@ button {
   border-radius: 4px;
   background: rgba(115, 103, 240, 0.08);
   color: var(--accent-strong);
+  box-shadow: none;
   font-size: 1.9rem;
   font-weight: 500;
   line-height: 1;
@@ -1250,8 +1326,13 @@ button {
 
 .modal-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 0.75rem;
+}
+
+.modal-submit-button {
+  min-width: min(100%, 11rem);
+  padding-inline: 1.25rem;
 }
 
 @media (min-width: 860px) {
@@ -1289,9 +1370,15 @@ button {
 }
 
 @media (max-width: 720px) {
-  .layout-add-button {
+  .layout-add-button,
+  .stock-add-button {
     width: 3rem;
     height: 5.8rem;
+  }
+
+  .stock-add-button-empty {
+    width: 2.8rem;
+    height: 2.8rem;
   }
 
   .layout-row-add-button {

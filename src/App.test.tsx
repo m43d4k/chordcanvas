@@ -169,18 +169,24 @@ function getLayoutRow(index: number): HTMLElement {
 
 function getLayoutAddButton(index: number): HTMLElement {
   return within(getLayoutRow(index)).getByRole('button', {
-    name: new RegExp(`^(${index}行目 にコードを追加|Add chord to Row ${index})$`),
+    name: /^(コードを追加|Add chord)$/,
   })
 }
 
 function getLayoutRowDeleteButton(index: number): HTMLElement {
   return within(getLayoutRow(index)).getByRole('button', {
-    name: new RegExp(`^(${index}行目を削除|Delete Row ${index})$`),
+    name: /^(行を削除|Delete row)$/,
+  })
+}
+
+function getStockPanel(): HTMLElement {
+  return screen.getByRole('region', {
+    name: /^(コードストック|Chord Stock)$/,
   })
 }
 
 function getOpenStockModalButton(): HTMLElement {
-  return screen.getByRole('button', {
+  return within(getStockPanel()).getByRole('button', {
     name: /^(ストックにコードを追加|Add chord to stock)$/i,
   })
 }
@@ -207,7 +213,7 @@ function openLayoutAddModal(index: number): HTMLElement {
   fireEvent.click(getLayoutAddButton(index))
 
   return screen.getByRole('dialog', {
-    name: new RegExp(`^(${index}行目 にコードを追加|Add Chord to Row ${index})$`),
+    name: /^(コードを追加|Add Chord)$/,
   })
 }
 
@@ -249,10 +255,7 @@ function submitModal(dialog: HTMLElement, name: RegExp | string) {
 
 function addChordBlockToRow(index: number) {
   const dialog = openLayoutAddModal(index)
-  submitModal(
-    dialog,
-    new RegExp(`^(${index}行目 に追加|Add to Row ${index})$`),
-  )
+  submitModal(dialog, /^(追加|Add)$/)
 }
 
 function addCurrentChordToStock() {
@@ -295,6 +298,8 @@ describe('App', () => {
       }),
     ).toBeNull()
     expect(getOpenStockModalButton()).toBeInTheDocument()
+    expect(getOpenStockModalButton()).toHaveClass('stock-add-button-empty')
+    expect(getOpenStockModalButton().closest('.stock-empty-state')).not.toBeNull()
     expect(getLayoutAddButton(1)).toBeInTheDocument()
   })
 
@@ -331,7 +336,7 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       getLayoutAddButton(1),
-    ).toHaveAccessibleName('Add chord to Row 1')
+    ).toHaveAccessibleName('Add chord')
   })
 
   it('shows a localized placeholder hint for empty lyrics lines', () => {
@@ -464,9 +469,7 @@ describe('App', () => {
 
     addCurrentChordToStock()
 
-    const stockPanel = screen.getByRole('region', {
-      name: 'コードストック',
-    })
+    const stockPanel = getStockPanel()
 
     expect(
       within(stockPanel).getByRole('heading', { name: 'E' }),
@@ -489,6 +492,9 @@ describe('App', () => {
         name: 'このコードはストック済み',
       }),
     ).toBeDisabled()
+    expect(getOpenStockModalButton()).toHaveClass('stock-add-button')
+    expect(getOpenStockModalButton()).not.toHaveClass('stock-add-button-empty')
+    expect(getOpenStockModalButton().closest('.stock-grid')).not.toBeNull()
   })
 
   it('removes a stocked chord from the card close button', () => {
@@ -496,9 +502,7 @@ describe('App', () => {
 
     addCurrentChordToStock()
 
-    const stockPanel = screen.getByRole('region', {
-      name: 'コードストック',
-    })
+    const stockPanel = getStockPanel()
 
     fireEvent.click(
       within(stockPanel).getByRole('button', {
@@ -512,6 +516,7 @@ describe('App', () => {
     expect(
       within(stockPanel).getByText(/ストックはまだ空です。/),
     ).toBeInTheDocument()
+    expect(getOpenStockModalButton()).toHaveClass('stock-add-button-empty')
   })
 
   it('adds layout rows without exposing a row reassignment control', () => {
@@ -700,7 +705,7 @@ describe('App', () => {
 
     fireEvent.click(
       within(modalStockRegion).getByRole('button', {
-        name: '2行目 に追加',
+        name: '追加',
       }),
     )
 
@@ -1032,11 +1037,7 @@ describe('App', () => {
       'Verse Am',
     )
 
-    fireEvent.click(
-      within(getModalActions(stockDialog)).getByRole('button', {
-        name: '閉じる',
-      }),
-    )
+    fireEvent.click(within(stockDialog).getByRole('button', { name: '閉じる' }))
 
     const editDialog = openEditModal()
 

@@ -362,6 +362,7 @@ function App() {
       displayName: getDisplayName(summary.currentName, stockChord.displayName),
     }
   })
+  const hasStockEntries = stockEntries.length > 0
   const layoutStagePaddingInline = isExportingPdf
     ? 0
     : LAYOUT_STAGE_PADDING_INLINE
@@ -400,10 +401,6 @@ function App() {
         }))
         .reverse()
     : []
-  const modalRowLabel =
-    chordModal && chordModal.kind === 'layout'
-      ? getLayoutRowLabel(layoutRows, chordModal.targetRowId, text)
-      : null
   const isModalChordStocked =
     chordModal?.kind === 'stock' && modalDraft
       ? stockChords.some((stockChord) =>
@@ -1388,7 +1385,7 @@ function App() {
     ? chordModal.kind === 'stock'
       ? text.chordBuilderModalTitle
       : chordModal.kind === 'layout'
-        ? text.layoutAddModalTitle(modalRowLabel ?? text.layoutHeading)
+        ? text.layoutAddModalTitle
         : text.layoutEditModalTitle
     : ''
   const modalSubmitLabel = chordModal
@@ -1397,7 +1394,7 @@ function App() {
         ? text.alreadyStockedButton
         : text.addToStock
       : chordModal.kind === 'layout'
-        ? text.addToRow(modalRowLabel ?? text.layoutHeading)
+        ? text.addToRow
         : text.saveChordChanges
     : ''
 
@@ -1477,20 +1474,10 @@ function App() {
 
       <section className="panel stock-panel" aria-labelledby="stock-heading">
         <div className="panel-heading stock-panel-heading">
-          <div>
-            <h2 id="stock-heading">{text.stockHeading}</h2>
-          </div>
-          <button
-            aria-label={text.openStockAddModal}
-            className="panel-icon-button"
-            onClick={openStockChordModal}
-            type="button"
-          >
-            +
-          </button>
+          <h2 id="stock-heading">{text.stockHeading}</h2>
         </div>
 
-        {stockEntries.length > 0 ? (
+        {hasStockEntries ? (
           <div className="stock-grid">
             {stockEntries.map(({ stockChord, summary, displayName }) => (
               <article className="stock-card dismissible-card" key={stockChord.id}>
@@ -1508,14 +1495,33 @@ function App() {
                     compact
                     fretting={stockChord.fretting}
                     markerLabels={summary.stringDegreeLabels}
+                    tightTopSpacing
                     viewport={summary.viewport}
                   />
                 </div>
               </article>
             ))}
+            <button
+              aria-label={text.openStockAddModal}
+              className="card-add-button stock-add-button"
+              onClick={openStockChordModal}
+              type="button"
+            >
+              +
+            </button>
           </div>
         ) : (
-          <p className="stock-empty">{text.stockEmpty}</p>
+          <div className="stock-empty-state">
+            <button
+              aria-label={text.openStockAddModal}
+              className="card-add-button stock-add-button stock-add-button-empty"
+              onClick={openStockChordModal}
+              type="button"
+            >
+              +
+            </button>
+            <p className="stock-empty">{text.stockEmpty}</p>
+          </div>
         )}
       </section>
 
@@ -1599,11 +1605,14 @@ function App() {
                     key={rowEntry.row.id}
                   >
                     <div className="layout-row-header">
-                      <h3 id={`layout-row-heading-${rowEntry.row.id}`}>
+                      <h3
+                        className="visually-hidden"
+                        id={`layout-row-heading-${rowEntry.row.id}`}
+                      >
                         {rowLabel}
                       </h3>
                       <button
-                        aria-label={text.removeLayoutRowAria(rowLabel)}
+                        aria-label={text.removeLayoutRowAria}
                         className="layout-row-delete-button"
                         disabled={layoutRows.length === 1}
                         onClick={() => handleDeleteLayoutRow(rowEntry.row.id)}
@@ -1685,7 +1694,7 @@ function App() {
                       ))}
 
                       <button
-                        aria-label={text.openLayoutAddModal(rowLabel)}
+                        aria-label={text.openLayoutAddModal}
                         className="layout-add-button"
                         onClick={() => openLayoutChordModal(rowEntry.row.id)}
                         style={{ left: `${rowEntry.addButtonLeft}px` }}
@@ -1831,6 +1840,7 @@ function App() {
                               compact
                               fretting={stockChord.fretting}
                               markerLabels={summary.stringDegreeLabels}
+                              tightTopSpacing
                               viewport={summary.viewport}
                             />
                           </div>
@@ -1842,7 +1852,7 @@ function App() {
                               }
                               type="button"
                             >
-                              {text.addToRow(modalRowLabel ?? text.layoutHeading)}
+                              {text.addToRow}
                             </button>
                           </div>
                         </article>
@@ -1856,13 +1866,7 @@ function App() {
 
               <div className="modal-actions">
                 <button
-                  className="secondary-button"
-                  onClick={closeChordModal}
-                  type="button"
-                >
-                  {text.modalClose}
-                </button>
-                <button
+                  className="accent-button modal-submit-button"
                   disabled={chordModal.kind === 'stock' && isModalChordStocked}
                   type="submit"
                 >
@@ -1950,16 +1954,6 @@ function syncDraftViewport(
     manualFretCount: clampManualFretCount(viewport.fretCount),
     manualStartFret: viewport.startFret,
   }
-}
-
-function getLayoutRowLabel(
-  layoutRows: readonly LayoutRowState[],
-  rowId: string,
-  text: (typeof UI_TEXT)[Locale],
-): string {
-  const rowIndex = layoutRows.findIndex((row) => row.id === rowId)
-
-  return text.layoutRowLabel(rowIndex < 0 ? 0 : rowIndex)
 }
 
 function buildLayoutEntries(
