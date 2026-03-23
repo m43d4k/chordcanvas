@@ -12,12 +12,14 @@ import {
 import {
   cloneProjectSnapshot,
   type ChordBlockState,
-  type LayoutRowState,
   type ProjectSnapshot,
-  type StockChordState,
 } from '../project/projectFile'
 
 const MAX_MANUAL_FRET_COUNT = 12
+const DEFAULT_SPACING = 6
+const BLOCK_ID_PREFIX = 'chord-'
+const ROW_ID_PREFIX = 'row-'
+const STOCK_ID_PREFIX = 'stock-'
 
 export interface ProjectDraft {
   chordName: string
@@ -29,7 +31,15 @@ export interface ProjectDraft {
   selectedRoot: PitchClassName
 }
 
-export type ProjectState = ProjectSnapshot
+export interface ProjectNextIds {
+  block: number
+  row: number
+  stock: number
+}
+
+export interface ProjectState extends ProjectSnapshot {
+  nextIds: ProjectNextIds
+}
 
 export type ProjectAction =
   | {
@@ -38,15 +48,17 @@ export type ProjectAction =
     }
   | {
       type: 'addBlock'
-      block: ChordBlockState
+      displayName?: string
+      fretting: Fretting
+      rowId: string
     }
   | {
       type: 'addLayoutRow'
-      row: LayoutRowState
     }
   | {
       type: 'addStockChord'
-      stockChord: StockChordState
+      displayName?: string
+      fretting: Fretting
     }
   | {
       type: 'applySnapshot'
@@ -66,7 +78,6 @@ export type ProjectAction =
     }
   | {
       type: 'duplicateSelectedBlock'
-      block: ChordBlockState
     }
   | {
       type: 'moveSelectedBlock'
@@ -94,20 +105,140 @@ export type ProjectAction =
     }
 
 function clampManualFretCount(value: number): number {
-  return Math.min(MAX_MANUAL_FRET_COUNT, Math.max(MINIMUM_DIAGRAM_FRET_COUNT, value))
+  return Math.min(
+    MAX_MANUAL_FRET_COUNT,
+    Math.max(MINIMUM_DIAGRAM_FRET_COUNT, value),
+  )
 }
 
 function copyFretting(fretting: Fretting): Fretting {
   return toFretting([...fretting])
 }
 
-function cloneState(state: ProjectSnapshot): ProjectState {
-  const nextState = cloneProjectSnapshot(state)
+function getNextSequenceValue(
+  ids: readonly string[],
+  prefix: string,
+  fallback = 1,
+): number {
+  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const sequencePattern = new RegExp(`^${escapedPrefix}(\\d+)$`)
+  let nextValue = fallback
+
+  ids.forEach((id) => {
+    const match = id.match(sequencePattern)
+
+    if (!match) {
+      return
+    }
+
+    const sequence = Number.parseInt(match[1] ?? '', 10)
+
+    if (!Number.isNaN(sequence)) {
+      nextValue = Math.max(nextValue, sequence + 1)
+    }
+  })
+
+  return nextValue
+}
+
+function deriveNextIds(snapshot: ProjectSnapshot): ProjectNextIds {
+  return {
+    block: getNextSequenceValue(
+      snapshot.blocks.map((block) => block.id),
+      BLOCK_ID_PREFIX,
+    ),
+    row: getNextSequenceValue(
+      snapshot.layoutRows.map((row) => row.id),
+      ROW_ID_PREFIX,
+    ),
+    stock: getNextSequenceValue(
+      snapshot.stockChords.map((stockChord) => stockChord.id),
+      STOCK_ID_PREFIX,
+    ),
+  }
+}
+
+export function createProjectState(snapshot: ProjectSnapshot): ProjectState {
+  const nextState = cloneProjectSnapshot(snapshot)
 
   return {
     ...nextState,
     manualFretCount: clampManualFretCount(nextState.manualFretCount),
     manualStartFret: Math.max(1, nextState.manualStartFret),
+    nextIds: deriveNextIds(nextState),
+  }
+}
+
+function createLayoutRow(state: ProjectState) {
+  return {
+    nextIds: {
+      ...state.nextIds,
+      row: state.nextIds.row + 1,
+    },
+    row: {
+      id: `${ROW_ID_PREFIX}${state.nextIds.row}`,
+      lyrics: '',
+    },
+  }
+}
+
+function createChordBlock(
+  state: ProjectState,
+  action: Extract<ProjectAction, { type: 'addBlock' }>,
+) {
+  return {
+    block: {
+      id: `${BLOCK_ID_PREFIX}${state.nextIds.block}`,
+      fretting: copyFretting(action.fretting),
+      displayName: action.displayName,
+      xOffset: 0,
+      spacing: DEFAULT_SPACING,
+      rowId: action.rowId,
+    },
+    nextIds: {
+      ...state.nextIds,
+      block: state.nextIds.block + 1,
+    },
+  }
+}
+
+function createDuplicatedBlock(state: ProjectState, selectedIndex: number) {
+  const selectedBlock = state.blocks[selectedIndex]
+
+  if (!selectedBlock) {
+    return null
+  }
+
+  return {
+    block: {
+      id: `${BLOCK_ID_PREFIX}${state.nextIds.block}`,
+      displayName: selectedBlock.displayName,
+      fretting: copyFretting(selectedBlock.fretting),
+      xOffset: selectedBlock.xOffset,
+      spacing: selectedBlock.spacing,
+      rowId: selectedBlock.rowId,
+    },
+    nextIds: {
+      ...state.nextIds,
+      block: state.nextIds.block + 1,
+    },
+  }
+}
+
+function createStockChord(
+  state: ProjectState,
+  action: Extract<ProjectAction, { type: 'addStockChord' }>,
+) {
+  return {
+    nextIds: {
+      ...state.nextIds,
+      stock: state.nextIds.stock + 1,
+    },
+    stockChord: {
+      id: `${STOCK_ID_PREFIX}${state.nextIds.stock}`,
+      displayName: action.displayName,
+      fretting: copyFretting(action.fretting),
+    },
   }
 }
 
@@ -117,7 +248,7 @@ export function projectReducer(
 ): ProjectState {
   switch (action.type) {
     case 'applySnapshot':
-      return cloneState(action.snapshot)
+      return createProjectState(action.snapshot)
 
     case 'commitDraft':
       return {
@@ -156,10 +287,15 @@ export function projectReducer(
       }
 
     case 'addLayoutRow':
-      return {
-        ...state,
-        layoutRows: [...state.layoutRows, action.row],
-        selectedLayoutRowId: action.row.id,
+      {
+        const nextEntry = createLayoutRow(state)
+
+        return {
+          ...state,
+          nextIds: nextEntry.nextIds,
+          layoutRows: [...state.layoutRows, nextEntry.row],
+          selectedLayoutRowId: nextEntry.row.id,
+        }
       }
 
     case 'updateLyrics':
@@ -171,21 +307,27 @@ export function projectReducer(
       }
 
     case 'addBlock': {
+      if (!state.layoutRows.some((row) => row.id === action.rowId)) {
+        return state
+      }
+
+      const nextEntry = createChordBlock(state, action)
       const insertionIndex = getInsertionIndexForRow(
         state.blocks,
         state.layoutRows,
-        action.block.rowId,
+        action.rowId,
       )
 
       return {
         ...state,
+        nextIds: nextEntry.nextIds,
         blocks: [
           ...state.blocks.slice(0, insertionIndex),
-          action.block,
+          nextEntry.block,
           ...state.blocks.slice(insertionIndex),
         ],
-        selectedBlockId: action.block.id,
-        selectedLayoutRowId: action.block.rowId,
+        selectedBlockId: nextEntry.block.id,
+        selectedLayoutRowId: nextEntry.block.rowId,
       }
     }
 
@@ -206,9 +348,14 @@ export function projectReducer(
       }
 
     case 'addStockChord':
-      return {
-        ...state,
-        stockChords: [...state.stockChords, action.stockChord],
+      {
+        const nextEntry = createStockChord(state, action)
+
+        return {
+          ...state,
+          nextIds: nextEntry.nextIds,
+          stockChords: [...state.stockChords, nextEntry.stockChord],
+        }
       }
 
     case 'removeStockChord':
@@ -228,15 +375,22 @@ export function projectReducer(
         return state
       }
 
+      const nextEntry = createDuplicatedBlock(state, selectedIndex)
+
+      if (!nextEntry) {
+        return state
+      }
+
       return {
         ...state,
+        nextIds: nextEntry.nextIds,
         blocks: [
           ...state.blocks.slice(0, selectedIndex + 1),
-          action.block,
+          nextEntry.block,
           ...state.blocks.slice(selectedIndex + 1),
         ],
-        selectedBlockId: action.block.id,
-        selectedLayoutRowId: action.block.rowId,
+        selectedBlockId: nextEntry.block.id,
+        selectedLayoutRowId: nextEntry.block.rowId,
       }
     }
 

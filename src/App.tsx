@@ -11,8 +11,15 @@ import {
   exportLayoutStageLongPdf,
   exportLayoutStagePdf,
 } from './export/layoutPdf'
+import {
+  createVisibleFrets,
+  copyFretting,
+  type ChordDraftState,
+  type CurrentChordDraftSource,
+} from './features/chordModal/draft'
 import { useDelayedToggle } from './hooks/useDelayedToggle'
 import { useDelayedValue } from './hooks/useDelayedValue'
+import { useChordModalController } from './hooks/useChordModalController'
 import { useLayoutOverlayAnchors } from './hooks/useLayoutOverlayAnchors'
 import {
   LAYOUT_BLOCK_WIDTH,
@@ -26,7 +33,6 @@ import {
   type ChordQuality,
   type Fretting,
   type PitchClassName,
-  type StringState,
   getChordForms,
   summarizeChord,
   toFretting,
@@ -36,16 +42,16 @@ import {
   parseProjectFile,
   serializeProjectFile,
   type ChordBlockState,
-  type LayoutRowState,
   type ProjectSnapshot,
-  type StockChordState,
 } from './project/projectFile'
-import { projectReducer } from './state/projectReducer'
+import { createProjectState, projectReducer } from './state/projectReducer'
 import { UI_TEXT, type Locale } from './uiText'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
 const DEFAULT_SPACING = 6
+const INITIAL_BLOCK_ID = 'chord-1'
+const INITIAL_ROW_ID = 'row-1'
 const LAYOUT_HOVER_HINT_DELAY_MS = 350
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
@@ -61,74 +67,7 @@ interface LayoutBlockDragState {
   startXOffset: number
 }
 
-interface ChordDraftState {
-  selectedRoot: PitchClassName
-  selectedQuality: ChordQuality
-  selectedFormId: string
-  fretting: Fretting
-  chordName: string
-  manualStartFret: number
-  manualFretCount: number
-}
-
-type ChordModalState =
-  | {
-      kind: 'stock'
-      draft: ChordDraftState
-    }
-  | {
-      kind: 'layout'
-      draft: ChordDraftState
-      targetRowId: string
-    }
-  | {
-      blockId: string
-      draft: ChordDraftState
-      kind: 'edit'
-    }
-
 type PdfExportKind = 'a4' | 'long'
-
-let blockSequence = 1
-let rowSequence = 1
-let stockSequence = 1
-
-function createLayoutRow(lyrics = ''): LayoutRowState {
-  return {
-    id: `row-${rowSequence++}`,
-    lyrics,
-  }
-}
-
-function createChordBlock(
-  fretting: Fretting,
-  rowId: string,
-  overrides: Partial<Omit<ChordBlockState, 'id' | 'fretting' | 'rowId'>> = {},
-): ChordBlockState {
-  return {
-    id: `chord-${blockSequence++}`,
-    fretting,
-    displayName: overrides.displayName,
-    xOffset: overrides.xOffset ?? 0,
-    spacing: overrides.spacing ?? DEFAULT_SPACING,
-    rowId,
-  }
-}
-
-function createStockChord(
-  fretting: Fretting,
-  displayName?: string,
-): StockChordState {
-  return {
-    id: `stock-${stockSequence++}`,
-    fretting,
-    displayName,
-  }
-}
-
-function copyFretting(fretting: Fretting): Fretting {
-  return toFretting([...fretting])
-}
 
 function isSameFretting(left: Fretting, right: Fretting): boolean {
   return left.every((state, index) => state === right[index])
@@ -152,86 +91,41 @@ function getDisplayName(
   return normalizeDisplayName(displayName) || automaticName
 }
 
-function createInitialAppState() {
+function createInitialProjectState(): ProjectSnapshot {
   const initialForms = getChordForms(DEFAULT_ROOT, DEFAULT_QUALITY)
   const initialForm = initialForms[0]
-  const initialRow = createLayoutRow()
-  const initialBlock = createChordBlock(
-    initialForm?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
-    initialRow.id,
-  )
+  const initialRow = {
+    id: INITIAL_ROW_ID,
+    lyrics: '',
+  }
+  const initialBlock: ChordBlockState = {
+    id: INITIAL_BLOCK_ID,
+    fretting: initialForm?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
+    displayName: undefined,
+    rowId: initialRow.id,
+    spacing: DEFAULT_SPACING,
+    xOffset: 0,
+  }
   const initialManualViewport = summarizeChord(initialBlock.fretting).viewport
 
   return {
-    initialFormId: initialForm?.id ?? '',
-    initialRow,
-    initialBlock,
-    initialManualViewport,
-  }
-}
-
-function createInitialProjectState(
-  initialState: ReturnType<typeof createInitialAppState>,
-): ProjectSnapshot {
-  return {
     selectedRoot: DEFAULT_ROOT,
     selectedQuality: DEFAULT_QUALITY,
-    selectedFormId: initialState.initialFormId,
-    currentFretting: copyFretting(initialState.initialBlock.fretting),
+    selectedFormId: initialForm?.id ?? '',
+    currentFretting: copyFretting(initialBlock.fretting),
     currentChordName: '',
-    layoutRows: [initialState.initialRow],
+    layoutRows: [initialRow],
     stockChords: [],
-    blocks: [initialState.initialBlock],
-    selectedBlockId: initialState.initialBlock.id,
-    selectedLayoutRowId: initialState.initialRow.id,
-    manualStartFret: initialState.initialManualViewport.startFret,
-    manualFretCount: initialState.initialManualViewport.fretCount,
+    blocks: [initialBlock],
+    selectedBlockId: initialBlock.id,
+    selectedLayoutRowId: initialRow.id,
+    manualStartFret: initialManualViewport.startFret,
+    manualFretCount: initialManualViewport.fretCount,
   }
-}
-
-function getNextSequenceValue(
-  ids: readonly string[],
-  prefix: string,
-  fallback = 1,
-): number {
-  const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const sequencePattern = new RegExp(`^${escapedPrefix}(\\d+)$`)
-  let nextValue = fallback
-
-  ids.forEach((id) => {
-    const match = id.match(sequencePattern)
-
-    if (!match) {
-      return
-    }
-
-    const sequence = Number.parseInt(match[1] ?? '', 10)
-
-    if (!Number.isNaN(sequence)) {
-      nextValue = Math.max(nextValue, sequence + 1)
-    }
-  })
-
-  return nextValue
-}
-
-function syncProjectSequences(snapshot: ProjectSnapshot) {
-  rowSequence = getNextSequenceValue(
-    snapshot.layoutRows.map((row) => row.id),
-    'row-',
-  )
-  stockSequence = getNextSequenceValue(
-    snapshot.stockChords.map((stockChord) => stockChord.id),
-    'stock-',
-  )
-  blockSequence = getNextSequenceValue(
-    snapshot.blocks.map((block) => block.id),
-    'chord-',
-  )
 }
 
 function App() {
-  const [initialState] = useState(createInitialAppState)
+  const [initialProjectSnapshot] = useState(createInitialProjectState)
   const layoutStageFrameRef = useRef<HTMLDivElement | null>(null)
   const layoutStageWrapperRef = useRef<HTMLDivElement | null>(null)
   const layoutStageRef = useRef<HTMLDivElement | null>(null)
@@ -245,15 +139,14 @@ function App() {
   const [locale, setLocale] = useState<Locale>('ja')
   const [projectState, dispatchProjectAction] = useReducer(
     projectReducer,
-    initialState,
-    createInitialProjectState,
+    initialProjectSnapshot,
+    createProjectState,
   )
   const [appError, setAppError] = useState<string | null>(null)
   const [pdfExportKind, setPdfExportKind] = useState<PdfExportKind | null>(null)
   const [editingLyricsRowId, setEditingLyricsRowId] = useState<string | null>(
     null,
   )
-  const [chordModal, setChordModal] = useState<ChordModalState | null>(null)
   const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
   const [visibleBlockToolbarId, setVisibleBlockToolbarId] = useState<
@@ -333,8 +226,45 @@ function App() {
     '--layout-row-padding-inline': `${layoutRowPaddingInline}px`,
     '--layout-stage-padding-inline': `${layoutStagePaddingInline}px`,
   } as CSSProperties
-
-  const modalDraft = chordModal?.draft ?? null
+  const currentDraftSource: CurrentChordDraftSource = {
+    currentChordName,
+    currentFretting,
+    manualFretCount,
+    manualStartFret,
+    selectedFormId,
+    selectedQuality,
+    selectedRoot,
+  }
+  const {
+    chordModal,
+    closeChordModal: dismissChordModal,
+    handleAddChordModalDraftToStock,
+    handleAddStockChordFromModal,
+    handleChordModalFormChange,
+    handleChordModalManualFretCountChange,
+    handleChordModalManualStartFretChange,
+    handleChordModalNameChange,
+    handleChordModalQualityChange,
+    handleChordModalRootChange,
+    handleChordModalStringStateChange,
+    handleChordModalViewportSync,
+    handleSubmitChordModal,
+    isModalDraftStocked,
+    modalDraft,
+    openEditChordModal: startEditChordModal,
+    openLayoutChordModal: startLayoutChordModal,
+    openStockChordModal: startStockChordModal,
+  } = useChordModalController({
+    blocks,
+    currentDraftSource,
+    layoutRows,
+    onAddLayoutBlockFromDraft: addLayoutBlockFromDraft,
+    onAddStockChordFromDraft: addChordDraftToStock,
+    onAddStockChordToLayout: handleAddStockChordToLayout,
+    onSelectLayoutRow: selectLayoutRow,
+    onUpdateBlockFromDraft: updateBlockFromDraft,
+    stockChords,
+  })
   const modalAvailableForms = modalDraft
     ? getChordForms(modalDraft.selectedRoot, modalDraft.selectedQuality)
     : []
@@ -356,11 +286,6 @@ function App() {
         }))
         .reverse()
     : []
-  const isModalDraftStocked = modalDraft
-    ? stockChords.some((stockChord) =>
-        isSameFretting(stockChord.fretting, modalDraft.fretting),
-      )
-    : false
   const isModalChordStocked =
     chordModal?.kind === 'stock' && isModalDraftStocked
   const showStockAddHint = stockAddHint.visible
@@ -586,7 +511,7 @@ function App() {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setChordModal(null)
+        dismissChordModal()
       }
     }
 
@@ -595,36 +520,35 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [chordModal])
+  }, [chordModal, dismissChordModal])
 
   function createProjectSnapshot(): ProjectSnapshot {
     return cloneProjectSnapshot({
-      selectedRoot,
-      selectedQuality,
-      selectedFormId,
-      currentFretting,
-      currentChordName,
-      layoutRows,
-      stockChords,
       blocks,
-      selectedBlockId,
-      selectedLayoutRowId,
-      manualStartFret,
+      currentChordName,
+      currentFretting,
+      layoutRows,
       manualFretCount,
+      manualStartFret,
+      selectedBlockId,
+      selectedFormId,
+      selectedLayoutRowId,
+      selectedQuality,
+      selectedRoot,
+      stockChords,
     })
   }
 
   function applyProjectSnapshot(snapshot: ProjectSnapshot) {
     const nextSnapshot = cloneProjectSnapshot(snapshot)
 
-    syncProjectSequences(nextSnapshot)
     setEditingLyricsRowId(null)
     hideLayoutHoverHint()
     hideLayoutAddHint()
     hideLayoutRowAddHint()
     hideStockAddHint()
     setVisibleBlockToolbarId(null)
-    setChordModal(null)
+    dismissChordModal()
     dispatchProjectAction({
       type: 'applySnapshot',
       snapshot: nextSnapshot,
@@ -678,220 +602,23 @@ function App() {
     })
   }
 
-  function updateChordModalDraft(
-    updater: (draft: ChordDraftState) => ChordDraftState,
-  ) {
-    setChordModal((currentModal) => {
-      if (!currentModal) {
-        return currentModal
-      }
-
-      return {
-        ...currentModal,
-        draft: updater(currentModal.draft),
-      }
-    })
-  }
-
-  function openStockChordModal() {
-    hideStockAddHint()
-    hideLayoutHoverHint()
-    setVisibleBlockToolbarId(null)
-    setChordModal({
-      kind: 'stock',
-      draft: createChordDraft({
-        currentChordName,
-        currentFretting,
-        manualFretCount,
-        manualStartFret,
-        selectedFormId,
-        selectedQuality,
-        selectedRoot,
-      }),
-    })
-  }
-
-  function openLayoutChordModal(rowId: string) {
-    if (!layoutRows.some((row) => row.id === rowId)) {
-      return
-    }
-
-    dispatchProjectAction({
-      type: 'selectLayoutRow',
-      rowId,
-    })
-    setEditingLyricsRowId(null)
-    hideLayoutAddHint()
-    hideLayoutHoverHint()
-    setVisibleBlockToolbarId(null)
-    setChordModal({
-      kind: 'layout',
-      draft: createChordDraft({
-        currentChordName,
-        currentFretting,
-        manualFretCount,
-        manualStartFret,
-        selectedFormId,
-        selectedQuality,
-        selectedRoot,
-      }),
-      targetRowId: rowId,
-    })
-  }
-
-  function openEditChordModal() {
-    const blockToEdit = blocks.find((block) => block.id === selectedBlockId)
-
-    if (!blockToEdit) {
-      return
-    }
-
-    hideLayoutHoverHint()
-    setVisibleBlockToolbarId(null)
-    setChordModal({
-      blockId: blockToEdit.id,
-      draft: createChordDraftFromBlock(blockToEdit, {
-        selectedFormId,
-        selectedQuality,
-        selectedRoot,
-      }),
-      kind: 'edit',
-    })
-  }
-
-  function handleChordModalRootChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextRoot = event.target.value as PitchClassName
-
-    updateChordModalDraft((draft) => {
-      const nextForms = getChordForms(nextRoot, draft.selectedQuality)
-      const nextForm = nextForms[0]
-      const nextFretting = nextForm
-        ? copyFretting(nextForm.fretting)
-        : draft.fretting
-
-      return syncDraftViewport(
-        {
-          ...draft,
-          selectedFormId: nextForm?.id ?? '',
-          selectedRoot: nextRoot,
-        },
-        nextFretting,
-      )
-    })
-  }
-
-  function handleChordModalQualityChange(
-    event: ChangeEvent<HTMLSelectElement>,
-  ) {
-    const nextQuality = event.target.value as ChordQuality
-
-    updateChordModalDraft((draft) => {
-      const nextForms = getChordForms(draft.selectedRoot, nextQuality)
-      const nextForm = nextForms[0]
-      const nextFretting = nextForm
-        ? copyFretting(nextForm.fretting)
-        : draft.fretting
-
-      return syncDraftViewport(
-        {
-          ...draft,
-          selectedFormId: nextForm?.id ?? '',
-          selectedQuality: nextQuality,
-        },
-        nextFretting,
-      )
-    })
-  }
-
-  function handleChordModalFormChange(event: ChangeEvent<HTMLSelectElement>) {
-    const nextFormId = event.target.value
-
-    updateChordModalDraft((draft) => {
-      const nextForm = getChordForms(
-        draft.selectedRoot,
-        draft.selectedQuality,
-      ).find((form) => form.id === nextFormId)
-
-      if (!nextForm) {
-        return draft
-      }
-
-      return syncDraftViewport(
-        {
-          ...draft,
-          selectedFormId: nextForm.id,
-        },
-        nextForm.fretting,
-      )
-    })
-  }
-
-  function handleChordModalNameChange(event: ChangeEvent<HTMLInputElement>) {
-    const nextName = event.target.value
-
-    updateChordModalDraft((draft) => ({
-      ...draft,
-      chordName: nextName,
-    }))
-  }
-
-  function handleChordModalManualStartFretChange(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    const parsed = Number.parseInt(event.target.value, 10)
-
-    updateChordModalDraft((draft) => ({
-      ...draft,
-      manualStartFret: Number.isNaN(parsed) ? 1 : Math.max(1, parsed),
-    }))
-  }
-
-  function handleChordModalManualFretCountChange(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    const parsed = Number.parseInt(event.target.value, 10)
-
-    updateChordModalDraft((draft) => ({
-      ...draft,
-      manualFretCount: Number.isNaN(parsed)
-        ? MIN_MANUAL_FRET_COUNT
-        : clampManualFretCount(parsed),
-    }))
-  }
-
-  function handleChordModalStringStateChange(
-    stringIndex: number,
-    nextState: StringState,
-  ) {
-    updateChordModalDraft((draft) => {
-      const nextFretting = [...draft.fretting]
-      nextFretting[stringIndex] = nextState
-
-      return {
-        ...draft,
-        fretting: toFretting(nextFretting),
-      }
-    })
-  }
-
-  function handleChordModalViewportSync() {
-    updateChordModalDraft((draft) => syncDraftViewport(draft, draft.fretting))
-  }
-
   function addBlockToLayoutRow(
     rowId: string,
     fretting: Fretting,
     displayName?: string,
   ) {
-    const nextBlock = createChordBlock(copyFretting(fretting), rowId, {
-      displayName: toStoredDisplayName(displayName),
-    })
-
     dispatchProjectAction({
       type: 'addBlock',
-      block: nextBlock,
+      displayName: toStoredDisplayName(displayName),
+      fretting: copyFretting(fretting),
+      rowId,
     })
-    activateBlock(nextBlock)
+  }
+
+  function addLayoutBlockFromDraft(rowId: string, draft: ChordDraftState) {
+    commitChordDraft(draft)
+    addBlockToLayoutRow(rowId, draft.fretting, draft.chordName)
+    setAppError(null)
   }
 
   function addChordDraftToStock(draft: ChordDraftState): boolean {
@@ -906,74 +633,51 @@ function App() {
     commitChordDraft(draft)
     dispatchProjectAction({
       type: 'addStockChord',
-      stockChord: createStockChord(
-        copyFretting(draft.fretting),
-        toStoredDisplayName(draft.chordName),
-      ),
+      displayName: toStoredDisplayName(draft.chordName),
+      fretting: copyFretting(draft.fretting),
     })
     setAppError(null)
     return true
   }
 
-  function closeChordModal() {
-    hideLayoutHoverHint()
-    setVisibleBlockToolbarId(null)
-    setChordModal(null)
-  }
-
-  function handleSubmitChordModal(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    if (!chordModal) {
-      return
-    }
-
-    const { draft } = chordModal
-
-    if (chordModal.kind === 'stock') {
-      if (!addChordDraftToStock(draft)) {
-        return
-      }
-
-      closeChordModal()
-      return
-    }
-
-    if (chordModal.kind === 'layout') {
-      commitChordDraft(draft)
-      setAppError(null)
-      addBlockToLayoutRow(
-        chordModal.targetRowId,
-        draft.fretting,
-        draft.chordName,
-      )
-      closeChordModal()
-      return
-    }
-
-    const blockToEdit = blocks.find((block) => block.id === chordModal.blockId)
-
-    if (!blockToEdit) {
-      closeChordModal()
-      return
-    }
-
+  function updateBlockFromDraft(blockId: string, draft: ChordDraftState) {
     commitChordDraft(draft)
     dispatchProjectAction({
       type: 'updateBlock',
-      blockId: chordModal.blockId,
+      blockId,
       changes: {
         displayName: toStoredDisplayName(draft.chordName),
         fretting: copyFretting(draft.fretting),
       },
     })
     setAppError(null)
-    activateBlock({
-      ...blockToEdit,
-      displayName: toStoredDisplayName(draft.chordName),
-      fretting: copyFretting(draft.fretting),
-    })
-    closeChordModal()
+  }
+
+  function openStockChordModal() {
+    hideStockAddHint()
+    hideLayoutHoverHint()
+    setVisibleBlockToolbarId(null)
+    startStockChordModal()
+  }
+
+  function openLayoutChordModal(rowId: string) {
+    setEditingLyricsRowId(null)
+    hideLayoutAddHint()
+    hideLayoutHoverHint()
+    setVisibleBlockToolbarId(null)
+    startLayoutChordModal(rowId)
+  }
+
+  function openEditChordModal() {
+    hideLayoutHoverHint()
+    setVisibleBlockToolbarId(null)
+    startEditChordModal(selectedBlockId)
+  }
+
+  function closeChordModal() {
+    hideLayoutHoverHint()
+    setVisibleBlockToolbarId(null)
+    dismissChordModal()
   }
 
   function handleLocaleChange(nextLocale: Locale) {
@@ -997,23 +701,7 @@ function App() {
       stockChord.fretting,
       stockChord.displayName,
     )
-  }
-
-  function handleAddStockChordFromModal(stockChordId: string) {
-    if (!chordModal || chordModal.kind !== 'layout') {
-      return
-    }
-
-    handleAddStockChordToLayout(stockChordId, chordModal.targetRowId)
-    closeChordModal()
-  }
-
-  function handleAddChordModalDraftToStock() {
-    if (!chordModal || chordModal.kind !== 'layout') {
-      return
-    }
-
-    addChordDraftToStock(chordModal.draft)
+    setAppError(null)
   }
 
   function handleRemoveStockChord(stockChordId: string) {
@@ -1031,29 +719,11 @@ function App() {
   }
 
   function handleDuplicateBlock() {
-    const nextSelectedBlock = blocks.find((block) => block.id === selectedBlockId)
-
-    if (!nextSelectedBlock) {
-      return
-    }
-
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
-    const nextBlock = createChordBlock(
-      copyFretting(nextSelectedBlock.fretting),
-      activeLayoutRowId,
-      {
-        displayName: nextSelectedBlock.displayName,
-        spacing: nextSelectedBlock.spacing,
-        xOffset: nextSelectedBlock.xOffset,
-      },
-    )
-
     dispatchProjectAction({
       type: 'duplicateSelectedBlock',
-      block: nextBlock,
     })
-    activateBlock(nextBlock)
   }
 
   function handleDeleteBlock(blockId = selectedBlockId) {
@@ -1075,14 +745,12 @@ function App() {
   }
 
   function handleAddLayoutRow() {
-    const nextRow = createLayoutRow()
     hideLayoutAddHint()
     hideLayoutHoverHint()
     hideLayoutRowAddHint()
     setVisibleBlockToolbarId(null)
     dispatchProjectAction({
       type: 'addLayoutRow',
-      row: nextRow,
     })
   }
 
@@ -1418,81 +1086,6 @@ function App() {
       ) : null}
     </main>
   )
-}
-
-function clampManualFretCount(value: number): number {
-  return Math.min(MAX_MANUAL_FRET_COUNT, Math.max(MIN_MANUAL_FRET_COUNT, value))
-}
-
-function createVisibleFrets(startFret: number, fretCount: number): number[] {
-  return Array.from({ length: fretCount }, (_, index) => startFret + index)
-}
-
-function createChordDraft({
-  selectedRoot,
-  selectedQuality,
-  selectedFormId,
-  currentFretting,
-  currentChordName,
-  manualStartFret,
-  manualFretCount,
-}: {
-  selectedRoot: PitchClassName
-  selectedQuality: ChordQuality
-  selectedFormId: string
-  currentFretting: Fretting
-  currentChordName: string
-  manualStartFret: number
-  manualFretCount: number
-}): ChordDraftState {
-  return {
-    chordName: currentChordName,
-    fretting: copyFretting(currentFretting),
-    manualFretCount: clampManualFretCount(manualFretCount),
-    manualStartFret: Math.max(1, manualStartFret),
-    selectedFormId,
-    selectedQuality,
-    selectedRoot,
-  }
-}
-
-function createChordDraftFromBlock(
-  block: ChordBlockState,
-  {
-    selectedRoot,
-    selectedQuality,
-    selectedFormId,
-  }: {
-    selectedRoot: PitchClassName
-    selectedQuality: ChordQuality
-    selectedFormId: string
-  },
-): ChordDraftState {
-  const viewport = summarizeChord(block.fretting).viewport
-
-  return {
-    chordName: block.displayName ?? '',
-    fretting: copyFretting(block.fretting),
-    manualFretCount: clampManualFretCount(viewport.fretCount),
-    manualStartFret: viewport.startFret,
-    selectedFormId,
-    selectedQuality,
-    selectedRoot,
-  }
-}
-
-function syncDraftViewport(
-  draft: ChordDraftState,
-  fretting: Fretting,
-): ChordDraftState {
-  const viewport = summarizeChord(fretting).viewport
-
-  return {
-    ...draft,
-    fretting: copyFretting(fretting),
-    manualFretCount: clampManualFretCount(viewport.fretCount),
-    manualStartFret: viewport.startFret,
-  }
 }
 
 export default App
