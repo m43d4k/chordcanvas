@@ -58,6 +58,7 @@ const LAYOUT_HOVER_HINT_DELAY_MS = 350
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
+const APP_LOGO_SRC = `${import.meta.env.BASE_URL}chordcanvas-logo.svg`
 
 function getProjectImportErrorMessage(error: unknown, text: UiText): string {
   if (error instanceof ProjectFileError) {
@@ -919,7 +920,16 @@ function App() {
     <main className="app-shell">
       <header className="hero">
         <div className="hero-header">
-          <h1>ChordCanvas</h1>
+          <h1 className="hero-brand">
+            <img
+              aria-hidden="true"
+              className="app-logo"
+              height="24"
+              src={APP_LOGO_SRC}
+              width="170"
+            />
+            <span className="visually-hidden">ChordCanvas</span>
+          </h1>
           <div
             aria-label={text.languageToggleGroupLabel}
             className="language-toggle"
