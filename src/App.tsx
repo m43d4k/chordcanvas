@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import type {
   CSSProperties,
   ChangeEvent,
@@ -10,6 +10,16 @@ import {
   exportLayoutStageLongPdf,
   exportLayoutStagePdf,
 } from './export/layoutPdf'
+import { useDelayedToggle } from './hooks/useDelayedToggle'
+import { useDelayedValue } from './hooks/useDelayedValue'
+import { useLayoutOverlayAnchors } from './hooks/useLayoutOverlayAnchors'
+import {
+  LAYOUT_BLOCK_WIDTH,
+  LAYOUT_ROW_PADDING_INLINE,
+  LAYOUT_STAGE_PADDING_INLINE,
+  buildLayoutEntries,
+  calculateDraggedBlockLayout,
+} from './layout/layoutEntries'
 import {
   MINIMUM_DIAGRAM_FRET_COUNT,
   type ChordQuality,
@@ -29,17 +39,12 @@ import {
   type ProjectSnapshot,
   type StockChordState,
 } from './project/projectFile'
+import { projectReducer } from './state/projectReducer'
 import { UI_TEXT, type Locale } from './uiText'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
 const DEFAULT_SPACING = 6
-const LAYOUT_BLOCK_WIDTH = 152
-const LAYOUT_SLOT_WIDTH = LAYOUT_BLOCK_WIDTH
-const LAYOUT_STAGE_MIN_WIDTH = 640
-const LAYOUT_STAGE_PADDING_INLINE = 16
-const LAYOUT_ROW_PADDING_INLINE = 15.2
-const LAYOUT_ADD_BUTTON_WIDTH = 72
 const LAYOUT_HOVER_HINT_DELAY_MS = 350
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
@@ -53,13 +58,6 @@ interface LayoutBlockDragState {
   startSpacing: number
   startClientX: number
   startXOffset: number
-}
-
-interface LayoutOverlayAnchor {
-  height: number
-  left: number
-  top: number
-  width: number
 }
 
 interface ChordDraftState {
@@ -171,55 +169,23 @@ function createInitialAppState() {
   }
 }
 
-function getRowBlockIndices(
-  blocks: readonly ChordBlockState[],
-  rowId: string,
-): number[] {
-  const indices: number[] = []
-
-  blocks.forEach((block, index) => {
-    if (block.rowId === rowId) {
-      indices.push(index)
-    }
-  })
-
-  return indices
-}
-
-function getInsertionIndexForRow(
-  blocks: readonly ChordBlockState[],
-  layoutRows: readonly LayoutRowState[],
-  rowId: string,
-): number {
-  const rowOrder = new Map(layoutRows.map((row, index) => [row.id, index]))
-  const targetRowIndex = rowOrder.get(rowId)
-
-  if (targetRowIndex === undefined) {
-    return blocks.length
+function createInitialProjectState(
+  initialState: ReturnType<typeof createInitialAppState>,
+): ProjectSnapshot {
+  return {
+    selectedRoot: DEFAULT_ROOT,
+    selectedQuality: DEFAULT_QUALITY,
+    selectedFormId: initialState.initialFormId,
+    currentFretting: copyFretting(initialState.initialBlock.fretting),
+    currentChordName: '',
+    layoutRows: [initialState.initialRow],
+    stockChords: [],
+    blocks: [initialState.initialBlock],
+    selectedBlockId: initialState.initialBlock.id,
+    selectedLayoutRowId: initialState.initialRow.id,
+    manualStartFret: initialState.initialManualViewport.startFret,
+    manualFretCount: initialState.initialManualViewport.fretCount,
   }
-
-  let insertionIndex = 0
-  let hasPreviousBlock = false
-
-  blocks.forEach((block, index) => {
-    const blockRowIndex = rowOrder.get(block.rowId)
-
-    if (blockRowIndex !== undefined && blockRowIndex <= targetRowIndex) {
-      insertionIndex = index + 1
-      hasPreviousBlock = true
-    }
-  })
-
-  if (hasPreviousBlock) {
-    return insertionIndex
-  }
-
-  const nextRowBlockIndex = blocks.findIndex((block) => {
-    const blockRowIndex = rowOrder.get(block.rowId)
-    return blockRowIndex !== undefined && blockRowIndex > targetRowIndex
-  })
-
-  return nextRowBlockIndex < 0 ? blocks.length : nextRowBlockIndex
 }
 
 function getNextSequenceValue(
@@ -276,35 +242,10 @@ function App() {
   const lyricsInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const projectFileInputRef = useRef<HTMLInputElement | null>(null)
   const [locale, setLocale] = useState<Locale>('ja')
-
-  const [selectedRoot, setSelectedRoot] = useState<PitchClassName>(DEFAULT_ROOT)
-  const [selectedQuality, setSelectedQuality] =
-    useState<ChordQuality>(DEFAULT_QUALITY)
-  const [selectedFormId, setSelectedFormId] = useState(
-    initialState.initialFormId,
-  )
-  const [currentFretting, setCurrentFretting] = useState<Fretting>(() =>
-    copyFretting(initialState.initialBlock.fretting),
-  )
-  const [currentChordName, setCurrentChordName] = useState('')
-  const [layoutRows, setLayoutRows] = useState<LayoutRowState[]>(() => [
-    initialState.initialRow,
-  ])
-  const [stockChords, setStockChords] = useState<StockChordState[]>([])
-  const [blocks, setBlocks] = useState<ChordBlockState[]>(() => [
-    initialState.initialBlock,
-  ])
-  const [selectedBlockId, setSelectedBlockId] = useState(
-    initialState.initialBlock.id,
-  )
-  const [selectedLayoutRowId, setSelectedLayoutRowId] = useState(
-    initialState.initialRow.id,
-  )
-  const [manualStartFret, setManualStartFret] = useState(
-    initialState.initialManualViewport.startFret,
-  )
-  const [manualFretCount, setManualFretCount] = useState(
-    initialState.initialManualViewport.fretCount,
+  const [projectState, dispatchProjectAction] = useReducer(
+    projectReducer,
+    initialState,
+    createInitialProjectState,
   )
   const [appError, setAppError] = useState<string | null>(null)
   const [pdfExportKind, setPdfExportKind] = useState<PdfExportKind | null>(null)
@@ -313,38 +254,30 @@ function App() {
   )
   const [chordModal, setChordModal] = useState<ChordModalState | null>(null)
   const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
-  const stockAddHintTimeoutRef = useRef<ReturnType<
-    typeof window.setTimeout
-  > | null>(null)
-  const layoutHoverHintTimeoutRef = useRef<ReturnType<
-    typeof window.setTimeout
-  > | null>(null)
-  const layoutAddHintTimeoutRef = useRef<ReturnType<
-    typeof window.setTimeout
-  > | null>(null)
-  const layoutRowAddHintTimeoutRef = useRef<ReturnType<
-    typeof window.setTimeout
-  > | null>(null)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
   const [visibleBlockToolbarId, setVisibleBlockToolbarId] = useState<
     string | null
   >(null)
-  const [showStockAddHint, setShowStockAddHint] = useState(false)
-  const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null)
-  const [hoveredLayoutAddRowId, setHoveredLayoutAddRowId] = useState<
-    string | null
-  >(null)
-  const [showLayoutRowAddHint, setShowLayoutRowAddHint] = useState(false)
-  const [layoutToolbarAnchor, setLayoutToolbarAnchor] =
-    useState<LayoutOverlayAnchor | null>(null)
-  const [layoutHintAnchor, setLayoutHintAnchor] =
-    useState<LayoutOverlayAnchor | null>(null)
-  const [layoutAddHintAnchor, setLayoutAddHintAnchor] =
-    useState<LayoutOverlayAnchor | null>(null)
-  const [layoutRowAddHintAnchor, setLayoutRowAddHintAnchor] =
-    useState<LayoutOverlayAnchor | null>(null)
+  const stockAddHint = useDelayedToggle(LAYOUT_HOVER_HINT_DELAY_MS)
+  const layoutHoverHint = useDelayedValue<string>(LAYOUT_HOVER_HINT_DELAY_MS)
+  const layoutAddHint = useDelayedValue<string>(LAYOUT_HOVER_HINT_DELAY_MS)
+  const layoutRowAddHint = useDelayedToggle(LAYOUT_HOVER_HINT_DELAY_MS)
   const text = UI_TEXT[locale]
   const isExportingPdf = pdfExportKind !== null
+  const {
+    blocks,
+    currentChordName,
+    currentFretting,
+    layoutRows,
+    manualFretCount,
+    manualStartFret,
+    selectedBlockId,
+    selectedFormId,
+    selectedLayoutRowId,
+    selectedQuality,
+    selectedRoot,
+    stockChords,
+  } = projectState
 
   const selectedBlock =
     blocks.find((block) => block.id === selectedBlockId) ?? blocks[0]
@@ -364,7 +297,6 @@ function App() {
   const activeLayoutRowId = activeLayoutRow.id
   const selectedLayoutRow =
     layoutRows.find((row) => row.id === selectedLayoutRowId) ?? activeLayoutRow
-  const selectedBlockRowId = selectedBlock.rowId
   const activeRowBlockIds = blocks
     .filter((block) => block.rowId === activeLayoutRowId)
     .map((block) => block.id)
@@ -431,6 +363,30 @@ function App() {
     : false
   const isModalChordStocked =
     chordModal?.kind === 'stock' && isModalDraftStocked
+  const showStockAddHint = stockAddHint.visible
+  const hoveredBlockId = layoutHoverHint.value
+  const hoveredLayoutAddRowId = layoutAddHint.value
+  const shouldShowLayoutRowAddHint =
+    !isExportingPdf && !draggingBlockId && layoutRowAddHint.visible
+  const {
+    layoutAddHintAnchor,
+    layoutHintAnchor,
+    layoutRowAddHintAnchor,
+    layoutToolbarAnchor,
+  } = useLayoutOverlayAnchors({
+    addButtonRefs: layoutAddButtonRefs,
+    blocks,
+    frameRef: layoutStageFrameRef,
+    hoveredBlockId,
+    hoveredLayoutAddRowId,
+    layoutRows,
+    rowAddButtonRef: layoutRowAddButtonRef,
+    selectedBlockId,
+    shouldShowLayoutRowAddHint,
+    stageRef: layoutStageRef,
+    visibleBlockToolbarId,
+    wrapperRef: layoutStageWrapperRef,
+  })
   const showLayoutHoverHint =
     !isExportingPdf &&
     !visibleBlockToolbarId &&
@@ -442,131 +398,53 @@ function App() {
     !draggingBlockId &&
     !!hoveredLayoutAddRowId &&
     !!layoutAddHintAnchor
-  const shouldShowLayoutRowAddHint =
-    !isExportingPdf && !draggingBlockId && showLayoutRowAddHint
-
-  function clearLayoutHoverHintTimeout() {
-    const timeoutId = layoutHoverHintTimeoutRef.current
-
-    if (timeoutId === null) {
-      return
-    }
-
-    window.clearTimeout(timeoutId)
-    layoutHoverHintTimeoutRef.current = null
-  }
 
   function hideLayoutHoverHint(blockId?: string) {
-    clearLayoutHoverHintTimeout()
-    setHoveredBlockId((currentId) =>
-      blockId && currentId !== blockId ? currentId : null,
-    )
+    layoutHoverHint.hide(blockId)
   }
 
   function showLayoutHoverHintImmediately(blockId: string) {
-    clearLayoutHoverHintTimeout()
-    setHoveredBlockId(blockId)
+    layoutHoverHint.showImmediately(blockId)
   }
 
   function scheduleLayoutHoverHint(blockId: string) {
-    clearLayoutHoverHintTimeout()
-    setHoveredBlockId((currentId) => (currentId === blockId ? currentId : null))
-    layoutHoverHintTimeoutRef.current = window.setTimeout(() => {
-      setHoveredBlockId(blockId)
-      layoutHoverHintTimeoutRef.current = null
-    }, LAYOUT_HOVER_HINT_DELAY_MS)
-  }
-
-  function clearStockAddHintTimeout() {
-    const timeoutId = stockAddHintTimeoutRef.current
-
-    if (timeoutId === null) {
-      return
-    }
-
-    window.clearTimeout(timeoutId)
-    stockAddHintTimeoutRef.current = null
+    layoutHoverHint.scheduleShow(blockId)
   }
 
   function hideStockAddHint() {
-    clearStockAddHintTimeout()
-    setShowStockAddHint(false)
+    stockAddHint.hide()
   }
 
   function showStockAddHintImmediately() {
-    clearStockAddHintTimeout()
-    setShowStockAddHint(true)
+    stockAddHint.showImmediately()
   }
 
   function scheduleStockAddHint() {
-    clearStockAddHintTimeout()
-    setShowStockAddHint(false)
-    stockAddHintTimeoutRef.current = window.setTimeout(() => {
-      setShowStockAddHint(true)
-      stockAddHintTimeoutRef.current = null
-    }, LAYOUT_HOVER_HINT_DELAY_MS)
-  }
-
-  function clearLayoutRowAddHintTimeout() {
-    const timeoutId = layoutRowAddHintTimeoutRef.current
-
-    if (timeoutId === null) {
-      return
-    }
-
-    window.clearTimeout(timeoutId)
-    layoutRowAddHintTimeoutRef.current = null
+    stockAddHint.scheduleShow()
   }
 
   function hideLayoutRowAddHint() {
-    clearLayoutRowAddHintTimeout()
-    setShowLayoutRowAddHint(false)
+    layoutRowAddHint.hide()
   }
 
   function showLayoutRowAddHintImmediately() {
-    clearLayoutRowAddHintTimeout()
-    setShowLayoutRowAddHint(true)
+    layoutRowAddHint.showImmediately()
   }
 
   function scheduleLayoutRowAddHint() {
-    clearLayoutRowAddHintTimeout()
-    setShowLayoutRowAddHint(false)
-    layoutRowAddHintTimeoutRef.current = window.setTimeout(() => {
-      setShowLayoutRowAddHint(true)
-      layoutRowAddHintTimeoutRef.current = null
-    }, LAYOUT_HOVER_HINT_DELAY_MS)
-  }
-
-  function clearLayoutAddHintTimeout() {
-    const timeoutId = layoutAddHintTimeoutRef.current
-
-    if (timeoutId === null) {
-      return
-    }
-
-    window.clearTimeout(timeoutId)
-    layoutAddHintTimeoutRef.current = null
+    layoutRowAddHint.scheduleShow()
   }
 
   function hideLayoutAddHint(rowId?: string) {
-    clearLayoutAddHintTimeout()
-    setHoveredLayoutAddRowId((currentId) =>
-      rowId && currentId !== rowId ? currentId : null,
-    )
+    layoutAddHint.hide(rowId)
   }
 
   function showLayoutAddHintImmediately(rowId: string) {
-    clearLayoutAddHintTimeout()
-    setHoveredLayoutAddRowId(rowId)
+    layoutAddHint.showImmediately(rowId)
   }
 
   function scheduleLayoutAddHint(rowId: string) {
-    clearLayoutAddHintTimeout()
-    setHoveredLayoutAddRowId((currentId) => (currentId === rowId ? currentId : null))
-    layoutAddHintTimeoutRef.current = window.setTimeout(() => {
-      setHoveredLayoutAddRowId(rowId)
-      layoutAddHintTimeoutRef.current = null
-    }, LAYOUT_HOVER_HINT_DELAY_MS)
+    layoutAddHint.scheduleShow(rowId)
   }
 
   useEffect(() => {
@@ -585,39 +463,6 @@ function App() {
     input.setSelectionRange(textLength, textLength)
   }, [editingLyricsRowId])
 
-  useEffect(
-    () => () => {
-      const stockAddHintTimeoutId = stockAddHintTimeoutRef.current
-
-      if (stockAddHintTimeoutId !== null) {
-        window.clearTimeout(stockAddHintTimeoutId)
-        stockAddHintTimeoutRef.current = null
-      }
-
-      const layoutHoverHintTimeoutId = layoutHoverHintTimeoutRef.current
-
-      if (layoutHoverHintTimeoutId !== null) {
-        window.clearTimeout(layoutHoverHintTimeoutId)
-        layoutHoverHintTimeoutRef.current = null
-      }
-
-      const layoutAddHintTimeoutId = layoutAddHintTimeoutRef.current
-
-      if (layoutAddHintTimeoutId !== null) {
-        window.clearTimeout(layoutAddHintTimeoutId)
-        layoutAddHintTimeoutRef.current = null
-      }
-
-      const layoutRowAddHintTimeoutId = layoutRowAddHintTimeoutRef.current
-
-      if (layoutRowAddHintTimeoutId !== null) {
-        window.clearTimeout(layoutRowAddHintTimeoutId)
-        layoutRowAddHintTimeoutRef.current = null
-      }
-    },
-    [],
-  )
-
   useEffect(() => {
     if (!draggingBlockId) {
       return
@@ -630,26 +475,23 @@ function App() {
         return
       }
 
-      const deltaX = Math.round(event.clientX - dragState.startClientX)
-      const appliedDeltaX =
-        Math.max(dragState.minXOffset, dragState.startXOffset + deltaX) -
-        dragState.startXOffset
-      const nextXOffset = dragState.startXOffset + appliedDeltaX
-      const nextSpacing = dragState.hasFollowingBlock
-        ? appliedDeltaX > 0
-          ? Math.max(0, dragState.startSpacing - appliedDeltaX)
-          : dragState.startSpacing
-        : dragState.startSpacing
+      const { nextSpacing, nextXOffset } = calculateDraggedBlockLayout({
+        clientX: event.clientX,
+        hasFollowingBlock: dragState.hasFollowingBlock,
+        minXOffset: dragState.minXOffset,
+        startClientX: dragState.startClientX,
+        startSpacing: dragState.startSpacing,
+        startXOffset: dragState.startXOffset,
+      })
 
-      updateBlockById(dragState.blockId, (block) =>
-        block.xOffset === nextXOffset && block.spacing === nextSpacing
-          ? block
-          : {
-              ...block,
-              xOffset: nextXOffset,
-              spacing: nextSpacing,
-            },
-      )
+      dispatchProjectAction({
+        type: 'updateBlock',
+        blockId: dragState.blockId,
+        changes: {
+          spacing: nextSpacing,
+          xOffset: nextXOffset,
+        },
+      })
     }
 
     function finishDragging(event: PointerEvent) {
@@ -723,9 +565,9 @@ function App() {
     }
 
     if (!blocks.some((block) => block.id === hoveredBlockId)) {
-      setHoveredBlockId(null)
+      layoutHoverHint.setValue(null)
     }
-  }, [blocks, hoveredBlockId])
+  }, [blocks, hoveredBlockId, layoutHoverHint])
 
   useEffect(() => {
     if (!hoveredLayoutAddRowId) {
@@ -733,98 +575,9 @@ function App() {
     }
 
     if (!layoutRows.some((row) => row.id === hoveredLayoutAddRowId)) {
-      setHoveredLayoutAddRowId(null)
+      layoutAddHint.setValue(null)
     }
-  }, [hoveredLayoutAddRowId, layoutRows])
-
-  useLayoutEffect(() => {
-    function getLayoutOverlayAnchorForElement(
-      element: HTMLElement | null,
-    ): LayoutOverlayAnchor | null {
-      if (!element) {
-        return null
-      }
-
-      const frameElement = layoutStageFrameRef.current
-
-      if (!frameElement) {
-        return null
-      }
-
-      const frameRect = frameElement.getBoundingClientRect()
-      const elementRect = element.getBoundingClientRect()
-
-      return {
-        height: elementRect.height,
-        left: elementRect.left - frameRect.left,
-        top: elementRect.top - frameRect.top,
-        width: elementRect.width,
-      }
-    }
-
-    function getLayoutOverlayAnchor(
-      blockId: string | null,
-    ): LayoutOverlayAnchor | null {
-      if (!blockId) {
-        return null
-      }
-
-      return getLayoutOverlayAnchorForElement(
-        layoutStageRef.current?.querySelector<HTMLElement>(
-          `[data-layout-block-id="${blockId}"]`,
-        ) ?? null,
-      )
-    }
-
-    function updateLayoutOverlayAnchors() {
-      setLayoutToolbarAnchor(getLayoutOverlayAnchor(visibleBlockToolbarId))
-      setLayoutHintAnchor(getLayoutOverlayAnchor(hoveredBlockId))
-      setLayoutAddHintAnchor(
-        hoveredLayoutAddRowId
-          ? getLayoutOverlayAnchorForElement(
-              layoutAddButtonRefs.current[hoveredLayoutAddRowId] ?? null,
-            )
-          : null,
-      )
-      setLayoutRowAddHintAnchor(
-        shouldShowLayoutRowAddHint
-          ? getLayoutOverlayAnchorForElement(layoutRowAddButtonRef.current)
-          : null,
-      )
-    }
-
-    updateLayoutOverlayAnchors()
-
-    if (
-      !visibleBlockToolbarId &&
-      !hoveredBlockId &&
-      !hoveredLayoutAddRowId &&
-      !shouldShowLayoutRowAddHint
-    ) {
-      return
-    }
-
-    const wrapperElement = layoutStageWrapperRef.current
-
-    window.addEventListener('resize', updateLayoutOverlayAnchors)
-    wrapperElement?.addEventListener('scroll', updateLayoutOverlayAnchors, {
-      passive: true,
-    })
-
-    return () => {
-      window.removeEventListener('resize', updateLayoutOverlayAnchors)
-      wrapperElement?.removeEventListener('scroll', updateLayoutOverlayAnchors)
-    }
-  }, [
-    blocks,
-    draggingBlockId,
-    hoveredBlockId,
-    hoveredLayoutAddRowId,
-    layoutRows,
-    selectedBlockId,
-    shouldShowLayoutRowAddHint,
-    visibleBlockToolbarId,
-  ])
+  }, [hoveredLayoutAddRowId, layoutRows, layoutAddHint])
 
   useEffect(() => {
     if (!chordModal) {
@@ -867,28 +620,25 @@ function App() {
     syncProjectSequences(nextSnapshot)
     setEditingLyricsRowId(null)
     hideLayoutHoverHint()
+    hideLayoutAddHint()
+    hideLayoutRowAddHint()
+    hideStockAddHint()
     setVisibleBlockToolbarId(null)
     setChordModal(null)
-    setSelectedRoot(nextSnapshot.selectedRoot)
-    setSelectedQuality(nextSnapshot.selectedQuality)
-    setSelectedFormId(nextSnapshot.selectedFormId)
-    setCurrentFretting(nextSnapshot.currentFretting)
-    setCurrentChordName(nextSnapshot.currentChordName)
-    setLayoutRows(nextSnapshot.layoutRows)
-    setStockChords(nextSnapshot.stockChords)
-    setBlocks(nextSnapshot.blocks)
-    setSelectedBlockId(nextSnapshot.selectedBlockId)
-    setSelectedLayoutRowId(nextSnapshot.selectedLayoutRowId)
-    setManualStartFret(Math.max(1, nextSnapshot.manualStartFret))
-    setManualFretCount(clampManualFretCount(nextSnapshot.manualFretCount))
+    dispatchProjectAction({
+      type: 'applySnapshot',
+      snapshot: nextSnapshot,
+    })
   }
 
   function activateBlock(
     block: ChordBlockState,
     { revealToolbar = false }: { revealToolbar?: boolean } = {},
   ) {
-    setSelectedBlockId(block.id)
-    setSelectedLayoutRowId(block.rowId)
+    dispatchProjectAction({
+      type: 'activateBlock',
+      blockId: block.id,
+    })
     setEditingLyricsRowId(null)
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(revealToolbar ? block.id : null)
@@ -899,7 +649,10 @@ function App() {
       return
     }
 
-    setSelectedLayoutRowId(rowId)
+    dispatchProjectAction({
+      type: 'selectLayoutRow',
+      rowId,
+    })
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
   }
@@ -909,31 +662,20 @@ function App() {
       return
     }
 
-    setSelectedLayoutRowId(rowId)
+    dispatchProjectAction({
+      type: 'selectLayoutRow',
+      rowId,
+    })
     setEditingLyricsRowId(rowId)
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
   }
 
-  function updateBlockById(
-    blockId: string,
-    updater: (block: ChordBlockState) => ChordBlockState,
-  ) {
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.id === blockId ? updater(block) : block,
-      ),
-    )
-  }
-
   function commitChordDraft(draft: ChordDraftState) {
-    setSelectedRoot(draft.selectedRoot)
-    setSelectedQuality(draft.selectedQuality)
-    setSelectedFormId(draft.selectedFormId)
-    setCurrentFretting(copyFretting(draft.fretting))
-    setCurrentChordName(draft.chordName)
-    setManualStartFret(Math.max(1, draft.manualStartFret))
-    setManualFretCount(clampManualFretCount(draft.manualFretCount))
+    dispatchProjectAction({
+      type: 'commitDraft',
+      draft,
+    })
   }
 
   function updateChordModalDraft(
@@ -974,7 +716,10 @@ function App() {
       return
     }
 
-    setSelectedLayoutRowId(rowId)
+    dispatchProjectAction({
+      type: 'selectLayoutRow',
+      rowId,
+    })
     setEditingLyricsRowId(null)
     hideLayoutAddHint()
     hideLayoutHoverHint()
@@ -1142,18 +887,9 @@ function App() {
       displayName: toStoredDisplayName(displayName),
     })
 
-    setBlocks((currentBlocks) => {
-      const insertionIndex = getInsertionIndexForRow(
-        currentBlocks,
-        layoutRows,
-        rowId,
-      )
-
-      return [
-        ...currentBlocks.slice(0, insertionIndex),
-        nextBlock,
-        ...currentBlocks.slice(insertionIndex),
-      ]
+    dispatchProjectAction({
+      type: 'addBlock',
+      block: nextBlock,
     })
     activateBlock(nextBlock)
   }
@@ -1168,22 +904,12 @@ function App() {
     }
 
     commitChordDraft(draft)
-    setStockChords((currentStockChords) => {
-      if (
-        currentStockChords.some((stockChord) =>
-          isSameFretting(stockChord.fretting, draft.fretting),
-        )
-      ) {
-        return currentStockChords
-      }
-
-      return [
-        ...currentStockChords,
-        createStockChord(
-          copyFretting(draft.fretting),
-          toStoredDisplayName(draft.chordName),
-        ),
-      ]
+    dispatchProjectAction({
+      type: 'addStockChord',
+      stockChord: createStockChord(
+        copyFretting(draft.fretting),
+        toStoredDisplayName(draft.chordName),
+      ),
     })
     setAppError(null)
     return true
@@ -1233,11 +959,14 @@ function App() {
     }
 
     commitChordDraft(draft)
-    updateBlockById(chordModal.blockId, (block) => ({
-      ...block,
-      displayName: toStoredDisplayName(draft.chordName),
-      fretting: copyFretting(draft.fretting),
-    }))
+    dispatchProjectAction({
+      type: 'updateBlock',
+      blockId: chordModal.blockId,
+      changes: {
+        displayName: toStoredDisplayName(draft.chordName),
+        fretting: copyFretting(draft.fretting),
+      },
+    })
     setAppError(null)
     activateBlock({
       ...blockToEdit,
@@ -1294,19 +1023,17 @@ function App() {
       return
     }
 
-    setStockChords((currentStockChords) =>
-      currentStockChords.filter((entry) => entry.id !== stockChordId),
-    )
+    dispatchProjectAction({
+      type: 'removeStockChord',
+      stockChordId,
+    })
     setAppError(null)
   }
 
   function handleDuplicateBlock() {
-    const selectedIndex = blocks.findIndex(
-      (block) => block.id === selectedBlockId,
-    )
-    const nextSelectedBlock = blocks[selectedIndex]
+    const nextSelectedBlock = blocks.find((block) => block.id === selectedBlockId)
 
-    if (selectedIndex < 0 || !nextSelectedBlock) {
+    if (!nextSelectedBlock) {
       return
     }
 
@@ -1322,89 +1049,28 @@ function App() {
       },
     )
 
-    setBlocks((currentBlocks) => {
-      const before = currentBlocks.slice(0, selectedIndex + 1)
-      const after = currentBlocks.slice(selectedIndex + 1)
-      return [...before, nextBlock, ...after]
+    dispatchProjectAction({
+      type: 'duplicateSelectedBlock',
+      block: nextBlock,
     })
     activateBlock(nextBlock)
   }
 
   function handleDeleteBlock(blockId = selectedBlockId) {
-    if (blocks.length === 1) {
-      return
-    }
-
-    const blockIndex = blocks.findIndex((block) => block.id === blockId)
-
-    if (blockIndex < 0) {
-      return
-    }
-
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
-    const nextBlocks = blocks.filter((block) => block.id !== blockId)
-
-    if (blockId !== selectedBlockId) {
-      setBlocks(nextBlocks)
-      return
-    }
-
-    const fallbackIndex = Math.max(0, blockIndex - 1)
-    const fallbackBlock = nextBlocks[fallbackIndex] ?? nextBlocks[0]
-
-    if (!fallbackBlock) {
-      return
-    }
-
-    setBlocks(nextBlocks)
-    setSelectedBlockId(fallbackBlock.id)
-    setSelectedLayoutRowId(fallbackBlock.rowId)
+    dispatchProjectAction({
+      type: 'deleteBlock',
+      blockId,
+    })
   }
 
   function handleMoveBlock(direction: -1 | 1) {
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
-    setBlocks((currentBlocks) => {
-      const currentIndex = currentBlocks.findIndex(
-        (block) => block.id === selectedBlockId,
-      )
-
-      if (currentIndex < 0) {
-        return currentBlocks
-      }
-
-      const rowBlockIndices = getRowBlockIndices(
-        currentBlocks,
-        activeLayoutRowId,
-      )
-      const currentRowIndex = rowBlockIndices.findIndex(
-        (index) => index === currentIndex,
-      )
-      const nextRowIndex = currentRowIndex + direction
-
-      if (nextRowIndex < 0 || nextRowIndex >= rowBlockIndices.length) {
-        return currentBlocks
-      }
-
-      const nextIndex = rowBlockIndices[nextRowIndex]
-
-      if (nextIndex === undefined) {
-        return currentBlocks
-      }
-
-      const nextBlocks = [...currentBlocks]
-      const currentBlock = nextBlocks[currentIndex]
-      const swapBlock = nextBlocks[nextIndex]
-
-      if (!currentBlock || !swapBlock) {
-        return currentBlocks
-      }
-
-      nextBlocks[currentIndex] = swapBlock
-      nextBlocks[nextIndex] = currentBlock
-
-      return nextBlocks
+    dispatchProjectAction({
+      type: 'moveSelectedBlock',
+      direction,
     })
   }
 
@@ -1414,46 +1080,20 @@ function App() {
     hideLayoutHoverHint()
     hideLayoutRowAddHint()
     setVisibleBlockToolbarId(null)
-    setLayoutRows((currentRows) => [...currentRows, nextRow])
-    setSelectedLayoutRowId(nextRow.id)
+    dispatchProjectAction({
+      type: 'addLayoutRow',
+      row: nextRow,
+    })
   }
 
   function handleDeleteLayoutRow(rowId: string) {
-    if (layoutRows.length === 1) {
-      return
-    }
-
-    const selectedRowIndex = layoutRows.findIndex((row) => row.id === rowId)
-    const rowToRemove = layoutRows[selectedRowIndex]
-    const fallbackRow =
-      layoutRows[selectedRowIndex - 1] ?? layoutRows[selectedRowIndex + 1]
-
-    if (!rowToRemove || !fallbackRow) {
-      return
-    }
-
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
-    setLayoutRows((currentRows) =>
-      currentRows.filter((row) => row.id !== rowToRemove.id),
-    )
-    setBlocks((currentBlocks) =>
-      currentBlocks.map((block) =>
-        block.rowId === rowToRemove.id
-          ? {
-              ...block,
-              rowId: fallbackRow.id,
-            }
-          : block,
-      ),
-    )
-    if (
-      selectedLayoutRowId === rowToRemove.id ||
-      selectedBlockRowId === rowToRemove.id
-    ) {
-      setSelectedLayoutRowId(fallbackRow.id)
-    }
-    if (editingLyricsRowId === rowToRemove.id) {
+    dispatchProjectAction({
+      type: 'deleteLayoutRow',
+      rowId,
+    })
+    if (editingLyricsRowId === rowId) {
       setEditingLyricsRowId(null)
     }
   }
@@ -1464,11 +1104,11 @@ function App() {
   ) {
     const nextLyrics = event.target.value
 
-    setLayoutRows((currentRows) =>
-      currentRows.map((row) =>
-        row.id === rowId ? { ...row, lyrics: nextLyrics } : row,
-      ),
-    )
+    dispatchProjectAction({
+      type: 'updateLyrics',
+      lyrics: nextLyrics,
+      rowId,
+    })
   }
 
   function handleLayoutBlockPointerDown(
@@ -2248,79 +1888,6 @@ function syncDraftViewport(
     fretting: copyFretting(fretting),
     manualFretCount: clampManualFretCount(viewport.fretCount),
     manualStartFret: viewport.startFret,
-  }
-}
-
-function buildLayoutEntries(
-  layoutRows: readonly LayoutRowState[],
-  blocks: readonly ChordBlockState[],
-  {
-    rowPaddingInline = LAYOUT_ROW_PADDING_INLINE,
-    stagePaddingInline = LAYOUT_STAGE_PADDING_INLINE,
-  }: {
-    rowPaddingInline?: number
-    stagePaddingInline?: number
-  } = {},
-) {
-  const rows = layoutRows.map((row) => {
-    let cursor = stagePaddingInline
-    let nextFlowLeft = stagePaddingInline
-    let minLeft = 0
-    const entries = blocks
-      .filter((block) => block.rowId === row.id)
-      .map((block) => {
-        const summary = summarizeChord(block.fretting)
-        const displayName = getDisplayName(
-          summary.currentName,
-          block.displayName,
-        )
-        const flowLeft = Math.max(cursor, nextFlowLeft)
-        const minXOffset = minLeft - flowLeft
-        const left = Math.max(minLeft, flowLeft + block.xOffset)
-        minLeft = left + LAYOUT_BLOCK_WIDTH
-        nextFlowLeft = minLeft + block.spacing
-        cursor += LAYOUT_SLOT_WIDTH + block.spacing
-
-        return {
-          block,
-          summary,
-          displayName,
-          hasFollowingBlock: false,
-          left,
-          minXOffset,
-        }
-      })
-
-    entries.forEach((entry, index) => {
-      entry.hasFollowingBlock = index < entries.length - 1
-    })
-
-    const addButtonLeft = Math.max(cursor, nextFlowLeft)
-    const chordLayerWidth = Math.max(
-      cursor,
-      nextFlowLeft + LAYOUT_ADD_BUTTON_WIDTH,
-    )
-    const chordStageWidth =
-      chordLayerWidth + rowPaddingInline * 2 + stagePaddingInline * 2
-    const lyricStageWidth = Math.max(
-      LAYOUT_STAGE_MIN_WIDTH,
-      row.lyrics.length * 11 + 80,
-    )
-
-    return {
-      row,
-      addButtonLeft,
-      entries,
-      stageWidth: Math.max(chordStageWidth, lyricStageWidth),
-    }
-  })
-
-  return {
-    rows,
-    stageWidth: rows.reduce(
-      (maxWidth, rowEntry) => Math.max(maxWidth, rowEntry.stageWidth),
-      LAYOUT_STAGE_MIN_WIDTH,
-    ),
   }
 }
 

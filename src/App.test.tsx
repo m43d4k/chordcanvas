@@ -123,6 +123,7 @@ import {
   serializeProjectFile,
   type ProjectSnapshot,
 } from './project/projectFile'
+import { UI_TEXT } from './uiText'
 
 afterEach(() => {
   cleanup()
@@ -957,7 +958,7 @@ describe('App', () => {
 
     const dialog = openStockModal()
 
-    fireEvent.change(within(dialog).getByLabelText('Manual start fret'), {
+    fireEvent.change(within(dialog).getByLabelText(UI_TEXT.ja.startFret), {
       target: { value: '5' },
     })
     fireEvent.click(
@@ -1358,16 +1359,18 @@ describe('App', () => {
 
     const stockDialog = openStockModal()
 
-    expect(within(stockDialog).getByLabelText('Root')).toHaveValue('A')
-    expect(within(stockDialog).getByLabelText('Chord quality')).toHaveValue(
-      'minor',
+    expect(within(stockDialog).getByLabelText(UI_TEXT.ja.rootNote)).toHaveValue(
+      'A',
     )
-    expect(within(stockDialog).getByLabelText('Manual start fret')).toHaveValue(
-      5,
-    )
-    expect(within(stockDialog).getByLabelText('Manual fret count')).toHaveValue(
-      5,
-    )
+    expect(
+      within(stockDialog).getByLabelText(UI_TEXT.ja.chordQuality),
+    ).toHaveValue('minor')
+    expect(
+      within(stockDialog).getByLabelText(UI_TEXT.ja.startFret),
+    ).toHaveValue(5)
+    expect(
+      within(stockDialog).getByLabelText(UI_TEXT.ja.visibleFretCount),
+    ).toHaveValue(5)
     expect(within(stockDialog).getByLabelText('任意コード名')).toHaveValue(
       'Verse Am',
     )

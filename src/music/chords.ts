@@ -13,91 +13,148 @@ export const PITCH_CLASSES = [
   'B',
 ] as const
 
-export const CHORD_INTERVALS = {
-  major: [0, 4, 7],
-  minor: [0, 3, 7],
-  '5': [0, 7],
-  sus2: [0, 2, 7],
-  sus4: [0, 5, 7],
-  dim: [0, 3, 6],
-  aug: [0, 4, 8],
-  '6': [0, 4, 7, 9],
-  m6: [0, 3, 7, 9],
-  '7': [0, 4, 7, 10],
-  maj7: [0, 4, 7, 11],
-  m7: [0, 3, 7, 10],
-  m7b5: [0, 3, 6, 10],
-  dim7: [0, 3, 6, 9],
-  add9: [0, 4, 7, 14],
-  maj9: [0, 4, 7, 11, 14],
-  m9: [0, 3, 7, 10, 14],
-  '7sus4': [0, 5, 7, 10],
+const CHORD_DEFINITIONS = {
+  major: {
+    intervals: [0, 4, 7],
+    label: 'major',
+    priority: 0,
+    symbol: '',
+  },
+  minor: {
+    intervals: [0, 3, 7],
+    label: 'minor',
+    priority: 1,
+    symbol: 'm',
+  },
+  '5': {
+    intervals: [0, 7],
+    label: '5',
+    priority: 2,
+    symbol: '5',
+  },
+  sus2: {
+    intervals: [0, 2, 7],
+    label: 'sus2',
+    priority: 3,
+    symbol: 'sus2',
+  },
+  sus4: {
+    intervals: [0, 5, 7],
+    label: 'sus4',
+    priority: 4,
+    symbol: 'sus4',
+  },
+  dim: {
+    intervals: [0, 3, 6],
+    label: 'dim',
+    priority: 12,
+    symbol: 'dim',
+  },
+  aug: {
+    intervals: [0, 4, 8],
+    label: 'aug',
+    priority: 13,
+    symbol: 'aug',
+  },
+  '6': {
+    intervals: [0, 4, 7, 9],
+    label: '6',
+    priority: 5,
+    symbol: '6',
+  },
+  m6: {
+    intervals: [0, 3, 7, 9],
+    label: 'm6',
+    priority: 6,
+    symbol: 'm6',
+  },
+  '7': {
+    intervals: [0, 4, 7, 10],
+    label: '7',
+    priority: 7,
+    symbol: '7',
+  },
+  maj7: {
+    intervals: [0, 4, 7, 11],
+    label: 'maj7',
+    priority: 8,
+    symbol: 'maj7',
+  },
+  m7: {
+    intervals: [0, 3, 7, 10],
+    label: 'm7',
+    priority: 9,
+    symbol: 'm7',
+  },
+  m7b5: {
+    intervals: [0, 3, 6, 10],
+    label: 'm7b5',
+    priority: 14,
+    symbol: 'm7b5',
+  },
+  dim7: {
+    intervals: [0, 3, 6, 9],
+    label: 'dim7',
+    priority: 15,
+    symbol: 'dim7',
+  },
+  add9: {
+    intervals: [0, 4, 7, 14],
+    label: 'add9',
+    priority: 10,
+    symbol: 'add9',
+  },
+  maj9: {
+    intervals: [0, 4, 7, 11, 14],
+    label: 'maj9',
+    priority: 16,
+    symbol: 'maj9',
+  },
+  m9: {
+    intervals: [0, 3, 7, 10, 14],
+    label: 'm9',
+    priority: 17,
+    symbol: 'm9',
+  },
+  '7sus4': {
+    intervals: [0, 5, 7, 10],
+    label: '7sus4',
+    priority: 11,
+    symbol: '7sus4',
+  },
 } as const
 
-export const CHORD_QUALITY_LABELS = {
-  major: 'major',
-  minor: 'minor',
-  '5': '5',
-  sus2: 'sus2',
-  sus4: 'sus4',
-  dim: 'dim',
-  aug: 'aug',
-  '6': '6',
-  m6: 'm6',
-  '7': '7',
-  maj7: 'maj7',
-  m7: 'm7',
-  m7b5: 'm7b5',
-  dim7: 'dim7',
-  add9: 'add9',
-  maj9: 'maj9',
-  m9: 'm9',
-  '7sus4': '7sus4',
-} as const
+export type ChordQuality = keyof typeof CHORD_DEFINITIONS
+
+export const CHORD_INTERVALS = Object.fromEntries(
+  Object.entries(CHORD_DEFINITIONS).map(([quality, definition]) => [
+    quality,
+    definition.intervals,
+  ]),
+) as unknown as Record<ChordQuality, readonly number[]>
+
+export const CHORD_QUALITY_LABELS = Object.fromEntries(
+  Object.entries(CHORD_DEFINITIONS).map(([quality, definition]) => [
+    quality,
+    definition.label,
+  ]),
+) as unknown as Record<ChordQuality, string>
 
 export const MINIMUM_DIAGRAM_FRET_COUNT = 5
 
-const CHORD_SYMBOLS = {
-  major: '',
-  minor: 'm',
-  '5': '5',
-  sus2: 'sus2',
-  sus4: 'sus4',
-  dim: 'dim',
-  aug: 'aug',
-  '6': '6',
-  m6: 'm6',
-  '7': '7',
-  maj7: 'maj7',
-  m7: 'm7',
-  m7b5: 'm7b5',
-  dim7: 'dim7',
-  add9: 'add9',
-  maj9: 'maj9',
-  m9: 'm9',
-  '7sus4': '7sus4',
-} as const
+const CHORD_SYMBOLS = Object.fromEntries(
+  Object.entries(CHORD_DEFINITIONS).map(([quality, definition]) => [
+    quality,
+    definition.symbol,
+  ]),
+) as unknown as Record<ChordQuality, string>
 
-const CHORD_PRIORITY = {
-  major: 0,
-  minor: 1,
-  '5': 2,
-  sus2: 3,
-  sus4: 4,
-  '6': 5,
-  m6: 6,
-  '7': 7,
-  maj7: 8,
-  m7: 9,
-  add9: 10,
-  '7sus4': 11,
-  dim: 12,
-  aug: 13,
-  m7b5: 14,
-  dim7: 15,
-  maj9: 16,
-  m9: 17,
-} as const
+const CHORD_PRIORITY = Object.fromEntries(
+  Object.entries(CHORD_DEFINITIONS).map(([quality, definition]) => [
+    quality,
+    definition.priority,
+  ]),
+) as unknown as Record<ChordQuality, number>
 
 const NORMALIZED_INTERVALS = Object.fromEntries(
   Object.entries(CHORD_INTERVALS).map(([quality, intervals]) => [
@@ -134,7 +191,6 @@ const EXTENDED_DEGREE_LABELS: Partial<Record<number, string>> = {
 type RelativeStringState = 'x' | number
 
 export type PitchClassName = (typeof PITCH_CLASSES)[number]
-export type ChordQuality = keyof typeof CHORD_INTERVALS
 export type StringState = 'x' | 0 | number
 export type Fretting = readonly [
   StringState,
@@ -188,6 +244,13 @@ export interface ChordForm {
 
 interface ScoredChordCandidate extends ChordCandidate {
   score: number
+}
+
+interface FrettingAnalysis {
+  bassNote: PitchClassName | null
+  playedNotes: readonly PlayedNote[]
+  uniqueNotes: readonly PitchClassName[]
+  uniquePitchClasses: readonly number[]
 }
 
 interface AbsoluteChordFormDefinition {
@@ -620,7 +683,7 @@ export function frettingToKey(fretting: Fretting): string {
   return fretting.join('-')
 }
 
-export function derivePlayedNotes(fretting: Fretting): readonly PlayedNote[] {
+function collectPlayedNotes(fretting: Fretting): readonly PlayedNote[] {
   return fretting.flatMap((state, stringIndex) => {
     if (state === 'x') {
       return []
@@ -649,33 +712,102 @@ export function derivePlayedNotes(fretting: Fretting): readonly PlayedNote[] {
   })
 }
 
+function analyzeFretting(fretting: Fretting): FrettingAnalysis {
+  const playedNotes = collectPlayedNotes(fretting)
+  const seen = new Set<number>()
+  const uniqueNotes: PitchClassName[] = []
+  const uniquePitchClasses: number[] = []
+  let lowestNote: PlayedNote | null = null
+
+  for (const note of playedNotes) {
+    if (!seen.has(note.pitchClass)) {
+      seen.add(note.pitchClass)
+      uniqueNotes.push(note.note)
+      uniquePitchClasses.push(note.pitchClass)
+    }
+
+    if (!lowestNote || note.midi < lowestNote.midi) {
+      lowestNote = note
+    }
+  }
+
+  return {
+    bassNote: lowestNote ? lowestNote.note : null,
+    playedNotes,
+    uniqueNotes,
+    uniquePitchClasses: sortUniqueNumbers(uniquePitchClasses),
+  }
+}
+
+function detectChordCandidatesFromAnalysis(
+  analysis: FrettingAnalysis,
+): readonly ChordCandidate[] {
+  if (analysis.playedNotes.length === 0) {
+    return []
+  }
+
+  const matches = analysis.uniquePitchClasses.flatMap<ScoredChordCandidate>(
+    (rootPitchClass, rootIndex) => {
+      const relativeIntervals = sortUniqueNumbers(
+        analysis.uniquePitchClasses.map((pitchClass) =>
+          mod12(pitchClass - rootPitchClass),
+        ),
+      )
+
+      return CHORD_QUALITIES.flatMap((quality) => {
+        const targetIntervals = NORMALIZED_INTERVALS[quality]
+
+        if (!isSameIntervalSet(relativeIntervals, targetIntervals)) {
+          return []
+        }
+
+        const root = pitchClassToName(rootPitchClass)
+        const slashBass =
+          analysis.bassNote && analysis.bassNote !== root
+            ? analysis.bassNote
+            : null
+
+        return [
+          {
+            root,
+            quality,
+            bass: slashBass,
+            intervals: targetIntervals,
+            label: buildChordLabel(root, quality, slashBass),
+            score:
+              CHORD_PRIORITY[quality] +
+              (slashBass ? 20 : 0) +
+              rootIndex * 0.25 +
+              Math.max(0, relativeIntervals.length - 3) * 0.5,
+          },
+        ]
+      })
+    },
+  )
+
+  return matches
+    .sort((left, right) => left.score - right.score)
+    .map((candidate) => ({
+      root: candidate.root,
+      quality: candidate.quality,
+      bass: candidate.bass,
+      intervals: candidate.intervals,
+      label: candidate.label,
+    }))
+}
+
+export function derivePlayedNotes(fretting: Fretting): readonly PlayedNote[] {
+  return analyzeFretting(fretting).playedNotes
+}
+
 export function deriveUniqueNotes(
   fretting: Fretting,
 ): readonly PitchClassName[] {
-  const playedNotes = derivePlayedNotes(fretting)
-  const seen = new Set<number>()
-
-  return playedNotes.flatMap((note) => {
-    if (seen.has(note.pitchClass)) {
-      return []
-    }
-
-    seen.add(note.pitchClass)
-    return [note.note]
-  })
+  return analyzeFretting(fretting).uniqueNotes
 }
 
 export function deriveBassNote(fretting: Fretting): PitchClassName | null {
-  const playedNotes = derivePlayedNotes(fretting)
-  const lowestNote = playedNotes.reduce<PlayedNote | null>((lowest, note) => {
-    if (!lowest || note.midi < lowest.midi) {
-      return note
-    }
-
-    return lowest
-  }, null)
-
-  return lowestNote?.note ?? null
+  return analyzeFretting(fretting).bassNote
 }
 
 export function deriveViewport(fretting: Fretting): DiagramViewport {
@@ -737,76 +869,19 @@ export function buildChordLabel(
 export function detectChordCandidates(
   fretting: Fretting,
 ): readonly ChordCandidate[] {
-  const playedNotes = derivePlayedNotes(fretting)
-
-  if (playedNotes.length === 0) {
-    return []
-  }
-
-  const uniquePitchClasses = sortUniqueNumbers(
-    playedNotes.map((note) => note.pitchClass),
-  )
-  const bass = deriveBassNote(fretting)
-
-  const matches = uniquePitchClasses.flatMap<ScoredChordCandidate>(
-    (rootPitchClass, rootIndex) => {
-      const relativeIntervals = sortUniqueNumbers(
-        uniquePitchClasses.map((pitchClass) =>
-          mod12(pitchClass - rootPitchClass),
-        ),
-      )
-
-      return CHORD_QUALITIES.flatMap((quality) => {
-        const targetIntervals = NORMALIZED_INTERVALS[quality]
-
-        if (!isSameIntervalSet(relativeIntervals, targetIntervals)) {
-          return []
-        }
-
-        const root = pitchClassToName(rootPitchClass)
-        const slashBass = bass && bass !== root ? bass : null
-
-        return [
-          {
-            root,
-            quality,
-            bass: slashBass,
-            intervals: targetIntervals,
-            label: buildChordLabel(root, quality, slashBass),
-            score:
-              CHORD_PRIORITY[quality] +
-              (slashBass ? 20 : 0) +
-              rootIndex * 0.25 +
-              Math.max(0, relativeIntervals.length - 3) * 0.5,
-          },
-        ]
-      })
-    },
-  )
-
-  return matches
-    .sort((left, right) => left.score - right.score)
-    .map((candidate) => ({
-      root: candidate.root,
-      quality: candidate.quality,
-      bass: candidate.bass,
-      intervals: candidate.intervals,
-      label: candidate.label,
-    }))
+  return detectChordCandidatesFromAnalysis(analyzeFretting(fretting))
 }
 
 export function summarizeChord(fretting: Fretting): ChordSummary {
-  const playedNotes = derivePlayedNotes(fretting)
-  const uniqueNotes = deriveUniqueNotes(fretting)
-  const bassNote = deriveBassNote(fretting)
+  const analysis = analyzeFretting(fretting)
   const viewport = deriveViewport(fretting)
-  const candidates = detectChordCandidates(fretting)
+  const candidates = detectChordCandidatesFromAnalysis(analysis)
   const currentCandidate = candidates[0]
 
   return {
-    playedNotes,
-    uniqueNotes,
-    bassNote,
+    playedNotes: analysis.playedNotes,
+    uniqueNotes: analysis.uniqueNotes,
+    bassNote: analysis.bassNote,
     viewport,
     candidates,
     currentName: currentCandidate?.label ?? 'Unrecognized',

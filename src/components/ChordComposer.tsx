@@ -7,7 +7,11 @@ import type {
   PitchClassName,
   StringState,
 } from '../music/chords'
-import { CHORD_QUALITIES, CHORD_QUALITY_LABELS, PITCH_CLASSES } from '../music/chords'
+import {
+  CHORD_QUALITIES,
+  CHORD_QUALITY_LABELS,
+  PITCH_CLASSES,
+} from '../music/chords'
 import type { UiText } from '../uiText'
 import ChordDiagram from './ChordDiagram'
 
@@ -90,7 +94,11 @@ function ChordComposer({
         <div className="field-grid">
           <label className="field">
             <span>{text.rootNote}</span>
-            <select aria-label={text.rootNote} onChange={onRootChange} value={selectedRoot}>
+            <select
+              aria-label={text.rootNote}
+              onChange={onRootChange}
+              value={selectedRoot}
+            >
               {PITCH_CLASSES.map((pitchClass) => (
                 <option key={pitchClass} value={pitchClass}>
                   {pitchClass}
@@ -102,7 +110,7 @@ function ChordComposer({
           <label className="field">
             <span>{text.chordQuality}</span>
             <select
-              aria-label="Chord quality"
+              aria-label={text.chordQuality}
               onChange={onQualityChange}
               value={selectedQuality}
             >
@@ -184,7 +192,7 @@ function ChordComposer({
                 <label className="field small">
                   <span>{text.startFret}</span>
                   <input
-                    aria-label="Manual start fret"
+                    aria-label={text.startFret}
                     min="1"
                     onChange={onManualStartFretChange}
                     type="number"
@@ -195,7 +203,7 @@ function ChordComposer({
                 <label className="field small">
                   <span>{text.visibleFretCount}</span>
                   <input
-                    aria-label="Manual fret count"
+                    aria-label={text.visibleFretCount}
                     max={maxManualFretCount}
                     min={minManualFretCount}
                     onChange={onManualFretCountChange}
