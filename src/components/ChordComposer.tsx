@@ -15,7 +15,7 @@ import {
 import type { UiText } from '../uiText'
 import ChordDiagram from './ChordDiagram'
 
-interface ManualStringEntry {
+export interface ManualStringEntry {
   state: StringState
   stringIndex: number
   stringNumber: number

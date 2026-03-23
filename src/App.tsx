@@ -4,8 +4,9 @@ import type {
   ChangeEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react'
-import ChordComposer from './components/ChordComposer'
-import ChordDiagram from './components/ChordDiagram'
+import ChordModal from './components/ChordModal'
+import LayoutStage from './components/LayoutStage'
+import StockPanel from './components/StockPanel'
 import {
   exportLayoutStageLongPdf,
   exportLayoutStagePdf,
@@ -317,7 +318,6 @@ function App() {
       displayName: getDisplayName(summary.currentName, stockChord.displayName),
     }
   })
-  const hasStockEntries = stockEntries.length > 0
   const layoutStagePaddingInline = isExportingPdf
     ? 0
     : LAYOUT_STAGE_PADDING_INLINE
@@ -1231,30 +1231,6 @@ function App() {
         ? text.addToRow
         : text.saveChordChanges
     : ''
-  const renderStockAddButton = (className: string) => (
-    <div className="stock-add-button-wrapper">
-      <button
-        aria-label={text.openStockAddModal}
-        className={className}
-        onBlur={hideStockAddHint}
-        onClick={openStockChordModal}
-        onFocus={showStockAddHintImmediately}
-        onMouseEnter={scheduleStockAddHint}
-        onMouseLeave={hideStockAddHint}
-        type="button"
-      >
-        +
-      </button>
-      {showStockAddHint ? (
-        <div
-          aria-hidden="true"
-          className="layout-block-hover-hint stock-add-tooltip"
-        >
-          {text.stockAddTooltip}
-        </div>
-      ) : null}
-    </div>
-  )
 
   return (
     <main className="app-shell">
@@ -1337,480 +1313,108 @@ function App() {
         </div>
       </header>
 
-      <section className="panel stock-panel" aria-labelledby="stock-heading">
-        <div className="panel-heading stock-panel-heading">
-          <h2 id="stock-heading">{text.stockHeading}</h2>
-        </div>
+      <StockPanel
+        onOpenStockModal={openStockChordModal}
+        onRemoveStockChord={handleRemoveStockChord}
+        onStockAddHintHide={hideStockAddHint}
+        onStockAddHintSchedule={scheduleStockAddHint}
+        onStockAddHintShowImmediately={showStockAddHintImmediately}
+        showStockAddHint={showStockAddHint}
+        stockEntries={stockEntries}
+        text={text}
+      />
 
-        {hasStockEntries ? (
-          <div className="stock-grid">
-            {stockEntries.map(({ stockChord, summary, displayName }) => (
-              <article
-                className="stock-card dismissible-card"
-                key={stockChord.id}
-              >
-                <button
-                  aria-label={text.removeStockChordAria(displayName)}
-                  className="card-dismiss-button"
-                  onClick={() => handleRemoveStockChord(stockChord.id)}
-                  type="button"
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-                <div className="chord-preview-block stock-chord-preview">
-                  <h3 className="chord-preview-name">{displayName}</h3>
-                  <ChordDiagram
-                    compact
-                    fretting={stockChord.fretting}
-                    markerLabels={summary.stringDegreeLabels}
-                    tightTopSpacing
-                    viewport={summary.viewport}
-                  />
-                </div>
-              </article>
-            ))}
-            {renderStockAddButton('card-add-button stock-add-button')}
-          </div>
-        ) : (
-          <div className="stock-empty-state">
-            {renderStockAddButton(
-              'card-add-button stock-add-button stock-add-button-empty',
-            )}
-            <p className="stock-empty">{text.stockEmpty}</p>
-          </div>
-        )}
-      </section>
-
-      <section className="panel layout-panel" aria-labelledby="layout-heading">
-        <div className="panel-heading">
-          <h2 id="layout-heading">{text.layoutHeading}</h2>
-        </div>
-
-        <div className="layout-stage-frame" ref={layoutStageFrameRef}>
-          {!isExportingPdf && visibleBlockToolbarId && layoutToolbarAnchor ? (
-            <div
-              className="layout-block-toolbar"
-              ref={layoutToolbarRef}
-              style={{
-                left: `${layoutToolbarAnchor.left + layoutToolbarAnchor.width / 2}px`,
-                top: `${layoutToolbarAnchor.top}px`,
-              }}
-            >
-              <button
-                className="secondary-button"
-                onClick={openEditChordModal}
-                type="button"
-              >
-                {text.editSelectedChord}
-              </button>
-              <button onClick={handleDuplicateBlock} type="button">
-                {text.duplicateSelectedChord}
-              </button>
-              <button
-                disabled={activeRowSelectionIndex <= 0}
-                onClick={() => handleMoveBlock(-1)}
-                type="button"
-              >
-                {text.moveLeft}
-              </button>
-              <button
-                disabled={
-                  activeRowSelectionIndex < 0 ||
-                  activeRowSelectionIndex === activeRowBlockIds.length - 1
-                }
-                onClick={() => handleMoveBlock(1)}
-                type="button"
-              >
-                {text.moveRight}
-              </button>
-            </div>
-          ) : null}
-          {showLayoutHoverHint && layoutHintAnchor ? (
-            <div
-              aria-hidden="true"
-              className="layout-block-hover-hint"
-              style={{
-                left: `${layoutHintAnchor.left + layoutHintAnchor.width / 2}px`,
-                top: `${layoutHintAnchor.top + layoutHintAnchor.height}px`,
-              }}
-            >
-              {text.layoutDragHint}
-            </div>
-          ) : null}
-          {showLayoutAddHint && layoutAddHintAnchor ? (
-            <div
-              aria-hidden="true"
-              className="layout-block-hover-hint layout-add-tooltip"
-              style={{
-                left: `${layoutAddHintAnchor.left + layoutAddHintAnchor.width / 2}px`,
-                top: `${layoutAddHintAnchor.top + layoutAddHintAnchor.height}px`,
-              }}
-            >
-              {text.openLayoutAddModal}
-            </div>
-          ) : null}
-          {shouldShowLayoutRowAddHint && layoutRowAddHintAnchor ? (
-            <div
-              aria-hidden="true"
-              className="layout-block-hover-hint layout-row-add-tooltip"
-              style={{
-                left: `${layoutRowAddHintAnchor.left + layoutRowAddHintAnchor.width / 2}px`,
-                top: `${layoutRowAddHintAnchor.top + layoutRowAddHintAnchor.height}px`,
-              }}
-            >
-              {text.addRow}
-            </div>
-          ) : null}
-
-          <div className="layout-stage-wrapper" ref={layoutStageWrapperRef}>
-            <div
-              className="layout-stage"
-              ref={layoutStageRef}
-              style={layoutStageStyle}
-            >
-              {layoutEntries.rows.map((rowEntry, index) => {
-                const rowLabel = text.layoutRowLabel(index)
-                const lyricsLineLabel = text.lyricsLineLabel(index)
-                const showLyricsPlaceholder =
-                  rowEntry.row.lyrics === '' && !isExportingPdf
-
-                return (
-                  <section
-                    aria-labelledby={`layout-row-heading-${rowEntry.row.id}`}
-                    className={`layout-row${
-                      rowEntry.row.id === selectedLayoutRow.id
-                        ? ' selected'
-                        : ''
-                    }`}
-                    key={rowEntry.row.id}
-                  >
-                    <div className="layout-row-header">
-                      <h3
-                        className="visually-hidden"
-                        id={`layout-row-heading-${rowEntry.row.id}`}
-                      >
-                        {rowLabel}
-                      </h3>
-                      <button
-                        aria-label={text.removeLayoutRowAria}
-                        className="layout-row-delete-button"
-                        disabled={layoutRows.length === 1}
-                        onClick={() => handleDeleteLayoutRow(rowEntry.row.id)}
-                        type="button"
-                      >
-                        <span aria-hidden="true">×</span>
-                      </button>
-                    </div>
-
-                    <div className="layout-chord-layer">
-                      {rowEntry.entries.map((entry) => (
-                        <div
-                          className={`layout-chord-block dismissible-card${
-                            entry.block.id === selectedBlockId
-                              ? ' selected'
-                              : ''
-                          }`}
-                          data-dragging={
-                            draggingBlockId === entry.block.id
-                              ? 'true'
-                              : undefined
-                          }
-                          data-layout-block-id={entry.block.id}
-                          key={entry.block.id}
-                          style={{ left: `${entry.left}px` }}
-                        >
-                          <button
-                            aria-label={text.removeLayoutChordAria(
-                              entry.displayName,
-                            )}
-                            className="card-dismiss-button"
-                            disabled={blocks.length === 1}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleDeleteBlock(entry.block.id)
-                            }}
-                            type="button"
-                          >
-                            <span aria-hidden="true">×</span>
-                          </button>
-                          <button
-                            aria-label={`Select ${entry.displayName} block`}
-                            className="chord-preview-block layout-chord-block-button"
-                            draggable={false}
-                            onBlur={() => hideLayoutHoverHint(entry.block.id)}
-                            onClick={() =>
-                              activateBlock(entry.block, {
-                                revealToolbar: true,
-                              })
-                            }
-                            onFocus={() =>
-                              showLayoutHoverHintImmediately(entry.block.id)
-                            }
-                            onMouseEnter={() =>
-                              scheduleLayoutHoverHint(entry.block.id)
-                            }
-                            onMouseLeave={() =>
-                              hideLayoutHoverHint(entry.block.id)
-                            }
-                            onPointerDown={(event) =>
-                              handleLayoutBlockPointerDown(
-                                entry.block,
-                                entry.hasFollowingBlock,
-                                entry.minXOffset,
-                                event,
-                              )
-                            }
-                            type="button"
-                          >
-                            <span className="chord-preview-name">
-                              {entry.displayName}
-                            </span>
-                            <ChordDiagram
-                              compact
-                              fretting={entry.block.fretting}
-                              markerLabels={entry.summary.stringDegreeLabels}
-                              pdfExport={isExportingPdf}
-                              tightTopSpacing
-                              viewport={entry.summary.viewport}
-                            />
-                          </button>
-                        </div>
-                      ))}
-
-                      <button
-                        aria-label={text.openLayoutAddModal}
-                        className="layout-add-button"
-                        onBlur={() => hideLayoutAddHint(rowEntry.row.id)}
-                        onClick={() => openLayoutChordModal(rowEntry.row.id)}
-                        onFocus={() =>
-                          showLayoutAddHintImmediately(rowEntry.row.id)
-                        }
-                        onMouseEnter={() =>
-                          scheduleLayoutAddHint(rowEntry.row.id)
-                        }
-                        onMouseLeave={() => hideLayoutAddHint(rowEntry.row.id)}
-                        ref={(node) => {
-                          layoutAddButtonRefs.current[rowEntry.row.id] = node
-                        }}
-                        style={{ left: `${rowEntry.addButtonLeft}px` }}
-                        type="button"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    {isExportingPdf ||
-                    editingLyricsRowId !== rowEntry.row.id ? (
-                      <div
-                        aria-label={lyricsLineLabel}
-                        className={`lyrics-line lyrics-line-text${
-                          showLyricsPlaceholder
-                            ? ' lyrics-line-placeholder'
-                            : ''
-                        }`}
-                        onClick={() => startLyricsLineEditing(rowEntry.row.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault()
-                            startLyricsLineEditing(rowEntry.row.id)
-                          }
-                        }}
-                        role="button"
-                        tabIndex={0}
-                      >
-                        {showLyricsPlaceholder
-                          ? text.lyricsPlaceholder
-                          : rowEntry.row.lyrics || '\u00a0'}
-                      </div>
-                    ) : (
-                      <input
-                        aria-label={lyricsLineLabel}
-                        className="lyrics-line lyrics-line-input"
-                        onBlur={() => setEditingLyricsRowId(null)}
-                        onChange={(event) =>
-                          handleLyricsLineChange(rowEntry.row.id, event)
-                        }
-                        onFocus={() => selectLayoutRow(rowEntry.row.id)}
-                        placeholder={text.lyricsPlaceholder}
-                        ref={(node) => {
-                          lyricsInputRefs.current[rowEntry.row.id] = node
-                        }}
-                        type="text"
-                        value={rowEntry.row.lyrics}
-                      />
-                    )}
-                  </section>
-                )
-              })}
-
-              <button
-                aria-label={text.addRow}
-                className="layout-row-add-button"
-                onBlur={hideLayoutRowAddHint}
-                onClick={handleAddLayoutRow}
-                onFocus={showLayoutRowAddHintImmediately}
-                onMouseEnter={scheduleLayoutRowAddHint}
-                onMouseLeave={hideLayoutRowAddHint}
-                ref={layoutRowAddButtonRef}
-                type="button"
-              >
-                +
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <LayoutStage
+        activeRowBlockIds={activeRowBlockIds}
+        activeRowSelectionIndex={activeRowSelectionIndex}
+        blocksLength={blocks.length}
+        draggingBlockId={draggingBlockId}
+        editingLyricsRowId={editingLyricsRowId}
+        isExportingPdf={isExportingPdf}
+        layoutAddButtonRefs={layoutAddButtonRefs}
+        layoutAddHintAnchor={layoutAddHintAnchor}
+        layoutEntries={layoutEntries}
+        layoutHintAnchor={layoutHintAnchor}
+        layoutRowAddButtonRef={layoutRowAddButtonRef}
+        layoutRowAddHintAnchor={layoutRowAddHintAnchor}
+        layoutRowsLength={layoutRows.length}
+        layoutStageFrameRef={layoutStageFrameRef}
+        layoutStageRef={layoutStageRef}
+        layoutStageStyle={layoutStageStyle}
+        layoutStageWrapperRef={layoutStageWrapperRef}
+        layoutToolbarAnchor={layoutToolbarAnchor}
+        layoutToolbarRef={layoutToolbarRef}
+        lyricsInputRefs={lyricsInputRefs}
+        onActivateBlock={activateBlock}
+        onAddLayoutRow={handleAddLayoutRow}
+        onDeleteBlock={handleDeleteBlock}
+        onDeleteLayoutRow={handleDeleteLayoutRow}
+        onDuplicateBlock={handleDuplicateBlock}
+        onEditSelectedChord={openEditChordModal}
+        onHideLayoutAddHint={hideLayoutAddHint}
+        onHideLayoutHoverHint={hideLayoutHoverHint}
+        onHideLayoutRowAddHint={hideLayoutRowAddHint}
+        onLayoutBlockPointerDown={handleLayoutBlockPointerDown}
+        onLayoutRowInputChange={handleLyricsLineChange}
+        onLyricsBlur={() => setEditingLyricsRowId(null)}
+        onMoveBlock={handleMoveBlock}
+        onOpenLayoutChordModal={openLayoutChordModal}
+        onScheduleLayoutAddHint={scheduleLayoutAddHint}
+        onScheduleLayoutHoverHint={scheduleLayoutHoverHint}
+        onScheduleLayoutRowAddHint={scheduleLayoutRowAddHint}
+        onSelectLayoutRow={selectLayoutRow}
+        onShowLayoutAddHintImmediately={showLayoutAddHintImmediately}
+        onShowLayoutHoverHintImmediately={showLayoutHoverHintImmediately}
+        onShowLayoutRowAddHintImmediately={showLayoutRowAddHintImmediately}
+        onStartLyricsLineEditing={startLyricsLineEditing}
+        selectedBlockId={selectedBlockId}
+        selectedLayoutRowId={selectedLayoutRowId}
+        shouldShowLayoutRowAddHint={shouldShowLayoutRowAddHint}
+        showLayoutAddHint={showLayoutAddHint}
+        showLayoutHoverHint={showLayoutHoverHint}
+        text={text}
+        visibleBlockToolbarId={visibleBlockToolbarId}
+      />
 
       {chordModal && modalDraft && modalSummary ? (
-        <div
-          className="modal-overlay"
-          onClick={closeChordModal}
-          role="presentation"
-        >
-          <div
-            aria-labelledby="chord-modal-heading"
-            aria-modal="true"
-            className="chord-modal"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-          >
-            <div className="chord-modal-header">
-              <div>
-                {chordModal.kind === 'edit' ? (
-                  <p className="meta-label">{text.editSelectedChord}</p>
-                ) : null}
-                <h2 id="chord-modal-heading">{modalTitle}</h2>
-                {chordModal.kind === 'edit' ? (
-                  <p className="meta-note">
-                    {text.editingBlockNotice(selectedBlockDisplayName)}
-                  </p>
-                ) : null}
-              </div>
-              <button
-                aria-label={text.modalClose}
-                className="panel-icon-button"
-                onClick={closeChordModal}
-                type="button"
-              >
-                ×
-              </button>
-            </div>
-
-            <form
-              className="chord-modal-form"
-              onSubmit={handleSubmitChordModal}
-            >
-              <ChordComposer
-                availableForms={modalAvailableForms}
-                chordName={modalDraft.chordName}
-                displayName={modalDisplayName}
-                fretting={modalDraft.fretting}
-                manualFretCount={modalDraft.manualFretCount}
-                manualGridTemplate={modalManualGridTemplate}
-                manualStartFret={modalDraft.manualStartFret}
-                manualStringEntries={modalManualStringEntries}
-                manualVisibleFrets={modalVisibleFrets}
-                maxManualFretCount={MAX_MANUAL_FRET_COUNT}
-                minManualFretCount={MIN_MANUAL_FRET_COUNT}
-                onChordNameChange={handleChordModalNameChange}
-                onFormChange={handleChordModalFormChange}
-                onManualFretCountChange={handleChordModalManualFretCountChange}
-                onManualStartFretChange={handleChordModalManualStartFretChange}
-                onQualityChange={handleChordModalQualityChange}
-                onRootChange={handleChordModalRootChange}
-                onStringStateChange={handleChordModalStringStateChange}
-                onViewportSync={handleChordModalViewportSync}
-                selectedFormId={modalDraft.selectedFormId}
-                selectedQuality={modalDraft.selectedQuality}
-                selectedRoot={modalDraft.selectedRoot}
-                summary={modalSummary}
-                text={text}
-              />
-
-              {chordModal.kind === 'layout' ? (
-                <>
-                  <div className="modal-actions modal-layout-actions">
-                    <button
-                      className="accent-button modal-submit-button"
-                      type="submit"
-                    >
-                      {modalSubmitLabel}
-                    </button>
-                    <button
-                      className="accent-button modal-submit-button"
-                      disabled={isModalDraftStocked}
-                      onClick={handleAddChordModalDraftToStock}
-                      type="button"
-                    >
-                      {isModalDraftStocked
-                        ? text.alreadyStockedButton
-                        : text.addToStock}
-                    </button>
-                  </div>
-
-                  <section
-                    aria-labelledby="modal-stock-heading"
-                    className="composer-section modal-stock-section"
-                  >
-                    <div className="panel-heading">
-                      <h2 id="modal-stock-heading">{text.stockHeading}</h2>
-                    </div>
-
-                    {stockEntries.length > 0 ? (
-                      <div className="stock-grid modal-stock-grid">
-                        {stockEntries.map(
-                          ({ stockChord, summary, displayName }) => (
-                            <article className="stock-card" key={stockChord.id}>
-                              <div className="chord-preview-block stock-chord-preview">
-                                <h3 className="chord-preview-name">
-                                  {displayName}
-                                </h3>
-                                <ChordDiagram
-                                  compact
-                                  fretting={stockChord.fretting}
-                                  markerLabels={summary.stringDegreeLabels}
-                                  tightTopSpacing
-                                  viewport={summary.viewport}
-                                />
-                              </div>
-
-                              <div className="stock-card-actions">
-                                <button
-                                  onClick={() =>
-                                    handleAddStockChordFromModal(stockChord.id)
-                                  }
-                                  type="button"
-                                >
-                                  {text.addToRow}
-                                </button>
-                              </div>
-                            </article>
-                          ),
-                        )}
-                      </div>
-                    ) : (
-                      <p className="stock-empty">{text.stockEmpty}</p>
-                    )}
-                  </section>
-                </>
-              ) : null}
-
-              {chordModal.kind !== 'layout' ? (
-                <div className="modal-actions">
-                  <button
-                    className="accent-button modal-submit-button"
-                    disabled={
-                      chordModal.kind === 'stock' && isModalChordStocked
-                    }
-                    type="submit"
-                  >
-                    {modalSubmitLabel}
-                  </button>
-                </div>
-              ) : null}
-            </form>
-          </div>
-        </div>
+        <ChordModal
+          availableForms={modalAvailableForms}
+          chordModalKind={chordModal.kind}
+          displayName={modalDisplayName}
+          isModalChordStocked={isModalChordStocked}
+          isModalDraftStocked={isModalDraftStocked}
+          manualFretCount={modalDraft.manualFretCount}
+          manualGridTemplate={modalManualGridTemplate}
+          manualStartFret={modalDraft.manualStartFret}
+          manualStringEntries={modalManualStringEntries}
+          manualVisibleFrets={modalVisibleFrets}
+          maxManualFretCount={MAX_MANUAL_FRET_COUNT}
+          minManualFretCount={MIN_MANUAL_FRET_COUNT}
+          onAddChordDraftToStock={handleAddChordModalDraftToStock}
+          onAddStockChordFromModal={handleAddStockChordFromModal}
+          onChordNameChange={handleChordModalNameChange}
+          onClose={closeChordModal}
+          onFormChange={handleChordModalFormChange}
+          onManualFretCountChange={handleChordModalManualFretCountChange}
+          onManualStartFretChange={handleChordModalManualStartFretChange}
+          onQualityChange={handleChordModalQualityChange}
+          onRootChange={handleChordModalRootChange}
+          onStringStateChange={handleChordModalStringStateChange}
+          onSubmit={handleSubmitChordModal}
+          onViewportSync={handleChordModalViewportSync}
+          selectedBlockDisplayName={selectedBlockDisplayName}
+          selectedFormId={modalDraft.selectedFormId}
+          selectedQuality={modalDraft.selectedQuality}
+          selectedRoot={modalDraft.selectedRoot}
+          stockEntries={stockEntries}
+          submitLabel={modalSubmitLabel}
+          summary={modalSummary}
+          text={text}
+          title={modalTitle}
+          valueChordName={modalDraft.chordName}
+          valueFretting={modalDraft.fretting}
+          visible
+        />
       ) : null}
     </main>
   )
