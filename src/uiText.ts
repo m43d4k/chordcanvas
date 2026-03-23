@@ -40,6 +40,7 @@ export interface UiText {
   playedNotes: string
   stockHeading: string
   openStockAddModal: string
+  stockAddTooltip: string
   addToRow: string
   delete: string
   removeStockChordAria: (name: string) => string
@@ -111,6 +112,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     playedNotes: '発音音',
     stockHeading: 'コードストック',
     openStockAddModal: 'ストックにコードを追加',
+    stockAddTooltip: 'ストックを追加',
     addToRow: '追加',
     delete: '削除',
     removeStockChordAria: (name) => `${name} をストックから削除`,
@@ -128,7 +130,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: '左へ',
     moveRight: '右へ',
     saveChordChanges: '変更を保存',
-    layoutDragHint: '左右にドラッグし、位置を調整できます。',
+    layoutDragHint: '左右に移動',
     layoutRowLabel: (index) => `${index + 1}行目`,
     chordBuilderModalTitle: 'ストック用コードを追加',
     layoutAddModalTitle: 'コードを追加',
@@ -181,6 +183,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     playedNotes: 'Played Notes',
     stockHeading: 'Chord Stock',
     openStockAddModal: 'Add chord to stock',
+    stockAddTooltip: 'Add to stock',
     addToRow: 'Add',
     delete: 'Delete',
     removeStockChordAria: (name) => `Remove ${name} from stock`,
@@ -198,7 +201,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     moveLeft: 'Move Left',
     moveRight: 'Move Right',
     saveChordChanges: 'Save Changes',
-    layoutDragHint: 'Drag left or right to adjust the position.',
+    layoutDragHint: 'Move left or right',
     layoutRowLabel: (index) => `Row ${index + 1}`,
     chordBuilderModalTitle: 'Add Chord to Stock',
     layoutAddModalTitle: 'Add Chord',

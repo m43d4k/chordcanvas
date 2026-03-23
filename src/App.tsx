@@ -269,6 +269,10 @@ function App() {
   const layoutStageWrapperRef = useRef<HTMLDivElement | null>(null)
   const layoutStageRef = useRef<HTMLDivElement | null>(null)
   const layoutToolbarRef = useRef<HTMLDivElement | null>(null)
+  const layoutAddButtonRefs = useRef<Record<string, HTMLButtonElement | null>>(
+    {},
+  )
+  const layoutRowAddButtonRef = useRef<HTMLButtonElement | null>(null)
   const lyricsInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const projectFileInputRef = useRef<HTMLInputElement | null>(null)
   const [locale, setLocale] = useState<Locale>('ja')
@@ -309,17 +313,35 @@ function App() {
   )
   const [chordModal, setChordModal] = useState<ChordModalState | null>(null)
   const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
+  const stockAddHintTimeoutRef = useRef<ReturnType<
+    typeof window.setTimeout
+  > | null>(null)
   const layoutHoverHintTimeoutRef = useRef<ReturnType<
+    typeof window.setTimeout
+  > | null>(null)
+  const layoutAddHintTimeoutRef = useRef<ReturnType<
+    typeof window.setTimeout
+  > | null>(null)
+  const layoutRowAddHintTimeoutRef = useRef<ReturnType<
     typeof window.setTimeout
   > | null>(null)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
   const [visibleBlockToolbarId, setVisibleBlockToolbarId] = useState<
     string | null
   >(null)
+  const [showStockAddHint, setShowStockAddHint] = useState(false)
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null)
+  const [hoveredLayoutAddRowId, setHoveredLayoutAddRowId] = useState<
+    string | null
+  >(null)
+  const [showLayoutRowAddHint, setShowLayoutRowAddHint] = useState(false)
   const [layoutToolbarAnchor, setLayoutToolbarAnchor] =
     useState<LayoutOverlayAnchor | null>(null)
   const [layoutHintAnchor, setLayoutHintAnchor] =
+    useState<LayoutOverlayAnchor | null>(null)
+  const [layoutAddHintAnchor, setLayoutAddHintAnchor] =
+    useState<LayoutOverlayAnchor | null>(null)
+  const [layoutRowAddHintAnchor, setLayoutRowAddHintAnchor] =
     useState<LayoutOverlayAnchor | null>(null)
   const text = UI_TEXT[locale]
   const isExportingPdf = pdfExportKind !== null
@@ -415,6 +437,13 @@ function App() {
     !draggingBlockId &&
     !!hoveredBlockId &&
     !!layoutHintAnchor
+  const showLayoutAddHint =
+    !isExportingPdf &&
+    !draggingBlockId &&
+    !!hoveredLayoutAddRowId &&
+    !!layoutAddHintAnchor
+  const shouldShowLayoutRowAddHint =
+    !isExportingPdf && !draggingBlockId && showLayoutRowAddHint
 
   function clearLayoutHoverHintTimeout() {
     const timeoutId = layoutHoverHintTimeoutRef.current
@@ -448,6 +477,98 @@ function App() {
     }, LAYOUT_HOVER_HINT_DELAY_MS)
   }
 
+  function clearStockAddHintTimeout() {
+    const timeoutId = stockAddHintTimeoutRef.current
+
+    if (timeoutId === null) {
+      return
+    }
+
+    window.clearTimeout(timeoutId)
+    stockAddHintTimeoutRef.current = null
+  }
+
+  function hideStockAddHint() {
+    clearStockAddHintTimeout()
+    setShowStockAddHint(false)
+  }
+
+  function showStockAddHintImmediately() {
+    clearStockAddHintTimeout()
+    setShowStockAddHint(true)
+  }
+
+  function scheduleStockAddHint() {
+    clearStockAddHintTimeout()
+    setShowStockAddHint(false)
+    stockAddHintTimeoutRef.current = window.setTimeout(() => {
+      setShowStockAddHint(true)
+      stockAddHintTimeoutRef.current = null
+    }, LAYOUT_HOVER_HINT_DELAY_MS)
+  }
+
+  function clearLayoutRowAddHintTimeout() {
+    const timeoutId = layoutRowAddHintTimeoutRef.current
+
+    if (timeoutId === null) {
+      return
+    }
+
+    window.clearTimeout(timeoutId)
+    layoutRowAddHintTimeoutRef.current = null
+  }
+
+  function hideLayoutRowAddHint() {
+    clearLayoutRowAddHintTimeout()
+    setShowLayoutRowAddHint(false)
+  }
+
+  function showLayoutRowAddHintImmediately() {
+    clearLayoutRowAddHintTimeout()
+    setShowLayoutRowAddHint(true)
+  }
+
+  function scheduleLayoutRowAddHint() {
+    clearLayoutRowAddHintTimeout()
+    setShowLayoutRowAddHint(false)
+    layoutRowAddHintTimeoutRef.current = window.setTimeout(() => {
+      setShowLayoutRowAddHint(true)
+      layoutRowAddHintTimeoutRef.current = null
+    }, LAYOUT_HOVER_HINT_DELAY_MS)
+  }
+
+  function clearLayoutAddHintTimeout() {
+    const timeoutId = layoutAddHintTimeoutRef.current
+
+    if (timeoutId === null) {
+      return
+    }
+
+    window.clearTimeout(timeoutId)
+    layoutAddHintTimeoutRef.current = null
+  }
+
+  function hideLayoutAddHint(rowId?: string) {
+    clearLayoutAddHintTimeout()
+    setHoveredLayoutAddRowId((currentId) =>
+      rowId && currentId !== rowId ? currentId : null,
+    )
+  }
+
+  function showLayoutAddHintImmediately(rowId: string) {
+    clearLayoutAddHintTimeout()
+    setHoveredLayoutAddRowId(rowId)
+  }
+
+  function scheduleLayoutAddHint(rowId: string) {
+    clearLayoutAddHintTimeout()
+    setHoveredLayoutAddRowId((currentId) => (currentId === rowId ? currentId : null))
+    layoutAddHintTimeoutRef.current = window.setTimeout(() => {
+      setHoveredLayoutAddRowId(rowId)
+      layoutAddHintTimeoutRef.current = null
+    }, LAYOUT_HOVER_HINT_DELAY_MS)
+  }
+
   useEffect(() => {
     if (!editingLyricsRowId) {
       return
@@ -466,11 +587,32 @@ function App() {
 
   useEffect(
     () => () => {
-      const timeoutId = layoutHoverHintTimeoutRef.current
+      const stockAddHintTimeoutId = stockAddHintTimeoutRef.current
 
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId)
+      if (stockAddHintTimeoutId !== null) {
+        window.clearTimeout(stockAddHintTimeoutId)
+        stockAddHintTimeoutRef.current = null
+      }
+
+      const layoutHoverHintTimeoutId = layoutHoverHintTimeoutRef.current
+
+      if (layoutHoverHintTimeoutId !== null) {
+        window.clearTimeout(layoutHoverHintTimeoutId)
         layoutHoverHintTimeoutRef.current = null
+      }
+
+      const layoutAddHintTimeoutId = layoutAddHintTimeoutRef.current
+
+      if (layoutAddHintTimeoutId !== null) {
+        window.clearTimeout(layoutAddHintTimeoutId)
+        layoutAddHintTimeoutRef.current = null
+      }
+
+      const layoutRowAddHintTimeoutId = layoutRowAddHintTimeoutRef.current
+
+      if (layoutRowAddHintTimeoutId !== null) {
+        window.clearTimeout(layoutRowAddHintTimeoutId)
+        layoutRowAddHintTimeoutRef.current = null
       }
     },
     [],
@@ -585,7 +727,41 @@ function App() {
     }
   }, [blocks, hoveredBlockId])
 
+  useEffect(() => {
+    if (!hoveredLayoutAddRowId) {
+      return
+    }
+
+    if (!layoutRows.some((row) => row.id === hoveredLayoutAddRowId)) {
+      setHoveredLayoutAddRowId(null)
+    }
+  }, [hoveredLayoutAddRowId, layoutRows])
+
   useLayoutEffect(() => {
+    function getLayoutOverlayAnchorForElement(
+      element: HTMLElement | null,
+    ): LayoutOverlayAnchor | null {
+      if (!element) {
+        return null
+      }
+
+      const frameElement = layoutStageFrameRef.current
+
+      if (!frameElement) {
+        return null
+      }
+
+      const frameRect = frameElement.getBoundingClientRect()
+      const elementRect = element.getBoundingClientRect()
+
+      return {
+        height: elementRect.height,
+        left: elementRect.left - frameRect.left,
+        top: elementRect.top - frameRect.top,
+        width: elementRect.width,
+      }
+    }
+
     function getLayoutOverlayAnchor(
       blockId: string | null,
     ): LayoutOverlayAnchor | null {
@@ -593,34 +769,38 @@ function App() {
         return null
       }
 
-      const frameElement = layoutStageFrameRef.current
-      const blockElement = layoutStageRef.current?.querySelector<HTMLElement>(
-        `[data-layout-block-id="${blockId}"]`,
+      return getLayoutOverlayAnchorForElement(
+        layoutStageRef.current?.querySelector<HTMLElement>(
+          `[data-layout-block-id="${blockId}"]`,
+        ) ?? null,
       )
-
-      if (!frameElement || !blockElement) {
-        return null
-      }
-
-      const frameRect = frameElement.getBoundingClientRect()
-      const blockRect = blockElement.getBoundingClientRect()
-
-      return {
-        height: blockRect.height,
-        left: blockRect.left - frameRect.left,
-        top: blockRect.top - frameRect.top,
-        width: blockRect.width,
-      }
     }
 
     function updateLayoutOverlayAnchors() {
       setLayoutToolbarAnchor(getLayoutOverlayAnchor(visibleBlockToolbarId))
       setLayoutHintAnchor(getLayoutOverlayAnchor(hoveredBlockId))
+      setLayoutAddHintAnchor(
+        hoveredLayoutAddRowId
+          ? getLayoutOverlayAnchorForElement(
+              layoutAddButtonRefs.current[hoveredLayoutAddRowId] ?? null,
+            )
+          : null,
+      )
+      setLayoutRowAddHintAnchor(
+        shouldShowLayoutRowAddHint
+          ? getLayoutOverlayAnchorForElement(layoutRowAddButtonRef.current)
+          : null,
+      )
     }
 
     updateLayoutOverlayAnchors()
 
-    if (!visibleBlockToolbarId && !hoveredBlockId) {
+    if (
+      !visibleBlockToolbarId &&
+      !hoveredBlockId &&
+      !hoveredLayoutAddRowId &&
+      !shouldShowLayoutRowAddHint
+    ) {
       return
     }
 
@@ -639,8 +819,10 @@ function App() {
     blocks,
     draggingBlockId,
     hoveredBlockId,
+    hoveredLayoutAddRowId,
     layoutRows,
     selectedBlockId,
+    shouldShowLayoutRowAddHint,
     visibleBlockToolbarId,
   ])
 
@@ -770,6 +952,7 @@ function App() {
   }
 
   function openStockChordModal() {
+    hideStockAddHint()
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setChordModal({
@@ -793,6 +976,7 @@ function App() {
 
     setSelectedLayoutRowId(rowId)
     setEditingLyricsRowId(null)
+    hideLayoutAddHint()
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     setChordModal({
@@ -1226,7 +1410,9 @@ function App() {
 
   function handleAddLayoutRow() {
     const nextRow = createLayoutRow()
+    hideLayoutAddHint()
     hideLayoutHoverHint()
+    hideLayoutRowAddHint()
     setVisibleBlockToolbarId(null)
     setLayoutRows((currentRows) => [...currentRows, nextRow])
     setSelectedLayoutRowId(nextRow.id)
@@ -1405,6 +1591,30 @@ function App() {
         ? text.addToRow
         : text.saveChordChanges
     : ''
+  const renderStockAddButton = (className: string) => (
+    <div className="stock-add-button-wrapper">
+      <button
+        aria-label={text.openStockAddModal}
+        className={className}
+        onBlur={hideStockAddHint}
+        onClick={openStockChordModal}
+        onFocus={showStockAddHintImmediately}
+        onMouseEnter={scheduleStockAddHint}
+        onMouseLeave={hideStockAddHint}
+        type="button"
+      >
+        +
+      </button>
+      {showStockAddHint ? (
+        <div
+          aria-hidden="true"
+          className="layout-block-hover-hint stock-add-tooltip"
+        >
+          {text.stockAddTooltip}
+        </div>
+      ) : null}
+    </div>
+  )
 
   return (
     <main className="app-shell">
@@ -1519,25 +1729,13 @@ function App() {
                 </div>
               </article>
             ))}
-            <button
-              aria-label={text.openStockAddModal}
-              className="card-add-button stock-add-button"
-              onClick={openStockChordModal}
-              type="button"
-            >
-              +
-            </button>
+            {renderStockAddButton('card-add-button stock-add-button')}
           </div>
         ) : (
           <div className="stock-empty-state">
-            <button
-              aria-label={text.openStockAddModal}
-              className="card-add-button stock-add-button stock-add-button-empty"
-              onClick={openStockChordModal}
-              type="button"
-            >
-              +
-            </button>
+            {renderStockAddButton(
+              'card-add-button stock-add-button stock-add-button-empty',
+            )}
             <p className="stock-empty">{text.stockEmpty}</p>
           </div>
         )}
@@ -1597,6 +1795,30 @@ function App() {
               }}
             >
               {text.layoutDragHint}
+            </div>
+          ) : null}
+          {showLayoutAddHint && layoutAddHintAnchor ? (
+            <div
+              aria-hidden="true"
+              className="layout-block-hover-hint layout-add-tooltip"
+              style={{
+                left: `${layoutAddHintAnchor.left + layoutAddHintAnchor.width / 2}px`,
+                top: `${layoutAddHintAnchor.top + layoutAddHintAnchor.height}px`,
+              }}
+            >
+              {text.openLayoutAddModal}
+            </div>
+          ) : null}
+          {shouldShowLayoutRowAddHint && layoutRowAddHintAnchor ? (
+            <div
+              aria-hidden="true"
+              className="layout-block-hover-hint layout-row-add-tooltip"
+              style={{
+                left: `${layoutRowAddHintAnchor.left + layoutRowAddHintAnchor.width / 2}px`,
+                top: `${layoutRowAddHintAnchor.top + layoutRowAddHintAnchor.height}px`,
+              }}
+            >
+              {text.addRow}
             </div>
           ) : null}
 
@@ -1718,7 +1940,18 @@ function App() {
                       <button
                         aria-label={text.openLayoutAddModal}
                         className="layout-add-button"
+                        onBlur={() => hideLayoutAddHint(rowEntry.row.id)}
                         onClick={() => openLayoutChordModal(rowEntry.row.id)}
+                        onFocus={() =>
+                          showLayoutAddHintImmediately(rowEntry.row.id)
+                        }
+                        onMouseEnter={() =>
+                          scheduleLayoutAddHint(rowEntry.row.id)
+                        }
+                        onMouseLeave={() => hideLayoutAddHint(rowEntry.row.id)}
+                        ref={(node) => {
+                          layoutAddButtonRefs.current[rowEntry.row.id] = node
+                        }}
                         style={{ left: `${rowEntry.addButtonLeft}px` }}
                         type="button"
                       >
@@ -1773,7 +2006,12 @@ function App() {
               <button
                 aria-label={text.addRow}
                 className="layout-row-add-button"
+                onBlur={hideLayoutRowAddHint}
                 onClick={handleAddLayoutRow}
+                onFocus={showLayoutRowAddHintImmediately}
+                onMouseEnter={scheduleLayoutRowAddHint}
+                onMouseLeave={hideLayoutRowAddHint}
+                ref={layoutRowAddButtonRef}
                 type="button"
               >
                 +

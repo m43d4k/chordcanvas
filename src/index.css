@@ -732,6 +732,13 @@ button {
   height: 6.8rem;
 }
 
+.stock-add-button-wrapper {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
 .stock-add-button-empty {
   width: 3rem;
   min-width: 0;
@@ -1086,6 +1093,20 @@ button {
   background: rgba(115, 103, 240, 0.16);
   color: var(--accent-ink);
   outline: none;
+}
+
+.layout-row-add-tooltip {
+  z-index: 3;
+}
+
+.layout-add-tooltip {
+  z-index: 3;
+}
+
+.stock-add-tooltip {
+  left: 50%;
+  top: 100%;
+  z-index: 3;
 }
 
 .chord-preview-block {

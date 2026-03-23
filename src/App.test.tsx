@@ -671,23 +671,102 @@ describe('App', () => {
       })
 
       expect(blockButton).not.toHaveAttribute('title')
-      expect(
-        screen.queryByText('左右にドラッグし、位置を調整できます。'),
-      ).toBeNull()
+      expect(screen.queryByText('左右に移動')).toBeNull()
 
       fireEvent.mouseEnter(blockButton)
 
-      expect(
-        screen.queryByText('左右にドラッグし、位置を調整できます。'),
-      ).toBeNull()
+      expect(screen.queryByText('左右に移動')).toBeNull()
 
       act(() => {
         vi.advanceTimersByTime(500)
       })
 
-      expect(
-        screen.getByText('左右にドラッグし、位置を調整できます。'),
-      ).toHaveClass('layout-block-hover-hint')
+      expect(screen.getByText('左右に移動')).toHaveClass(
+        'layout-block-hover-hint',
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('renders the add row tooltip as a delayed custom hover tooltip on the add row button', () => {
+    vi.useFakeTimers()
+
+    try {
+      render(<App />)
+
+      const addRowButton = screen.getByRole('button', {
+        name: '行を追加',
+      })
+
+      expect(addRowButton).not.toHaveAttribute('title')
+      expect(screen.queryByText('行を追加')).toBeNull()
+
+      fireEvent.mouseEnter(addRowButton)
+
+      expect(screen.queryByText('行を追加')).toBeNull()
+
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+
+      expect(screen.getByText('行を追加')).toHaveClass(
+        'layout-block-hover-hint',
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('renders the stock add tooltip as a delayed custom hover tooltip on the stock add button', () => {
+    vi.useFakeTimers()
+
+    try {
+      render(<App />)
+
+      const stockAddButton = getOpenStockModalButton()
+
+      expect(stockAddButton).not.toHaveAttribute('title')
+      expect(screen.queryByText('ストックを追加')).toBeNull()
+
+      fireEvent.mouseEnter(stockAddButton)
+
+      expect(screen.queryByText('ストックを追加')).toBeNull()
+
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+
+      expect(screen.getByText('ストックを追加')).toHaveClass(
+        'layout-block-hover-hint',
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('renders the add chord tooltip as a delayed custom hover tooltip on the layout add button', () => {
+    vi.useFakeTimers()
+
+    try {
+      render(<App />)
+
+      const addChordButton = getLayoutAddButton(1)
+
+      expect(addChordButton).not.toHaveAttribute('title')
+      expect(screen.queryByText('コードを追加')).toBeNull()
+
+      fireEvent.mouseEnter(addChordButton)
+
+      expect(screen.queryByText('コードを追加')).toBeNull()
+
+      act(() => {
+        vi.advanceTimersByTime(500)
+      })
+
+      expect(screen.getByText('コードを追加')).toHaveClass(
+        'layout-block-hover-hint',
+      )
     } finally {
       vi.useRealTimers()
     }
