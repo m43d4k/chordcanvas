@@ -1,4 +1,5 @@
 export const LAYOUT_PDF_FILE_NAME = 'chordcanvas-layout.pdf'
+export const LAYOUT_LONG_PDF_FILE_NAME = 'chordcanvas-layout-long.pdf'
 
 const EXPORT_BACKGROUND = '#fffdf8'
 const EXPORT_MARGIN = 32
@@ -9,6 +10,15 @@ const MAX_CANVAS_PIXELS = 40_000_000
 const PDF_POINTS_PER_INCH = 72
 const PDF_PAGE_FORMAT = 'a4'
 const PDF_PAGE_ORIENTATION = 'portrait'
+const PDF_A4_PAGE_WIDTH = 595.28
+
+interface PdfDocumentPropertiesTarget {
+  setDocumentProperties: (properties: {
+    subject: string
+    title: string
+  }) => void
+  setDisplayMode: (zoom: 'fullwidth') => void
+}
 
 function waitForNextPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -47,9 +57,7 @@ function getCaptureScale(
     MAX_CANVAS_EDGE / renderWidth,
     MAX_CANVAS_EDGE / renderHeight,
   )
-  const pixelScale = Math.sqrt(
-    MAX_CANVAS_PIXELS / (renderWidth * renderHeight),
-  )
+  const pixelScale = Math.sqrt(MAX_CANVAS_PIXELS / (renderWidth * renderHeight))
 
   return Math.max(
     1,
@@ -100,11 +108,78 @@ async function loadPdfDependencies() {
   }
 }
 
+async function captureStageCanvas(
+  stageElement: HTMLElement,
+  contentWidth: number,
+  html2canvas: Awaited<ReturnType<typeof loadPdfDependencies>>['html2canvas'],
+): Promise<HTMLCanvasElement> {
+  const { width, height } = getRenderSize(stageElement)
+  const captureScale = getCaptureScale(width, height, contentWidth)
+
+  return html2canvas(stageElement, {
+    backgroundColor: EXPORT_BACKGROUND,
+    height,
+    logging: false,
+    scale: captureScale,
+    useCORS: true,
+    width,
+    windowHeight: height,
+    windowWidth: width,
+  })
+}
+
+function setLayoutPdfDocumentProperties(
+  pdf: PdfDocumentPropertiesTarget,
+  title: string,
+) {
+  pdf.setDocumentProperties({
+    subject: 'ChordCanvas layout export',
+    title,
+  })
+  pdf.setDisplayMode('fullwidth')
+}
+
+function getPdfContentMetrics(pdf: {
+  internal: {
+    pageSize: {
+      getHeight: () => number
+      getWidth: () => number
+    }
+  }
+}) {
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+
+  return {
+    contentHeight: pageHeight - EXPORT_MARGIN * 2,
+    contentWidth: pageWidth - EXPORT_MARGIN * 2,
+    pageHeight,
+    pageWidth,
+  }
+}
+
+function getA4ContentWidth() {
+  return PDF_A4_PAGE_WIDTH - EXPORT_MARGIN * 2
+}
+
+function canvasToPngDataUrl(canvas: HTMLCanvasElement): string {
+  return canvas.toDataURL('image/png')
+}
+
+function downloadBlob(blob: Blob, fileName: string) {
+  const objectUrl = URL.createObjectURL(blob)
+  const downloadLink = document.createElement('a')
+
+  downloadLink.href = objectUrl
+  downloadLink.download = fileName
+  downloadLink.click()
+  URL.revokeObjectURL(objectUrl)
+}
+
 export async function exportLayoutStagePdf(
   stageElement: HTMLElement,
   fileName = LAYOUT_PDF_FILE_NAME,
 ): Promise<void> {
-  const { width, height } = getRenderSize(stageElement)
   stageElement.setAttribute('data-exporting-pdf', 'true')
 
   try {
@@ -116,31 +191,18 @@ export async function exportLayoutStagePdf(
       orientation: PDF_PAGE_ORIENTATION,
       unit: 'pt',
     })
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    const contentWidth = pageWidth - EXPORT_MARGIN * 2
-    const contentHeight = pageHeight - EXPORT_MARGIN * 2
-    const captureScale = getCaptureScale(width, height, contentWidth)
-
-    const canvas = await html2canvas(stageElement, {
-      backgroundColor: EXPORT_BACKGROUND,
-      height,
-      logging: false,
-      scale: captureScale,
-      useCORS: true,
-      width,
-      windowHeight: height,
-      windowWidth: width,
-    })
+    const { contentHeight, contentWidth } = getPdfContentMetrics(pdf)
+    const canvas = await captureStageCanvas(
+      stageElement,
+      contentWidth,
+      html2canvas,
+    )
     const sourcePageHeight = Math.max(
       1,
       Math.floor((contentHeight * canvas.width) / contentWidth),
     )
 
-    pdf.setDocumentProperties({
-      subject: 'ChordCanvas layout export',
-      title: 'ChordCanvas Layout',
-    })
+    setLayoutPdfDocumentProperties(pdf, 'ChordCanvas Layout')
 
     let sourceTop = 0
     let pageIndex = 0
@@ -170,6 +232,52 @@ export async function exportLayoutStagePdf(
     }
 
     await pdf.save(fileName, { returnPromise: true })
+  } finally {
+    stageElement.removeAttribute('data-exporting-pdf')
+  }
+}
+
+export async function exportLayoutStageLongPdf(
+  stageElement: HTMLElement,
+  fileName = LAYOUT_LONG_PDF_FILE_NAME,
+): Promise<void> {
+  stageElement.setAttribute('data-exporting-pdf', 'true')
+
+  try {
+    await waitForNextPaint()
+    const [{ html2canvas }, { PDFDocument }] = await Promise.all([
+      loadPdfDependencies(),
+      import('pdf-lib'),
+    ])
+    const contentWidth = getA4ContentWidth()
+    const canvas = await captureStageCanvas(
+      stageElement,
+      contentWidth,
+      html2canvas,
+    )
+    const renderedHeight = (canvas.height * contentWidth) / canvas.width
+    const pageHeight = renderedHeight + EXPORT_MARGIN * 2
+    const pdfDocument = await PDFDocument.create()
+    const page = pdfDocument.addPage([PDF_A4_PAGE_WIDTH, pageHeight])
+    const embeddedImage = await pdfDocument.embedPng(canvasToPngDataUrl(canvas))
+
+    pdfDocument.setTitle('ChordCanvas Layout Long')
+    pdfDocument.setSubject('ChordCanvas layout export')
+    page.drawImage(embeddedImage, {
+      height: renderedHeight,
+      width: contentWidth,
+      x: EXPORT_MARGIN,
+      y: pageHeight - EXPORT_MARGIN - renderedHeight,
+    })
+
+    const pdfBytes = await pdfDocument.save()
+    const pdfBuffer = new Uint8Array(pdfBytes.byteLength)
+
+    pdfBuffer.set(pdfBytes)
+    downloadBlob(
+      new Blob([pdfBuffer], { type: 'application/pdf' }),
+      fileName,
+    )
   } finally {
     stageElement.removeAttribute('data-exporting-pdf')
   }

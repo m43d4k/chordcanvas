@@ -1,6 +1,6 @@
 # chordcanvas
 
-Guitar chord diagram editor for creating, editing, arranging, and PDF-exporting chord layouts locally.
+Guitar chord diagram editor for creating, editing, arranging, and exporting chord layouts locally as A4 or tall single-page PDFs.
 
 ## Current features
 
@@ -15,7 +15,7 @@ Guitar chord diagram editor for creating, editing, arranging, and PDF-exporting 
 - Edit lyric rows in place on the layout while preserving spacing in PDF export
 - Adjust per-block horizontal offset and trailing spacing, and drag chord blocks horizontally while pushing later blocks out of the way
 - Save reusable chord voicings in a project stock and add them back from the layout add modal
-- Export and import project JSON, and export layout PDF
+- Export and import project JSON, and export layout PDF as either A4 portrait or a tall single-page layout
 
 ## Setup
 

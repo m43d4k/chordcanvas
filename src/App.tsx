@@ -6,7 +6,10 @@ import type {
 } from 'react'
 import ChordComposer from './components/ChordComposer'
 import ChordDiagram from './components/ChordDiagram'
-import { exportLayoutStagePdf } from './export/layoutPdf'
+import {
+  exportLayoutStageLongPdf,
+  exportLayoutStagePdf,
+} from './export/layoutPdf'
 import {
   MINIMUM_DIAGRAM_FRET_COUNT,
   type ChordQuality,
@@ -84,6 +87,8 @@ type ChordModalState =
       draft: ChordDraftState
       kind: 'edit'
     }
+
+type PdfExportKind = 'a4' | 'long'
 
 let blockSequence = 1
 let rowSequence = 1
@@ -298,7 +303,7 @@ function App() {
     initialState.initialManualViewport.fretCount,
   )
   const [appError, setAppError] = useState<string | null>(null)
-  const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [pdfExportKind, setPdfExportKind] = useState<PdfExportKind | null>(null)
   const [editingLyricsRowId, setEditingLyricsRowId] = useState<string | null>(
     null,
   )
@@ -317,6 +322,7 @@ function App() {
   const [layoutHintAnchor, setLayoutHintAnchor] =
     useState<LayoutOverlayAnchor | null>(null)
   const text = UI_TEXT[locale]
+  const isExportingPdf = pdfExportKind !== null
 
   const selectedBlock =
     blocks.find((block) => block.id === selectedBlockId) ?? blocks[0]
@@ -483,10 +489,9 @@ function App() {
       }
 
       const deltaX = Math.round(event.clientX - dragState.startClientX)
-      const appliedDeltaX = Math.max(
-        dragState.minXOffset,
-        dragState.startXOffset + deltaX,
-      ) - dragState.startXOffset
+      const appliedDeltaX =
+        Math.max(dragState.minXOffset, dragState.startXOffset + deltaX) -
+        dragState.startXOffset
       const nextXOffset = dragState.startXOffset + appliedDeltaX
       const nextSpacing = dragState.hasFollowingBlock
         ? appliedDeltaX > 0
@@ -628,10 +633,7 @@ function App() {
 
     return () => {
       window.removeEventListener('resize', updateLayoutOverlayAnchors)
-      wrapperElement?.removeEventListener(
-        'scroll',
-        updateLayoutOverlayAnchors,
-      )
+      wrapperElement?.removeEventListener('scroll', updateLayoutOverlayAnchors)
     }
   }, [
     blocks,
@@ -838,15 +840,20 @@ function App() {
         ? copyFretting(nextForm.fretting)
         : draft.fretting
 
-      return syncDraftViewport({
-        ...draft,
-        selectedFormId: nextForm?.id ?? '',
-        selectedRoot: nextRoot,
-      }, nextFretting)
+      return syncDraftViewport(
+        {
+          ...draft,
+          selectedFormId: nextForm?.id ?? '',
+          selectedRoot: nextRoot,
+        },
+        nextFretting,
+      )
     })
   }
 
-  function handleChordModalQualityChange(event: ChangeEvent<HTMLSelectElement>) {
+  function handleChordModalQualityChange(
+    event: ChangeEvent<HTMLSelectElement>,
+  ) {
     const nextQuality = event.target.value as ChordQuality
 
     updateChordModalDraft((draft) => {
@@ -856,11 +863,14 @@ function App() {
         ? copyFretting(nextForm.fretting)
         : draft.fretting
 
-      return syncDraftViewport({
-        ...draft,
-        selectedFormId: nextForm?.id ?? '',
-        selectedQuality: nextQuality,
-      }, nextFretting)
+      return syncDraftViewport(
+        {
+          ...draft,
+          selectedFormId: nextForm?.id ?? '',
+          selectedQuality: nextQuality,
+        },
+        nextFretting,
+      )
     })
   }
 
@@ -1317,7 +1327,7 @@ function App() {
     setAppError(null)
   }
 
-  async function handlePdfExport() {
+  async function handlePdfExport(kind: PdfExportKind) {
     const layoutStageElement = layoutStageRef.current
 
     if (!layoutStageElement) {
@@ -1335,10 +1345,15 @@ function App() {
     }
 
     setEditingLyricsRowId(null)
-    setIsExportingPdf(true)
+    setPdfExportKind(kind)
 
     try {
-      await exportLayoutStagePdf(layoutStageElement)
+      if (kind === 'a4') {
+        await exportLayoutStagePdf(layoutStageElement)
+      } else {
+        await exportLayoutStageLongPdf(layoutStageElement)
+      }
+
       setAppError(null)
     } catch (error) {
       setAppError(
@@ -1347,7 +1362,7 @@ function App() {
         ),
       )
     } finally {
-      setIsExportingPdf(false)
+      setPdfExportKind(null)
     }
   }
 
@@ -1425,10 +1440,20 @@ function App() {
             <button
               className="secondary-button"
               disabled={isExportingPdf}
-              onClick={handlePdfExport}
+              onClick={() => handlePdfExport('a4')}
               type="button"
             >
-              {isExportingPdf ? text.exportingPdf : text.exportPdf}
+              {pdfExportKind === 'a4' ? text.exportingPdf : text.exportPdfA4}
+            </button>
+            <button
+              className="secondary-button"
+              disabled={isExportingPdf}
+              onClick={() => handlePdfExport('long')}
+              type="button"
+            >
+              {pdfExportKind === 'long'
+                ? text.exportingPdf
+                : text.exportPdfLong}
             </button>
             <button
               className="secondary-button"
@@ -1470,7 +1495,10 @@ function App() {
         {hasStockEntries ? (
           <div className="stock-grid">
             {stockEntries.map(({ stockChord, summary, displayName }) => (
-              <article className="stock-card dismissible-card" key={stockChord.id}>
+              <article
+                className="stock-card dismissible-card"
+                key={stockChord.id}
+              >
                 <button
                   aria-label={text.removeStockChordAria(displayName)}
                   className="card-dismiss-button"
@@ -1521,9 +1549,7 @@ function App() {
         </div>
 
         <div className="layout-stage-frame" ref={layoutStageFrameRef}>
-          {!isExportingPdf &&
-          visibleBlockToolbarId &&
-          layoutToolbarAnchor ? (
+          {!isExportingPdf && visibleBlockToolbarId && layoutToolbarAnchor ? (
             <div
               className="layout-block-toolbar"
               ref={layoutToolbarRef}
@@ -1590,7 +1616,9 @@ function App() {
                   <section
                     aria-labelledby={`layout-row-heading-${rowEntry.row.id}`}
                     className={`layout-row${
-                      rowEntry.row.id === selectedLayoutRow.id ? ' selected' : ''
+                      rowEntry.row.id === selectedLayoutRow.id
+                        ? ' selected'
+                        : ''
                     }`}
                     key={rowEntry.row.id}
                   >
@@ -1616,7 +1644,9 @@ function App() {
                       {rowEntry.entries.map((entry) => (
                         <div
                           className={`layout-chord-block dismissible-card${
-                            entry.block.id === selectedBlockId ? ' selected' : ''
+                            entry.block.id === selectedBlockId
+                              ? ' selected'
+                              : ''
                           }`}
                           data-dragging={
                             draggingBlockId === entry.block.id
@@ -1647,7 +1677,9 @@ function App() {
                             draggable={false}
                             onBlur={() => hideLayoutHoverHint(entry.block.id)}
                             onClick={() =>
-                              activateBlock(entry.block, { revealToolbar: true })
+                              activateBlock(entry.block, {
+                                revealToolbar: true,
+                              })
                             }
                             onFocus={() =>
                               showLayoutHoverHintImmediately(entry.block.id)
@@ -1694,11 +1726,14 @@ function App() {
                       </button>
                     </div>
 
-                    {isExportingPdf || editingLyricsRowId !== rowEntry.row.id ? (
+                    {isExportingPdf ||
+                    editingLyricsRowId !== rowEntry.row.id ? (
                       <div
                         aria-label={lyricsLineLabel}
                         className={`lyrics-line lyrics-line-text${
-                          showLyricsPlaceholder ? ' lyrics-line-placeholder' : ''
+                          showLyricsPlaceholder
+                            ? ' lyrics-line-placeholder'
+                            : ''
                         }`}
                         onClick={() => startLyricsLineEditing(rowEntry.row.id)}
                         onKeyDown={(event) => {
@@ -1783,7 +1818,10 @@ function App() {
               </button>
             </div>
 
-            <form className="chord-modal-form" onSubmit={handleSubmitChordModal}>
+            <form
+              className="chord-modal-form"
+              onSubmit={handleSubmitChordModal}
+            >
               <ChordComposer
                 availableForms={modalAvailableForms}
                 chordName={modalDraft.chordName}
@@ -1842,31 +1880,35 @@ function App() {
 
                     {stockEntries.length > 0 ? (
                       <div className="stock-grid modal-stock-grid">
-                        {stockEntries.map(({ stockChord, summary, displayName }) => (
-                          <article className="stock-card" key={stockChord.id}>
-                            <div className="chord-preview-block stock-chord-preview">
-                              <h3 className="chord-preview-name">{displayName}</h3>
-                              <ChordDiagram
-                                compact
-                                fretting={stockChord.fretting}
-                                markerLabels={summary.stringDegreeLabels}
-                                tightTopSpacing
-                                viewport={summary.viewport}
-                              />
-                            </div>
+                        {stockEntries.map(
+                          ({ stockChord, summary, displayName }) => (
+                            <article className="stock-card" key={stockChord.id}>
+                              <div className="chord-preview-block stock-chord-preview">
+                                <h3 className="chord-preview-name">
+                                  {displayName}
+                                </h3>
+                                <ChordDiagram
+                                  compact
+                                  fretting={stockChord.fretting}
+                                  markerLabels={summary.stringDegreeLabels}
+                                  tightTopSpacing
+                                  viewport={summary.viewport}
+                                />
+                              </div>
 
-                            <div className="stock-card-actions">
-                              <button
-                                onClick={() =>
-                                  handleAddStockChordFromModal(stockChord.id)
-                                }
-                                type="button"
-                              >
-                                {text.addToRow}
-                              </button>
-                            </div>
-                          </article>
-                        ))}
+                              <div className="stock-card-actions">
+                                <button
+                                  onClick={() =>
+                                    handleAddStockChordFromModal(stockChord.id)
+                                  }
+                                  type="button"
+                                >
+                                  {text.addToRow}
+                                </button>
+                              </div>
+                            </article>
+                          ),
+                        )}
                       </div>
                     ) : (
                       <p className="stock-empty">{text.stockEmpty}</p>
@@ -1879,7 +1921,9 @@ function App() {
                 <div className="modal-actions">
                   <button
                     className="accent-button modal-submit-button"
-                    disabled={chordModal.kind === 'stock' && isModalChordStocked}
+                    disabled={
+                      chordModal.kind === 'stock' && isModalChordStocked
+                    }
                     type="submit"
                   >
                     {modalSubmitLabel}

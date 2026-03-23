@@ -4,7 +4,8 @@ export interface UiText {
   languageToggleGroupLabel: string
   languageJa: string
   languageEn: string
-  exportPdf: string
+  exportPdfA4: string
+  exportPdfLong: string
   exportingPdf: string
   exportProject: string
   importProject: string
@@ -73,7 +74,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     languageToggleGroupLabel: '言語切り替え',
     languageJa: '日本語',
     languageEn: 'English',
-    exportPdf: 'レイアウトを PDF 出力',
+    exportPdfA4: 'A4レイアウトを PDF 出力',
+    exportPdfLong: '縦長レイアウトを PDF 出力',
     exportingPdf: 'PDF を書き出し中...',
     exportProject: 'プロジェクトを書き出し',
     importProject: 'プロジェクトを読み込む',
@@ -112,8 +114,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     addToRow: '追加',
     delete: '削除',
     removeStockChordAria: (name) => `${name} をストックから削除`,
-    stockEmpty:
-      'ストックはまだ空です。繰り返し使うコードを追加できます。',
+    stockEmpty: 'ストックはまだ空です。繰り返し使うコードを追加できます。',
     layoutHeading: 'レイアウト編集',
     openLayoutAddModal: 'コードを追加',
     addRow: '行を追加',
@@ -143,7 +144,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     languageToggleGroupLabel: 'Language switcher',
     languageJa: '日本語',
     languageEn: 'English',
-    exportPdf: 'Export Layout PDF',
+    exportPdfA4: 'Export A4 Layout PDF',
+    exportPdfLong: 'Export Tall Layout PDF',
     exportingPdf: 'Exporting PDF...',
     exportProject: 'Export Project',
     importProject: 'Import Project',
@@ -182,8 +184,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     addToRow: 'Add',
     delete: 'Delete',
     removeStockChordAria: (name) => `Remove ${name} from stock`,
-    stockEmpty:
-      'Chord stock is empty. Add chords you use repeatedly.',
+    stockEmpty: 'Chord stock is empty. Add chords you use repeatedly.',
     layoutHeading: 'Layout Editor',
     openLayoutAddModal: 'Add chord',
     addRow: 'Add Row',

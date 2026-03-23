@@ -10,25 +10,52 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const pdfMocks = vi.hoisted(() => {
+  function getPdfPageSize(options?: {
+    format?: string | number[]
+    orientation?: string
+  }) {
+    if (Array.isArray(options?.format)) {
+      return {
+        height: options.format[1] ?? 841.89,
+        width: options.format[0] ?? 595.28,
+      }
+    }
+
+    const isPortrait =
+      options?.orientation === undefined ||
+      options.orientation === 'p' ||
+      options.orientation === 'portrait'
+
+    return {
+      height: isPortrait ? 841.89 : 595.28,
+      width: isPortrait ? 595.28 : 841.89,
+    }
+  }
+
   const html2canvas = vi.fn()
   const pdfInstances: Array<{
     addImage: ReturnType<typeof vi.fn>
     addPage: ReturnType<typeof vi.fn>
     save: ReturnType<typeof vi.fn>
+    setDisplayMode: ReturnType<typeof vi.fn>
     setDocumentProperties: ReturnType<typeof vi.fn>
   }> = []
-  const jsPDF = vi.fn(function JsPdfMock(options?: { orientation?: string }) {
-    const isPortrait = options?.orientation === 'portrait'
+  const jsPDF = vi.fn(function JsPdfMock(options?: {
+    format?: string | number[]
+    orientation?: string
+  }) {
+    const { height, width } = getPdfPageSize(options)
     const instance = {
       addImage: vi.fn(),
       addPage: vi.fn(),
       internal: {
         pageSize: {
-          getHeight: () => (isPortrait ? 841.89 : 595.28),
-          getWidth: () => (isPortrait ? 595.28 : 841.89),
+          getHeight: () => height,
+          getWidth: () => width,
         },
       },
       save: vi.fn().mockResolvedValue(undefined),
+      setDisplayMode: vi.fn(),
       setDocumentProperties: vi.fn(),
     }
 
@@ -43,6 +70,42 @@ const pdfMocks = vi.hoisted(() => {
   }
 })
 
+const pdfLibMocks = vi.hoisted(() => {
+  const documents: Array<{
+    addPage: ReturnType<typeof vi.fn>
+    embedPng: ReturnType<typeof vi.fn>
+    page: {
+      drawImage: ReturnType<typeof vi.fn>
+    }
+    save: ReturnType<typeof vi.fn>
+    setSubject: ReturnType<typeof vi.fn>
+    setTitle: ReturnType<typeof vi.fn>
+  }> = []
+  const PDFDocument = {
+    create: vi.fn(async () => {
+      const page = {
+        drawImage: vi.fn(),
+      }
+      const document = {
+        addPage: vi.fn(() => page),
+        embedPng: vi.fn().mockResolvedValue({}),
+        page,
+        save: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+        setSubject: vi.fn(),
+        setTitle: vi.fn(),
+      }
+
+      documents.push(document)
+      return document
+    }),
+  }
+
+  return {
+    documents,
+    PDFDocument,
+  }
+})
+
 vi.mock('html2canvas', () => ({
   default: pdfMocks.html2canvas,
 }))
@@ -50,6 +113,8 @@ vi.mock('html2canvas', () => ({
 vi.mock('jspdf', () => ({
   jsPDF: pdfMocks.jsPDF,
 }))
+
+vi.mock('pdf-lib', () => pdfLibMocks)
 
 import App from './App'
 import './index.css'
@@ -64,6 +129,8 @@ afterEach(() => {
   pdfMocks.html2canvas.mockReset()
   pdfMocks.jsPDF.mockClear()
   pdfMocks.pdfInstances.length = 0
+  pdfLibMocks.PDFDocument.create.mockClear()
+  pdfLibMocks.documents.length = 0
 })
 
 function getItemOrThrow<T>(items: readonly T[], index: number): T {
@@ -93,10 +160,9 @@ function openLyricsLineInput(index: number): HTMLInputElement {
 }
 
 function getLayoutBlockContainer(element: HTMLElement): HTMLElement {
-  const block =
-    element.matches('.layout-chord-block')
-      ? element
-      : element.closest('.layout-chord-block')
+  const block = element.matches('.layout-chord-block')
+    ? element
+    : element.closest('.layout-chord-block')
 
   if (!(block instanceof HTMLElement)) {
     throw new Error('Expected layout block container')
@@ -137,10 +203,9 @@ function dragLayoutBlock(
   endClientX: number,
   pointerId = 1,
 ) {
-  const dragHandle =
-    block.matches('.layout-chord-block')
-      ? block.querySelector('.layout-chord-block-button')
-      : block
+  const dragHandle = block.matches('.layout-chord-block')
+    ? block.querySelector('.layout-chord-block-button')
+    : block
 
   if (!(dragHandle instanceof HTMLElement)) {
     throw new Error('Expected layout block drag handle')
@@ -303,7 +368,9 @@ describe('App', () => {
     ).toBeNull()
     expect(getOpenStockModalButton()).toBeInTheDocument()
     expect(getOpenStockModalButton()).toHaveClass('stock-add-button-empty')
-    expect(getOpenStockModalButton().closest('.stock-empty-state')).not.toBeNull()
+    expect(
+      getOpenStockModalButton().closest('.stock-empty-state'),
+    ).not.toBeNull()
     expect(getLayoutAddButton(1)).toBeInTheDocument()
   })
 
@@ -338,9 +405,7 @@ describe('App', () => {
         name: 'Add to Stock',
       }),
     ).toBeInTheDocument()
-    expect(
-      getLayoutAddButton(1),
-    ).toHaveAccessibleName('Add chord')
+    expect(getLayoutAddButton(1)).toHaveAccessibleName('Add chord')
   })
 
   it('shows a localized placeholder hint for empty lyrics lines', () => {
@@ -847,9 +912,11 @@ describe('App', () => {
     const manualGrid = firstRow.closest('.manual-grid')
 
     expect(manualGrid).not.toBeNull()
-    expect((manualGrid as HTMLElement).style.getPropertyValue('--manual-grid-column-count')).toBe(
-      String(rowButtons.length + 1),
-    )
+    expect(
+      (manualGrid as HTMLElement).style.getPropertyValue(
+        '--manual-grid-column-count',
+      ),
+    ).toBe(String(rowButtons.length + 1))
     expect(firstRow.style.gridTemplateColumns).toBe(
       `repeat(${rowButtons.length + 1}, var(--manual-grid-unit))`,
     )
@@ -918,7 +985,7 @@ describe('App', () => {
     }
   })
 
-  it('exports the current layout as PDF', async () => {
+  it('exports the current layout as A4 PDF', async () => {
     const exportCanvas = document.createElement('canvas')
     let capturedBlockLeft = ''
     let capturedLyricsLineTagName = ''
@@ -932,26 +999,29 @@ describe('App', () => {
     const getContextSpy = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockImplementation(() => fakeContext)
-
     exportCanvas.width = 1200
     exportCanvas.height = 2500
-    pdfMocks.html2canvas.mockImplementation(async (stageElement: HTMLElement) => {
-      const layoutBlock =
-        stageElement.querySelector<HTMLElement>('.layout-chord-block.selected')
-      const lyricsLine = stageElement.querySelector<HTMLElement>('.lyrics-line')
+    pdfMocks.html2canvas.mockImplementation(
+      async (stageElement: HTMLElement) => {
+        const layoutBlock = stageElement.querySelector<HTMLElement>(
+          '.layout-chord-block.selected',
+        )
+        const lyricsLine =
+          stageElement.querySelector<HTMLElement>('.lyrics-line')
 
-      capturedStagePaddingInline = stageElement.style.getPropertyValue(
-        '--layout-stage-padding-inline',
-      )
-      capturedRowPaddingInline = stageElement.style.getPropertyValue(
-        '--layout-row-padding-inline',
-      )
-      capturedBlockLeft = layoutBlock?.style.left ?? ''
-      capturedLyricsLineTagName = lyricsLine?.tagName ?? ''
-      capturedLyricsText = lyricsLine?.textContent ?? ''
+        capturedStagePaddingInline = stageElement.style.getPropertyValue(
+          '--layout-stage-padding-inline',
+        )
+        capturedRowPaddingInline = stageElement.style.getPropertyValue(
+          '--layout-row-padding-inline',
+        )
+        capturedBlockLeft = layoutBlock?.style.left ?? ''
+        capturedLyricsLineTagName = lyricsLine?.tagName ?? ''
+        capturedLyricsText = lyricsLine?.textContent ?? ''
 
-      return exportCanvas
-    })
+        return exportCanvas
+      },
+    )
 
     try {
       const { container } = render(<App />)
@@ -962,7 +1032,7 @@ describe('App', () => {
 
       fireEvent.click(
         screen.getByRole('button', {
-          name: 'レイアウトを PDF 出力',
+          name: 'A4レイアウトを PDF 出力',
         }),
       )
 
@@ -980,6 +1050,7 @@ describe('App', () => {
           unit: 'pt',
         }),
       )
+      expect(pdfInstance?.setDisplayMode).toHaveBeenCalledWith('fullwidth')
       expect(pdfInstance?.addImage).toHaveBeenCalled()
       expect(pdfInstance?.addPage).toHaveBeenCalledTimes(1)
       expect(pdfInstance?.save).toHaveBeenCalledWith('chordcanvas-layout.pdf', {
@@ -994,6 +1065,132 @@ describe('App', () => {
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     } finally {
       getContextSpy.mockRestore()
+    }
+  })
+
+  it('exports the current layout as a tall single-page PDF', async () => {
+    const exportCanvas = document.createElement('canvas')
+    let capturedBlockLeft = ''
+    let capturedLyricsLineTagName = ''
+    let capturedLyricsText = ''
+    let capturedRowPaddingInline = ''
+    let capturedStagePaddingInline = ''
+    const toDataUrlSpy = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,layout-long-pdf')
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
+    const originalCreateObjectURL = URL.createObjectURL
+    const originalRevokeObjectURL = URL.revokeObjectURL
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:layout-long-pdf'),
+      writable: true,
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+      writable: true,
+    })
+
+    exportCanvas.width = 1200
+    exportCanvas.height = 2500
+    pdfMocks.html2canvas.mockImplementation(
+      async (stageElement: HTMLElement) => {
+        const layoutBlock = stageElement.querySelector<HTMLElement>(
+          '.layout-chord-block.selected',
+        )
+        const lyricsLine =
+          stageElement.querySelector<HTMLElement>('.lyrics-line')
+
+        capturedStagePaddingInline = stageElement.style.getPropertyValue(
+          '--layout-stage-padding-inline',
+        )
+        capturedRowPaddingInline = stageElement.style.getPropertyValue(
+          '--layout-row-padding-inline',
+        )
+        capturedBlockLeft = layoutBlock?.style.left ?? ''
+        capturedLyricsLineTagName = lyricsLine?.tagName ?? ''
+        capturedLyricsText = lyricsLine?.textContent ?? ''
+
+        return exportCanvas
+      },
+    )
+
+    try {
+      const { container } = render(<App />)
+
+      fireEvent.change(openLyricsLineInput(1), {
+        target: { value: '  Exported line  ' },
+      })
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: '縦長レイアウトを PDF 出力',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(pdfMocks.html2canvas).toHaveBeenCalledTimes(1)
+      })
+
+      const layoutStage = container.querySelector('.layout-stage')
+      const pdfDocument = pdfLibMocks.documents[0]
+      const expectedContentWidth = 595.28 - 32 * 2
+      const expectedRenderedHeight =
+        (exportCanvas.height * expectedContentWidth) / exportCanvas.width
+      const createObjectUrl = URL.createObjectURL as ReturnType<typeof vi.fn>
+      const revokeObjectUrl = URL.revokeObjectURL as ReturnType<typeof vi.fn>
+
+      expect(pdfLibMocks.PDFDocument.create).toHaveBeenCalledTimes(1)
+      expect(pdfDocument?.addPage).toHaveBeenCalledWith([
+        595.28,
+        expectedRenderedHeight + 32 * 2,
+      ])
+      expect(pdfDocument?.embedPng).toHaveBeenCalledWith(
+        'data:image/png;base64,layout-long-pdf',
+      )
+      expect(pdfDocument?.page.drawImage).toHaveBeenCalledWith(
+        {},
+        expect.objectContaining({
+          height: expectedRenderedHeight,
+          width: expectedContentWidth,
+          x: 32,
+          y: 32,
+        }),
+      )
+      expect(pdfDocument?.setTitle).toHaveBeenCalledWith(
+        'ChordCanvas Layout Long',
+      )
+      expect(pdfDocument?.setSubject).toHaveBeenCalledWith(
+        'ChordCanvas layout export',
+      )
+      expect(pdfDocument?.save).toHaveBeenCalledTimes(1)
+      expect(clickSpy).toHaveBeenCalledTimes(1)
+      expect(createObjectUrl).toHaveBeenCalledTimes(1)
+      expect(revokeObjectUrl).toHaveBeenCalledWith('blob:layout-long-pdf')
+      expect(capturedStagePaddingInline).toBe('0px')
+      expect(capturedRowPaddingInline).toBe('0px')
+      expect(capturedBlockLeft).toBe('16px')
+      expect(capturedLyricsLineTagName).toBe('DIV')
+      expect(capturedLyricsText).toBe('  Exported line  ')
+      expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    } finally {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        value: originalCreateObjectURL,
+        writable: true,
+      })
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        value: originalRevokeObjectURL,
+        writable: true,
+      })
+      clickSpy.mockRestore()
+      toDataUrlSpy.mockRestore()
     }
   })
 
@@ -1068,12 +1265,8 @@ describe('App', () => {
         name: 'Select Bridge F block',
       }),
     ).toBeInTheDocument()
-    expect(
-      getLayoutBlockByName('Verse Am'),
-    ).toHaveStyle({ left: '28px' })
-    expect(
-      getLayoutBlockByName('Bridge F'),
-    ).toHaveStyle({ left: '21px' })
+    expect(getLayoutBlockByName('Verse Am')).toHaveStyle({ left: '28px' })
+    expect(getLayoutBlockByName('Bridge F')).toHaveStyle({ left: '21px' })
     expect(
       within(
         screen.getByRole('region', {
@@ -1090,8 +1283,12 @@ describe('App', () => {
     expect(within(stockDialog).getByLabelText('Chord quality')).toHaveValue(
       'minor',
     )
-    expect(within(stockDialog).getByLabelText('Manual start fret')).toHaveValue(5)
-    expect(within(stockDialog).getByLabelText('Manual fret count')).toHaveValue(5)
+    expect(within(stockDialog).getByLabelText('Manual start fret')).toHaveValue(
+      5,
+    )
+    expect(within(stockDialog).getByLabelText('Manual fret count')).toHaveValue(
+      5,
+    )
     expect(within(stockDialog).getByLabelText('Chord name')).toHaveValue(
       'Verse Am',
     )
