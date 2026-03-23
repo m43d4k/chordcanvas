@@ -310,6 +310,7 @@ button {
   height: 100%;
   min-width: 0;
   width: 100%;
+  container-type: inline-size;
   padding: 0.9rem;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -409,40 +410,65 @@ button {
 }
 
 .manual-grid {
+  --manual-grid-gap: 0.35rem;
+  --manual-grid-min-unit: 36px;
+  --manual-grid-max-unit: 56px;
+  --manual-grid-column-count: 1;
+  --manual-grid-button-height: clamp(
+    28px,
+    calc(var(--manual-grid-unit) * 0.68),
+    38px
+  );
+  --manual-grid-unit: clamp(
+    var(--manual-grid-min-unit),
+    calc(
+      (
+          100cqw -
+            (var(--manual-grid-gap) * (var(--manual-grid-column-count) - 1))
+        ) / var(--manual-grid-column-count)
+    ),
+    var(--manual-grid-max-unit)
+  );
   display: grid;
-  gap: 0.35rem;
+  gap: var(--manual-grid-gap);
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   padding-bottom: 0.2rem;
 }
 
 .manual-grid-row {
   display: grid;
-  gap: 0.35rem;
+  gap: var(--manual-grid-gap);
   align-items: center;
+  width: max-content;
+  justify-self: start;
 }
 
 .manual-grid-string {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  min-height: 1.68rem;
+  width: var(--manual-grid-unit);
+  min-width: var(--manual-grid-unit);
+  height: var(--manual-grid-button-height);
+  min-height: var(--manual-grid-button-height);
 }
 
 .manual-grid-string {
   color: var(--text-soft);
-  font-size: 0.76rem;
+  font-size: clamp(0.76rem, calc(var(--manual-grid-unit) * 0.28), 0.95rem);
 }
 
 .manual-grid button {
-  min-width: 0;
-  height: 1.52rem;
-  min-height: 1.52rem;
-  align-self: center;
-  padding: 0.04rem 0.18rem;
+  width: var(--manual-grid-unit);
+  min-width: var(--manual-grid-unit);
+  height: var(--manual-grid-button-height);
+  min-height: var(--manual-grid-button-height);
+  padding: 0;
   border-radius: 2px;
   box-shadow: none;
-  font-size: 0.74rem;
+  font-size: clamp(0.74rem, calc(var(--manual-grid-unit) * 0.3), 1rem);
   font-weight: 700;
   line-height: 1;
   transition:
@@ -1259,14 +1285,14 @@ button {
   z-index: 20;
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: 0.75rem;
   background: rgba(12, 15, 26, 0.72);
   backdrop-filter: blur(6px);
 }
 
 .chord-modal {
-  width: min(1120px, 100%);
-  max-height: calc(100vh - 2rem);
+  width: min(1400px, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 1.5rem);
   overflow: auto;
   padding: 1rem;
   border: 1px solid var(--border-strong);
@@ -1290,7 +1316,8 @@ button {
 }
 
 .chord-modal-form,
-.composer-sections {
+.composer-sections,
+.composer-editor-layout {
   display: grid;
   gap: 1rem;
 }
@@ -1300,6 +1327,7 @@ button {
 }
 
 .composer-section {
+  min-width: 0;
   padding: 1rem;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -1335,24 +1363,68 @@ button {
   padding-inline: 1.25rem;
 }
 
-@media (min-width: 860px) {
+@media (min-width: 980px) {
   .editor-content {
     grid-template-columns: minmax(252px, 320px) minmax(0, 1fr);
-  }
-
-  .composer-sections {
-    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .composer-section:last-child,
-  .modal-stock-section {
-    grid-column: 1 / -1;
   }
 
   .manual-builder {
     max-width: 480px;
     justify-self: start;
+  }
+}
+
+@media (max-width: 979px) {
+  .diagram-card {
+    gap: 0.65rem;
+  }
+
+  .diagram-card-header {
+    gap: 0.55rem;
+  }
+
+  .diagram-name-field {
+    margin-top: 0.45rem;
+  }
+
+  .diagram-name-field + .meta-note {
+    margin-top: 0.18rem;
+  }
+}
+
+@media (min-width: 1180px) {
+  .composer-sections {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .modal-stock-section {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1320px) {
+  .composer-editor-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(208px, 236px);
+    align-items: stretch;
+  }
+
+  .composer-info-section .info-list {
+    padding: 0.2rem 0.65rem;
+  }
+
+  .composer-info-section .info-list div {
+    grid-template-columns: 1fr;
+    gap: 0.18rem;
+    padding: 0.62rem 0;
+  }
+
+  .composer-info-section .info-list dt {
+    font-size: 0.64rem;
+  }
+
+  .composer-info-section .info-list dd {
+    font-size: 0.9rem;
   }
 }
 
@@ -1370,6 +1442,16 @@ button {
 }
 
 @media (max-width: 720px) {
+  .modal-overlay {
+    padding: 0.5rem;
+  }
+
+  .chord-modal {
+    width: calc(100vw - 1rem);
+    max-height: calc(100vh - 1rem);
+    padding: 0.9rem;
+  }
+
   .layout-add-button,
   .stock-add-button {
     width: 3rem;

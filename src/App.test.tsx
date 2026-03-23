@@ -792,6 +792,28 @@ describe('App', () => {
     expect(bassInfo).toHaveTextContent('A')
   })
 
+  it('uses a shared square unit for the manual fret matrix columns', () => {
+    render(<App />)
+
+    const dialog = openStockModal()
+    const firstRow = dialog.querySelector('.manual-grid-row')
+
+    if (!(firstRow instanceof HTMLElement)) {
+      throw new Error('Expected manual grid row')
+    }
+
+    const rowButtons = within(firstRow).getAllByRole('button')
+    const manualGrid = firstRow.closest('.manual-grid')
+
+    expect(manualGrid).not.toBeNull()
+    expect((manualGrid as HTMLElement).style.getPropertyValue('--manual-grid-column-count')).toBe(
+      String(rowButtons.length + 1),
+    )
+    expect(firstRow.style.gridTemplateColumns).toBe(
+      `repeat(${rowButtons.length + 1}, var(--manual-grid-unit))`,
+    )
+  })
+
   it('exports the current project as JSON', async () => {
     let exportedBlob: Blob | null = null
     const createObjectURL = vi.fn((blob: Blob) => {

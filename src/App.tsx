@@ -391,7 +391,7 @@ function App() {
   const modalVisibleFrets = modalDraft
     ? createVisibleFrets(modalDraft.manualStartFret, modalDraft.manualFretCount)
     : []
-  const modalManualGridTemplate = `36px 36px 36px repeat(${modalVisibleFrets.length}, minmax(0, 1fr))`
+  const modalManualGridTemplate = `repeat(${modalVisibleFrets.length + 3}, var(--manual-grid-unit))`
   const modalManualStringEntries = modalDraft
     ? modalDraft.fretting
         .map((state, stringIndex) => ({
