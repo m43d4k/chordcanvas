@@ -1130,6 +1130,11 @@ button {
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface-strong);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .layout-chord-block-button {
@@ -1157,8 +1162,12 @@ button {
 }
 
 .layout-chord-block.selected {
-  border-color: rgba(115, 103, 240, 0.32);
+  border-color: rgba(138, 128, 255, 0.42);
   background: var(--surface-tint);
+  box-shadow:
+    0 3px 8px rgba(2, 6, 23, 0.14),
+    0 8px 16px rgba(2, 6, 23, 0.16);
+  transform: translateY(-1px);
 }
 
 .chord-preview-name {
