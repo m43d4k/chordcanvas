@@ -305,7 +305,15 @@ function openEditModal(): HTMLElement {
       name: /^(編集|Edit)$/,
     })
   ) {
-    const selectedBlockButton = getSelectedLayoutBlock().querySelector(
+    const selectedBlock =
+      document.querySelector('.layout-chord-block.selected') ??
+      document.querySelector('.layout-chord-block')
+
+    if (!(selectedBlock instanceof HTMLElement)) {
+      throw new Error('Expected layout block container')
+    }
+
+    const selectedBlockButton = selectedBlock.querySelector(
       '.layout-chord-block-button',
     )
 
@@ -640,9 +648,16 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       within(stockPanel).queryByRole('button', {
-        name: '削除',
+        name: 'E をストックから削除',
       }),
     ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      within(stockPanel).getByRole('button', {
+        name: 'E',
+      }),
+    )
+
     expect(
       within(stockPanel).getByRole('button', {
         name: 'E をストックから削除',
@@ -670,6 +685,12 @@ describe('App', () => {
 
     fireEvent.click(
       within(stockPanel).getByRole('button', {
+        name: 'E',
+      }),
+    )
+
+    fireEvent.click(
+      within(stockPanel).getByRole('button', {
         name: 'E をストックから削除',
       }),
     )
@@ -681,6 +702,34 @@ describe('App', () => {
       within(stockPanel).getByText(/ストックはまだ空です。/),
     ).toBeInTheDocument()
     expect(getOpenStockModalButton()).toHaveClass('stock-add-button-empty')
+  })
+
+  it('hides a revealed stock chord remove button when clicking outside the card', () => {
+    render(<App />)
+
+    addCurrentChordToStock()
+
+    const stockPanel = getStockPanel()
+
+    fireEvent.click(
+      within(stockPanel).getByRole('button', {
+        name: 'E',
+      }),
+    )
+
+    expect(
+      within(stockPanel).getByRole('button', {
+        name: 'E をストックから削除',
+      }),
+    ).toBeInTheDocument()
+
+    fireEvent.pointerDown(document.body)
+
+    expect(
+      within(stockPanel).queryByRole('button', {
+        name: 'E をストックから削除',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('adds layout rows without exposing a row reassignment control', () => {
@@ -704,6 +753,11 @@ describe('App', () => {
         name: /^(編集|Edit)$/,
       }),
     ).toBeNull()
+    expect(
+      screen.queryByRole('button', {
+        name: 'E をレイアウトから削除',
+      }),
+    ).not.toBeInTheDocument()
 
     fireEvent.click(
       within(getLayoutRow(1)).getByRole('button', {
@@ -714,6 +768,11 @@ describe('App', () => {
     expect(
       screen.getByRole('button', {
         name: /^(編集|Edit)$/,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'E をレイアウトから削除',
       }),
     ).toBeInTheDocument()
 
@@ -728,6 +787,11 @@ describe('App', () => {
         name: /^(編集|Edit)$/,
       }),
     ).toBeNull()
+    expect(
+      screen.queryByRole('button', {
+        name: 'E をレイアウトから削除',
+      }),
+    ).not.toBeInTheDocument()
 
     addChordBlockToRow(2)
 
@@ -1035,6 +1099,12 @@ describe('App', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
+        name: getLayoutBlockButtonName('Intro E'),
+      }),
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', {
         name: 'Intro E をレイアウトから削除',
       }),
     )
@@ -1045,6 +1115,32 @@ describe('App', () => {
       }),
     ).not.toBeInTheDocument()
     expect(getLayoutBlocks()).toHaveLength(1)
+  })
+
+  it('hides a revealed layout remove button when clicking outside the block', () => {
+    render(<App />)
+
+    fireEvent.click(
+      within(getLayoutRow(1)).getByRole('button', {
+        name: layoutBlockButtonNamePattern,
+      }),
+    )
+
+    expect(
+      screen.getByRole('button', {
+        name: 'E をレイアウトから削除',
+      }),
+    ).toBeInTheDocument()
+    expect(document.querySelector('.layout-chord-block.selected')).not.toBeNull()
+
+    fireEvent.pointerDown(document.body)
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'E をレイアウトから削除',
+      }),
+    ).not.toBeInTheDocument()
+    expect(document.querySelector('.layout-chord-block.selected')).toBeNull()
   })
 
   it('allows direct manual fret selection from the modal builder', () => {

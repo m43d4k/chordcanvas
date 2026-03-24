@@ -31,6 +31,7 @@ interface LayoutStageProps {
   layoutToolbarRef: RefObject<HTMLDivElement | null>
   layoutRowsLength: number
   lyricsInputRefs: RefObject<Record<string, HTMLInputElement | null>>
+  highlightedBlockId: string | null
   selectedBlockId: string
   selectedLayoutRowId: string
   shouldShowLayoutRowAddHint: boolean
@@ -94,6 +95,7 @@ function LayoutStage({
   layoutToolbarAnchor,
   layoutToolbarRef,
   lyricsInputRefs,
+  highlightedBlockId,
   selectedBlockId,
   selectedLayoutRowId,
   shouldShowLayoutRowAddHint,
@@ -245,79 +247,89 @@ function LayoutStage({
                   </div>
 
                   <div className="layout-chord-layer">
-                    {rowEntry.entries.map((entry) => (
-                      <div
-                        className={`layout-chord-block dismissible-card${
-                          entry.block.id === selectedBlockId ? ' selected' : ''
-                        }`}
-                        data-dragging={
-                          draggingBlockId === entry.block.id
-                            ? 'true'
-                            : undefined
-                        }
-                        data-layout-block-id={entry.block.id}
-                        key={entry.block.id}
-                        style={{ left: `${entry.left}px` }}
-                      >
-                        <button
-                          aria-label={text.removeLayoutChordAria(
-                            entry.displayName,
-                          )}
-                          className="card-dismiss-button"
-                          disabled={blocksLength === 1}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onDeleteBlock(entry.block.id)
-                          }}
-                          type="button"
+                    {rowEntry.entries.map((entry) => {
+                      const isDismissButtonVisible =
+                        visibleBlockToolbarId === entry.block.id
+                      const isSelected = isExportingPdf
+                        ? entry.block.id === selectedBlockId
+                        : highlightedBlockId === entry.block.id
+
+                      return (
+                        <div
+                          className={`layout-chord-block dismissible-card${
+                            isSelected ? ' selected' : ''
+                          }`}
+                          data-dragging={
+                            draggingBlockId === entry.block.id
+                              ? 'true'
+                              : undefined
+                          }
+                          data-layout-block-id={entry.block.id}
+                          key={entry.block.id}
+                          style={{ left: `${entry.left}px` }}
                         >
-                          <span aria-hidden="true">×</span>
-                        </button>
-                        <button
-                          aria-label={text.selectLayoutBlockAria(
-                            entry.displayName,
-                          )}
-                          className="chord-preview-block layout-chord-block-button"
-                          draggable={false}
-                          onBlur={() => onHideLayoutHoverHint(entry.block.id)}
-                          onClick={() =>
-                            onActivateBlock(entry.block, {
-                              revealToolbar: true,
-                            })
-                          }
-                          onFocus={() =>
-                            onShowLayoutHoverHintImmediately(entry.block.id)
-                          }
-                          onMouseEnter={() =>
-                            onScheduleLayoutHoverHint(entry.block.id)
-                          }
-                          onMouseLeave={() =>
-                            onHideLayoutHoverHint(entry.block.id)
-                          }
-                          onPointerDown={(event) =>
-                            onLayoutBlockPointerDown(
-                              entry.block,
-                              entry.hasFollowingBlock,
-                              entry.minXOffset,
-                              event,
-                            )
-                          }
-                          type="button"
-                        >
-                          <span className="chord-preview-name">
-                            {entry.displayName}
-                          </span>
-                          <ChordDiagram
-                            compact
-                            fretting={entry.block.fretting}
-                            markerLabels={entry.summary.stringDegreeLabels}
-                            pdfExport={isExportingPdf}
-                            tightTopSpacing
-                            viewport={entry.summary.viewport}
-                          />
-                        </button>
-                      </div>
-                    ))}
+                          {isDismissButtonVisible ? (
+                            <button
+                              aria-label={text.removeLayoutChordAria(
+                                entry.displayName,
+                              )}
+                              className="card-dismiss-button layout-card-dismiss-button"
+                              disabled={blocksLength === 1}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                onDeleteBlock(entry.block.id)
+                              }}
+                              type="button"
+                            >
+                              <span aria-hidden="true">×</span>
+                            </button>
+                          ) : null}
+                          <button
+                            aria-label={text.selectLayoutBlockAria(
+                              entry.displayName,
+                            )}
+                            className="chord-preview-block layout-chord-block-button"
+                            draggable={false}
+                            onBlur={() => onHideLayoutHoverHint(entry.block.id)}
+                            onClick={() =>
+                              onActivateBlock(entry.block, {
+                                revealToolbar: true,
+                              })
+                            }
+                            onFocus={() =>
+                              onShowLayoutHoverHintImmediately(entry.block.id)
+                            }
+                            onMouseEnter={() =>
+                              onScheduleLayoutHoverHint(entry.block.id)
+                            }
+                            onMouseLeave={() =>
+                              onHideLayoutHoverHint(entry.block.id)
+                            }
+                            onPointerDown={(event) =>
+                              onLayoutBlockPointerDown(
+                                entry.block,
+                                entry.hasFollowingBlock,
+                                entry.minXOffset,
+                                event,
+                              )
+                            }
+                            type="button"
+                          >
+                            <span className="chord-preview-name">
+                              {entry.displayName}
+                            </span>
+                            <ChordDiagram
+                              compact
+                              fretting={entry.block.fretting}
+                              markerLabels={entry.summary.stringDegreeLabels}
+                              pdfExport={isExportingPdf}
+                              tightTopSpacing
+                              viewport={entry.summary.viewport}
+                            />
+                          </button>
+                        </div>
+                      )
+                    })}
 
                     <button
                       aria-label={text.openLayoutAddModal}

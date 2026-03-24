@@ -173,6 +173,9 @@ function App() {
   )
   const layoutBlockDragStateRef = useRef<LayoutBlockDragState | null>(null)
   const [draggingBlockId, setDraggingBlockId] = useState<string | null>(null)
+  const [highlightedLayoutBlockId, setHighlightedLayoutBlockId] = useState<
+    string | null
+  >(initialProjectSnapshot.selectedBlockId)
   const [visibleBlockToolbarId, setVisibleBlockToolbarId] = useState<
     string | null
   >(null)
@@ -466,6 +469,10 @@ function App() {
   }, [draggingBlockId])
 
   useEffect(() => {
+    setHighlightedLayoutBlockId(selectedBlockId)
+  }, [selectedBlockId])
+
+  useEffect(() => {
     if (!visibleBlockToolbarId) {
       return
     }
@@ -476,7 +483,9 @@ function App() {
   }, [blocks, visibleBlockToolbarId])
 
   useEffect(() => {
-    if (!visibleBlockToolbarId) {
+    const activeLayoutBlockId = visibleBlockToolbarId ?? highlightedLayoutBlockId
+
+    if (!activeLayoutBlockId) {
       return
     }
 
@@ -488,7 +497,7 @@ function App() {
       }
 
       const activeBlock = layoutStageRef.current?.querySelector<HTMLElement>(
-        `[data-layout-block-id="${visibleBlockToolbarId}"]`,
+        `[data-layout-block-id="${activeLayoutBlockId}"]`,
       )
 
       if (
@@ -499,6 +508,7 @@ function App() {
       }
 
       setVisibleBlockToolbarId(null)
+      setHighlightedLayoutBlockId(null)
     }
 
     window.addEventListener('pointerdown', handleWindowPointerDown)
@@ -506,7 +516,7 @@ function App() {
     return () => {
       window.removeEventListener('pointerdown', handleWindowPointerDown)
     }
-  }, [visibleBlockToolbarId])
+  }, [highlightedLayoutBlockId, visibleBlockToolbarId])
 
   useEffect(() => {
     if (!hoveredBlockId) {
@@ -571,6 +581,7 @@ function App() {
     hideLayoutAddHint()
     hideLayoutRowAddHint()
     hideStockAddHint()
+    setHighlightedLayoutBlockId(nextSnapshot.selectedBlockId)
     setVisibleBlockToolbarId(null)
     dismissChordModal()
     dispatchProjectAction({
@@ -589,6 +600,7 @@ function App() {
     })
     setEditingLyricsRowId(null)
     hideLayoutHoverHint()
+    setHighlightedLayoutBlockId(block.id)
     setVisibleBlockToolbarId(revealToolbar ? block.id : null)
   }
 
@@ -602,6 +614,7 @@ function App() {
       rowId,
     })
     hideLayoutHoverHint()
+    setHighlightedLayoutBlockId(null)
     setVisibleBlockToolbarId(null)
   }
 
@@ -616,6 +629,7 @@ function App() {
     })
     setEditingLyricsRowId(rowId)
     hideLayoutHoverHint()
+    setHighlightedLayoutBlockId(null)
     setVisibleBlockToolbarId(null)
   }
 
@@ -772,6 +786,7 @@ function App() {
     hideLayoutAddHint()
     hideLayoutHoverHint()
     hideLayoutRowAddHint()
+    setHighlightedLayoutBlockId(null)
     setVisibleBlockToolbarId(null)
     dispatchProjectAction({
       type: 'addLayoutRow',
@@ -780,6 +795,7 @@ function App() {
 
   function handleDeleteLayoutRow(rowId: string) {
     hideLayoutHoverHint()
+    setHighlightedLayoutBlockId(null)
     setVisibleBlockToolbarId(null)
     dispatchProjectAction({
       type: 'deleteLayoutRow',
@@ -1038,6 +1054,7 @@ function App() {
         layoutToolbarAnchor={layoutToolbarAnchor}
         layoutToolbarRef={layoutToolbarRef}
         lyricsInputRefs={lyricsInputRefs}
+        highlightedBlockId={highlightedLayoutBlockId}
         onActivateBlock={activateBlock}
         onAddLayoutRow={handleAddLayoutRow}
         onDeleteBlock={handleDeleteBlock}
