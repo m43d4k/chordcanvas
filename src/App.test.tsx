@@ -200,16 +200,6 @@ function getLayoutBlockByName(displayName: string): HTMLElement {
   )
 }
 
-function getSelectedLayoutBlock(): HTMLElement {
-  const block = document.querySelector('.layout-chord-block.selected')
-
-  if (!(block instanceof HTMLElement)) {
-    throw new Error('Expected selected layout block')
-  }
-
-  return block
-}
-
 function dragLayoutBlock(
   block: HTMLElement,
   startClientX: number,
@@ -265,6 +255,19 @@ function getStockPanel(): HTMLElement {
   }
 
   return panel
+}
+
+function getStockCard(displayName: string): HTMLElement {
+  const heading = within(getStockPanel()).getByRole('heading', {
+    name: displayName,
+  })
+  const card = heading.closest('.stock-card')
+
+  if (!(card instanceof HTMLElement)) {
+    throw new Error(`Expected stock card for ${displayName}`)
+  }
+
+  return card
 }
 
 function getOpenStockModalButton(): HTMLElement {
@@ -674,6 +677,39 @@ describe('App', () => {
     expect(getOpenStockModalButton()).toHaveClass('stock-add-button')
     expect(getOpenStockModalButton()).not.toHaveClass('stock-add-button-empty')
     expect(getOpenStockModalButton().closest('.stock-grid')).not.toBeNull()
+  })
+
+  it('adds a stocked chord to the chart from the selected stock card', () => {
+    render(<App />)
+
+    addCurrentChordToStock()
+
+    const stockCard = getStockCard('E')
+
+    expect(
+      within(stockCard).queryByRole('button', {
+        name: 'E をコード譜に追加',
+      }),
+    ).not.toBeInTheDocument()
+    expect(getLayoutBlocks()).toHaveLength(1)
+
+    fireEvent.click(
+      within(stockCard).getByRole('button', {
+        name: 'E',
+      }),
+    )
+    fireEvent.click(
+      within(stockCard).getByRole('button', {
+        name: 'E をコード譜に追加',
+      }),
+    )
+
+    expect(getLayoutBlocks()).toHaveLength(2)
+    expect(
+      within(getLayoutRow(1)).getAllByRole('button', {
+        name: getLayoutBlockButtonName('E'),
+      }),
+    ).toHaveLength(2)
   })
 
   it('removes a stocked chord from the card close button', () => {

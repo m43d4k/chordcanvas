@@ -711,6 +711,19 @@ button {
   z-index: 1;
 }
 
+.stock-card-add-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  min-width: 5.25rem;
+  min-height: 1.95rem;
+  padding-inline: 1.25rem;
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.16);
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
 .stock-chord-preview {
   width: 156px;
   max-width: 100%;
@@ -1038,7 +1051,7 @@ button {
   border-radius: 10px;
   background: rgba(16, 19, 34, 0.92);
   box-shadow: none;
-  transform: translate(-50%, calc(-100% - 0.55rem));
+  transform: translate(-50%, calc(-50% + 1.1rem));
 }
 
 .layout-block-toolbar button {
@@ -1554,6 +1567,11 @@ button {
   .stock-add-button-empty {
     width: 2.8rem;
     height: 2.8rem;
+  }
+
+  .stock-card-add-button {
+    min-width: 4.8rem;
+    padding-inline: 1rem;
   }
 
   .layout-row-add-button {

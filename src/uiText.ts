@@ -45,6 +45,7 @@ export interface UiText {
   stockAddTooltip: string
   stockCardToggleDescription: (expanded: boolean) => string
   addToRow: string
+  addStockChordToLayoutAria: (name: string) => string
   removeStockChordAria: (name: string) => string
   stockEmpty: string
   layoutHeading: string
@@ -121,8 +122,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     openStockAddModal: 'ストックにコードを追加',
     stockAddTooltip: 'ストックを追加',
     stockCardToggleDescription: (expanded) =>
-      expanded ? '削除ボタンを閉じる' : '削除ボタンを表示',
+      expanded ? '追加・削除ボタンを閉じる' : '追加・削除ボタンを表示',
     addToRow: '追加',
+    addStockChordToLayoutAria: (name) => `${name} をコード譜に追加`,
     removeStockChordAria: (name) => `${name} をストックから削除`,
     stockEmpty: 'ストックはまだ空です。繰り返し使うコードを追加できます。',
     layoutHeading: 'コード譜編集',
@@ -232,8 +234,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     openStockAddModal: 'Add chord to stock',
     stockAddTooltip: 'Add to stock',
     stockCardToggleDescription: (expanded) =>
-      expanded ? 'Hide delete button' : 'Show delete button',
+      expanded ? 'Hide add and delete buttons' : 'Show add and delete buttons',
     addToRow: 'Add',
+    addStockChordToLayoutAria: (name) => `Add ${name} to chart`,
     removeStockChordAria: (name) => `Remove ${name} from stock`,
     stockEmpty: 'Chord stock is empty. Add chords to reuse.',
     layoutHeading: 'Chord Chart Editor',

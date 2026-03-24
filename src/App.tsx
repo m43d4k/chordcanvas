@@ -1023,6 +1023,7 @@ function App() {
       </header>
 
       <StockPanel
+        onAddStockChordToLayout={handleAddStockChordToLayout}
         onOpenStockModal={openStockChordModal}
         onRemoveStockChord={handleRemoveStockChord}
         onStockAddHintHide={hideStockAddHint}

@@ -4,6 +4,7 @@ import type { StockEntryViewModel } from './viewModels'
 import type { UiText } from '../uiText'
 
 interface StockPanelProps {
+  onAddStockChordToLayout: (stockChordId: string) => void
   showStockAddHint: boolean
   stockEntries: readonly StockEntryViewModel[]
   text: UiText
@@ -15,6 +16,7 @@ interface StockPanelProps {
 }
 
 function StockPanel({
+  onAddStockChordToLayout,
   showStockAddHint,
   stockEntries,
   text,
@@ -28,23 +30,16 @@ function StockPanel({
     string | null
   >(null)
   const stockPanelRef = useRef<HTMLElement | null>(null)
+  const activeRevealedStockChordId =
+    revealedStockChordId &&
+    stockEntries.some(
+      ({ stockChord }) => stockChord.id === revealedStockChordId,
+    )
+      ? revealedStockChordId
+      : null
 
   useEffect(() => {
-    if (!revealedStockChordId) {
-      return
-    }
-
-    if (
-      !stockEntries.some(
-        ({ stockChord }) => stockChord.id === revealedStockChordId,
-      )
-    ) {
-      setRevealedStockChordId(null)
-    }
-  }, [revealedStockChordId, stockEntries])
-
-  useEffect(() => {
-    if (!revealedStockChordId) {
+    if (!activeRevealedStockChordId) {
       return
     }
 
@@ -56,7 +51,7 @@ function StockPanel({
       }
 
       const activeCard = stockPanelRef.current?.querySelector<HTMLElement>(
-        `[data-stock-card-id="${revealedStockChordId}"]`,
+        `[data-stock-card-id="${activeRevealedStockChordId}"]`,
       )
 
       if (activeCard?.contains(target)) {
@@ -79,7 +74,7 @@ function StockPanel({
       window.removeEventListener('pointerdown', handleWindowPointerDown)
       window.removeEventListener('keydown', handleWindowKeyDown)
     }
-  }, [revealedStockChordId])
+  }, [activeRevealedStockChordId])
 
   function toggleStockChordActions(stockChordId: string) {
     setRevealedStockChordId((currentId) =>
@@ -134,21 +129,35 @@ function StockPanel({
       {stockEntries.length > 0 ? (
         <div className="stock-grid">
           {stockEntries.map(({ stockChord, summary, displayName }) => {
-            const isDismissButtonVisible = stockChord.id === revealedStockChordId
+            const isActionButtonsVisible =
+              stockChord.id === activeRevealedStockChordId
             const headingId = `stock-card-name-${stockChord.id}`
             const toggleHintId = `stock-card-toggle-${stockChord.id}`
 
             return (
               <article
                 className="stock-card dismissible-card"
-                data-revealed={isDismissButtonVisible ? 'true' : undefined}
+                data-revealed={isActionButtonsVisible ? 'true' : undefined}
                 data-stock-card-id={stockChord.id}
                 key={stockChord.id}
               >
                 <span className="visually-hidden" id={toggleHintId}>
-                  {text.stockCardToggleDescription(isDismissButtonVisible)}
+                  {text.stockCardToggleDescription(isActionButtonsVisible)}
                 </span>
-                {isDismissButtonVisible ? (
+                {isActionButtonsVisible ? (
+                  <button
+                    aria-label={text.addStockChordToLayoutAria(displayName)}
+                    className="accent-button stock-card-add-button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onAddStockChordToLayout(stockChord.id)
+                    }}
+                    type="button"
+                  >
+                    {text.addToRow}
+                  </button>
+                ) : null}
+                {isActionButtonsVisible ? (
                   <button
                     aria-label={text.removeStockChordAria(displayName)}
                     className="card-dismiss-button stock-card-dismiss-button"
@@ -163,7 +172,7 @@ function StockPanel({
                 ) : null}
                 <button
                   aria-describedby={toggleHintId}
-                  aria-expanded={isDismissButtonVisible}
+                  aria-expanded={isActionButtonsVisible}
                   aria-labelledby={headingId}
                   className="stock-card-toggle-button"
                   onClick={() => toggleStockChordActions(stockChord.id)}
