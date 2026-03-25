@@ -59,6 +59,7 @@ const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
 const APP_LOGO_SRC = `${import.meta.env.BASE_URL}chordcanvas-logo.svg`
+const LOCALE_STORAGE_KEY = 'chordcanvas-locale'
 
 function getProjectImportErrorMessage(error: unknown, text: UiText): string {
   if (error instanceof ProjectFileError) {
@@ -114,6 +115,16 @@ function getDisplayName(
   return normalizeDisplayName(displayName) || automaticName
 }
 
+function getInitialLocale(): Locale {
+  if (typeof window === 'undefined') {
+    return 'ja'
+  }
+
+  const savedLocale = window.localStorage.getItem(LOCALE_STORAGE_KEY)
+
+  return savedLocale === 'ja' || savedLocale === 'en' ? savedLocale : 'ja'
+}
+
 function createInitialProjectState(): ProjectSnapshot {
   const initialForms = getChordForms(DEFAULT_ROOT, DEFAULT_QUALITY)
   const initialForm = initialForms[0]
@@ -160,7 +171,7 @@ function App() {
   const layoutRowAddButtonRef = useRef<HTMLButtonElement | null>(null)
   const lyricsInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const projectFileInputRef = useRef<HTMLInputElement | null>(null)
-  const [locale, setLocale] = useState<Locale>('ja')
+  const [locale, setLocale] = useState<Locale>(getInitialLocale)
   const [projectState, dispatchProjectAction] = useReducer(
     projectReducer,
     initialProjectSnapshot,
@@ -723,6 +734,7 @@ function App() {
       return
     }
 
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale)
     setLocale(nextLocale)
     setAppError(null)
   }

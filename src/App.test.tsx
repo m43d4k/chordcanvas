@@ -127,6 +127,7 @@ import { UI_TEXT } from './uiText'
 
 afterEach(() => {
   cleanup()
+  window.localStorage.clear()
   pdfMocks.html2canvas.mockReset()
   pdfMocks.jsPDF.mockClear()
   pdfMocks.pdfInstances.length = 0
@@ -430,6 +431,23 @@ describe('App', () => {
       }),
     ).toBeInTheDocument()
     expect(getLayoutAddButton(1)).toHaveAccessibleName('Add chord')
+  })
+
+  it('restores the saved language selection from localStorage', () => {
+    window.localStorage.setItem('chordcanvas-locale', 'en')
+
+    render(<App />)
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Chord Chart Editor',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'English',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('localizes the project file input aria label', () => {
