@@ -40,6 +40,8 @@ export interface UiText {
   chordTones: string
   uniqueNotes: string
   playedNotes: string
+  playChord: string
+  playChordAria: (name: string) => string
   stockHeading: string
   openStockAddModal: string
   stockAddTooltip: string
@@ -118,6 +120,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     chordTones: '構成音',
     uniqueNotes: 'ユニーク音',
     playedNotes: '各弦の音',
+    playChord: '再生',
+    playChordAria: (name) => `${name} を再生`,
     stockHeading: 'コードストック',
     openStockAddModal: 'ストックにコードを追加',
     stockAddTooltip: 'ストックを追加',
@@ -137,8 +141,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     duplicateSelectedChord: '複製',
     removeLayoutChordAria: (name) => `${name} をレイアウトから削除`,
     selectLayoutBlockAria: (name) => `${name} を選択`,
-    moveLeft: '左へ',
-    moveRight: '右へ',
+    moveLeft: '←',
+    moveRight: '→',
     saveChordChanges: '変更を保存',
     layoutDragHint: '左右に移動',
     layoutRowLabel: (index) => `${index + 1}行目`,
@@ -230,6 +234,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     chordTones: 'Chord notes',
     uniqueNotes: 'Unique Notes',
     playedNotes: 'String Notes',
+    playChord: 'Play',
+    playChordAria: (name) => `Play ${name}`,
     stockHeading: 'Chord Stock',
     openStockAddModal: 'Add chord to stock',
     stockAddTooltip: 'Add to stock',
@@ -246,11 +252,11 @@ export const UI_TEXT: Record<Locale, UiText> = {
     lyricsLineLabel: (index) => `Lyrics line ${index + 1}`,
     lyricsPlaceholder: 'Enter lyrics. Use spaces to adjust alignment.',
     editSelectedChord: 'Edit',
-    duplicateSelectedChord: 'Duplicate',
+    duplicateSelectedChord: 'Copy',
     removeLayoutChordAria: (name) => `Remove ${name} from layout`,
     selectLayoutBlockAria: (name) => `Select ${name} block`,
-    moveLeft: 'Move Left',
-    moveRight: 'Move Right',
+    moveLeft: '←',
+    moveRight: '→',
     saveChordChanges: 'Save Changes',
     layoutDragHint: 'Move left or right',
     layoutRowLabel: (index) => `Row ${index + 1}`,

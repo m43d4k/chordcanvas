@@ -562,6 +562,16 @@ button {
   margin: 0 auto;
 }
 
+.diagram-preview-frame {
+  position: relative;
+  width: min(260px, 100%);
+  margin: 0 auto;
+}
+
+.diagram-preview-frame .chord-diagram {
+  width: 100%;
+}
+
 .info-list {
   display: grid;
   gap: 0;
@@ -724,6 +734,47 @@ button {
   white-space: nowrap;
 }
 
+.play-chord-button {
+  position: absolute;
+  right: -0.14rem;
+  bottom: -0.14rem;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  min-width: 1.8rem;
+  height: 1.8rem;
+  min-height: 1.8rem;
+  padding: 0;
+  border: 1px solid rgba(138, 128, 255, 0.36);
+  border-radius: 999px;
+  background: rgba(18, 22, 38, 0.92);
+  color: var(--text-soft);
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.18);
+  line-height: 1;
+}
+
+.play-chord-button:hover,
+.play-chord-button:focus-visible {
+  border-color: rgba(138, 128, 255, 0.52);
+  background: rgba(66, 60, 114, 0.96);
+  color: #fff;
+  outline: none;
+}
+
+.play-chord-button-icon {
+  display: inline-block;
+  font-size: 0.78rem;
+  line-height: 1;
+  transform: translateX(0.06rem);
+}
+
+.diagram-play-button {
+  right: -0.3rem;
+  bottom: -0.3rem;
+}
+
 .stock-chord-preview {
   width: 156px;
   max-width: 100%;
@@ -755,10 +806,20 @@ button {
   transform: translate(34%, -34%) scale(1);
 }
 
+.stock-card-play-button {
+  right: -0.16rem;
+  bottom: -0.16rem;
+}
+
 .layout-card-dismiss-button {
   opacity: 1;
   pointer-events: auto;
   transform: translate(34%, -34%) scale(1);
+}
+
+.layout-card-play-button {
+  right: -0.16rem;
+  bottom: -0.16rem;
 }
 
 .stock-card[data-revealed='true'] .stock-chord-preview,

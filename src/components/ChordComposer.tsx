@@ -14,6 +14,7 @@ import {
 } from '../music/chords'
 import type { UiText } from '../uiText'
 import ChordDiagram from './ChordDiagram'
+import PlayChordButton from './PlayChordButton'
 
 export interface ManualStringEntry {
   state: StringState
@@ -38,6 +39,7 @@ interface ChordComposerProps {
   manualVisibleFrets: readonly number[]
   manualGridTemplate: string
   manualStringEntries: readonly ManualStringEntry[]
+  onPlayChord: () => void
   onRootChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onQualityChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onFormChange: (event: ChangeEvent<HTMLSelectElement>) => void
@@ -65,6 +67,7 @@ function ChordComposer({
   manualVisibleFrets,
   manualGridTemplate,
   manualStringEntries,
+  onPlayChord,
   onRootChange,
   onQualityChange,
   onFormChange,
@@ -167,11 +170,18 @@ function ChordComposer({
                 </div>
               </div>
 
-              <ChordDiagram
-                fretting={fretting}
-                markerLabels={summary.stringDegreeLabels}
-                viewport={summary.viewport}
-              />
+              <div className="diagram-preview-frame">
+                <ChordDiagram
+                  fretting={fretting}
+                  markerLabels={summary.stringDegreeLabels}
+                  viewport={summary.viewport}
+                />
+                <PlayChordButton
+                  ariaLabel={text.playChordAria(displayName)}
+                  className="diagram-play-button"
+                  onClick={onPlayChord}
+                />
+              </div>
             </div>
 
             <div className="manual-builder">

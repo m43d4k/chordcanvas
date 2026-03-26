@@ -38,6 +38,7 @@ import {
   summarizeChord,
   toFretting,
 } from './music/chords'
+import { playChordFretting } from './audio/webAudioFont'
 import {
   cloneProjectSnapshot,
   parseProjectFile,
@@ -78,6 +79,10 @@ function getPdfExportErrorMessage(error: unknown, text: UiText): string {
     return text.describePdfExportError(error.code)
   }
 
+  return error instanceof Error ? error.message : text.unknownError
+}
+
+function getAudioPlaybackErrorMessage(error: unknown, text: UiText): string {
   return error instanceof Error ? error.message : text.unknownError
 }
 
@@ -873,6 +878,15 @@ function App() {
     setAppError(null)
   }
 
+  async function handlePlayChord(fretting: Fretting) {
+    try {
+      setAppError(null)
+      await playChordFretting(fretting)
+    } catch (error) {
+      setAppError(getAudioPlaybackErrorMessage(error, text))
+    }
+  }
+
   async function handlePdfExport(kind: PdfExportKind) {
     const layoutStageElement = layoutStageRef.current
 
@@ -1037,6 +1051,13 @@ function App() {
       <StockPanel
         onAddStockChordToLayout={handleAddStockChordToLayout}
         onOpenStockModal={openStockChordModal}
+        onPlayStockChord={(stockChordId) => {
+          const stockChord = stockChords.find((entry) => entry.id === stockChordId)
+
+          if (stockChord) {
+            void handlePlayChord(stockChord.fretting)
+          }
+        }}
         onRemoveStockChord={handleRemoveStockChord}
         onStockAddHintHide={hideStockAddHint}
         onStockAddHintSchedule={scheduleStockAddHint}
@@ -1082,6 +1103,9 @@ function App() {
         onLyricsBlur={() => setEditingLyricsRowId(null)}
         onMoveBlock={handleMoveBlock}
         onOpenLayoutChordModal={openLayoutChordModal}
+        onPlayLayoutChord={(block) => {
+          void handlePlayChord(block.fretting)
+        }}
         onScheduleLayoutAddHint={scheduleLayoutAddHint}
         onScheduleLayoutHoverHint={scheduleLayoutHoverHint}
         onScheduleLayoutRowAddHint={scheduleLayoutRowAddHint}
@@ -1120,6 +1144,9 @@ function App() {
           onFormChange={handleChordModalFormChange}
           onManualFretCountChange={handleChordModalManualFretCountChange}
           onManualStartFretChange={handleChordModalManualStartFretChange}
+          onPlayChord={() => {
+            void handlePlayChord(modalDraft.fretting)
+          }}
           onQualityChange={handleChordModalQualityChange}
           onRootChange={handleChordModalRootChange}
           onStringStateChange={handleChordModalStringStateChange}

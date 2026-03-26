@@ -868,7 +868,7 @@ describe('App', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: /^(複製|Duplicate)$/,
+        name: /^(複製|Copy)$/,
       }),
     ).toBeInTheDocument()
   })

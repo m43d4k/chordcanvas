@@ -5,6 +5,7 @@ import type {
   RefObject,
 } from 'react'
 import ChordDiagram from './ChordDiagram'
+import PlayChordButton from './PlayChordButton'
 import type { LayoutOverlayAnchor } from '../hooks/useLayoutOverlayAnchors'
 import type { LayoutEntriesResult } from '../layout/layoutEntries'
 import type { ChordBlockState } from '../project/projectFile'
@@ -64,6 +65,7 @@ interface LayoutStageProps {
   ) => void
   onMoveBlock: (direction: -1 | 1) => void
   onOpenLayoutChordModal: (rowId: string) => void
+  onPlayLayoutChord: (block: ChordBlockState) => void
   onScheduleLayoutAddHint: (rowId: string) => void
   onScheduleLayoutHoverHint: (blockId: string) => void
   onScheduleLayoutRowAddHint: () => void
@@ -117,6 +119,7 @@ function LayoutStage({
   onLayoutRowInputChange,
   onMoveBlock,
   onOpenLayoutChordModal,
+  onPlayLayoutChord,
   onScheduleLayoutAddHint,
   onScheduleLayoutHoverHint,
   onScheduleLayoutRowAddHint,
@@ -283,6 +286,13 @@ function LayoutStage({
                             >
                               <span aria-hidden="true">×</span>
                             </button>
+                          ) : null}
+                          {isDismissButtonVisible && !isExportingPdf ? (
+                            <PlayChordButton
+                              ariaLabel={text.playChordAria(entry.displayName)}
+                              className="layout-card-play-button"
+                              onClick={() => onPlayLayoutChord(entry.block)}
+                            />
                           ) : null}
                           <button
                             aria-label={text.selectLayoutBlockAria(

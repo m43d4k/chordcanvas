@@ -800,6 +800,12 @@ export function derivePlayedNotes(fretting: Fretting): readonly PlayedNote[] {
   return analyzeFretting(fretting).playedNotes
 }
 
+export function derivePlayableStringMidis(
+  fretting: Fretting,
+): readonly number[] {
+  return analyzeFretting(fretting).playedNotes.map((note) => note.midi)
+}
+
 export function deriveUniqueNotes(
   fretting: Fretting,
 ): readonly PitchClassName[] {

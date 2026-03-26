@@ -43,6 +43,7 @@ interface ChordModalProps {
   onFormChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onManualFretCountChange: (event: ChangeEvent<HTMLInputElement>) => void
   onManualStartFretChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onPlayChord: () => void
   onQualityChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onRootChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onStringStateChange: (stringIndex: number, nextState: StringState) => void
@@ -81,6 +82,7 @@ function ChordModal({
   onFormChange,
   onManualFretCountChange,
   onManualStartFretChange,
+  onPlayChord,
   onQualityChange,
   onRootChange,
   onStringStateChange,
@@ -135,6 +137,7 @@ function ChordModal({
             onFormChange={onFormChange}
             onManualFretCountChange={onManualFretCountChange}
             onManualStartFretChange={onManualStartFretChange}
+            onPlayChord={onPlayChord}
             onQualityChange={onQualityChange}
             onRootChange={onRootChange}
             onStringStateChange={onStringStateChange}
