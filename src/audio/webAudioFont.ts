@@ -1,8 +1,13 @@
 import type { Fretting } from '../music/chords'
 import { derivePlayableStringMidis } from '../music/chords'
+import { toVersionedAssetUrl } from '../utils/versionedAsset'
 
-const PLAYER_SCRIPT_PATH = `${import.meta.env.BASE_URL}webaudiofont/WebAudioFontPlayer.js`
-const PRESET_SCRIPT_PATH = `${import.meta.env.BASE_URL}webaudiofont/0253_Acoustic_Guitar_sf2_file.js`
+const PLAYER_SCRIPT_PATH = toVersionedAssetUrl(
+  `${import.meta.env.BASE_URL}webaudiofont/WebAudioFontPlayer.js`,
+)
+const PRESET_SCRIPT_PATH = toVersionedAssetUrl(
+  `${import.meta.env.BASE_URL}webaudiofont/0253_Acoustic_Guitar_sf2_file.js`,
+)
 const PRESET_VARIABLE = '_tone_0253_Acoustic_Guitar_sf2_file'
 const DEFAULT_STRUM_DURATION_SECONDS = 1.6
 const DEFAULT_VOLUME = 0.8

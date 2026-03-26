@@ -49,6 +49,7 @@ import {
 } from './project/projectFile'
 import { createProjectState, projectReducer } from './state/projectReducer'
 import { UI_TEXT, type Locale, type UiText } from './uiText'
+import { toVersionedAssetUrl } from './utils/versionedAsset'
 
 const DEFAULT_ROOT: PitchClassName = 'E'
 const DEFAULT_QUALITY: ChordQuality = 'major'
@@ -59,7 +60,9 @@ const LAYOUT_HOVER_HINT_DELAY_MS = 350
 const MIN_MANUAL_FRET_COUNT = MINIMUM_DIAGRAM_FRET_COUNT
 const MAX_MANUAL_FRET_COUNT = 12
 const PROJECT_EXPORT_FILE_NAME = 'chordcanvas-project.json'
-const APP_LOGO_SRC = `${import.meta.env.BASE_URL}chordcanvas-logo.svg`
+const APP_LOGO_SRC = toVersionedAssetUrl(
+  `${import.meta.env.BASE_URL}chordcanvas-logo.svg`,
+)
 const LOCALE_STORAGE_KEY = 'chordcanvas-locale'
 
 function getProjectImportErrorMessage(error: unknown, text: UiText): string {
