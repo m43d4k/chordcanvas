@@ -10,7 +10,7 @@
 - No backend, database, or Python
 - Uses Node.js 22 via `mise.toml`
 - Targets standard-tuning 6-string guitar only
-- `npm run build` outputs to `docs/`
+- `npm run build` outputs to `dist/`
 
 ## Current features
 
@@ -42,7 +42,7 @@
 ## Available scripts
 
 - `npm run dev`: Start the Vite development server
-- `npm run build`: Build TypeScript and the app, then write output to `docs/`
+- `npm run build`: Build TypeScript and the app, then write output to `dist/`
 - `npm run lint`: Run ESLint
 - `npm run test`: Run Vitest
 - `npm run typecheck`: Run TypeScript checks for both app and Node configs

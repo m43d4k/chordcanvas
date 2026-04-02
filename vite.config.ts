@@ -7,7 +7,6 @@ export default defineConfig({
   define: {
     __APP_BUILD_ID__: JSON.stringify(buildId),
   },
-  base: './',
   plugins: [
     react(),
     {
@@ -20,9 +19,6 @@ export default defineConfig({
       },
     },
   ],
-  build: {
-    outDir: 'docs',
-  },
   test: {
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',

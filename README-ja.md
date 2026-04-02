@@ -10,7 +10,7 @@
 - バックエンド、データベース、Python なし
 - Node.js は `mise.toml` に従って `22` 系を使用
 - 標準チューニング固定の 6 弦ギター向け
-- `npm run build` の出力先は `docs/`
+- `npm run build` の出力先は `dist/`
 
 ## 現在の機能
 
@@ -42,7 +42,7 @@
 ## 利用できるスクリプト
 
 - `npm run dev`: Vite 開発サーバーを起動
-- `npm run build`: TypeScript のビルド後にアプリをビルドし、成果物を `docs/` に出力
+- `npm run build`: TypeScript のビルド後にアプリをビルドし、成果物を `dist/` に出力
 - `npm run lint`: ESLint を実行
 - `npm run test`: Vitest テストを実行
 - `npm run typecheck`: アプリ側 / Node 側の TypeScript 型チェックを実行
