@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   detectChordCandidates,
   deriveBassNote,
+  deriveNoteNameAtPosition,
   derivePlayableStringMidis,
   deriveStringDegreeLabels,
   deriveUniqueNotes,
@@ -23,6 +24,12 @@ describe('music/chords', () => {
     const fretting = toFretting(['x', 3, 2, 0, 1, 0])
 
     expect(derivePlayableStringMidis(fretting)).toEqual([48, 52, 55, 60, 64])
+  })
+
+  it('derives note names for a given string and fret position', () => {
+    expect(deriveNoteNameAtPosition(5, 1)).toBe('F')
+    expect(deriveNoteNameAtPosition(0, 3)).toBe('G')
+    expect(deriveNoteNameAtPosition(99, 1)).toBeNull()
   })
 
   it('calculates the correct high-position viewport', () => {

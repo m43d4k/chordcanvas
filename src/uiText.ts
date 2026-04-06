@@ -26,6 +26,7 @@ export interface UiText {
   editingBlockNotice: (name: string) => string
   frettingInput: string
   autoAdjustViewport: string
+  toggleNoteNames: string
   startFret: string
   visibleFretCount: string
   stringLabel: (stringNumber: number) => string
@@ -105,6 +106,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     editingBlockNotice: (name) => `${name} を編集中`,
     frettingInput: 'コードフォーム',
     autoAdjustViewport: '表示範囲を調整',
+    toggleNoteNames: '音名',
     startFret: '開始フレット',
     visibleFretCount: '表示フレット数',
     stringLabel: (stringNumber) => `${stringNumber}弦`,
@@ -219,6 +221,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     editingBlockNotice: (name) => `Editing ${name}`,
     frettingInput: 'Chord Form',
     autoAdjustViewport: 'Fit Viewport',
+    toggleNoteNames: 'Notes',
     startFret: 'Start Fret',
     visibleFretCount: 'Visible Frets',
     stringLabel: (stringNumber) => `Str ${stringNumber}`,

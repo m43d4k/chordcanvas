@@ -800,6 +800,19 @@ export function derivePlayedNotes(fretting: Fretting): readonly PlayedNote[] {
   return analyzeFretting(fretting).playedNotes
 }
 
+export function deriveNoteNameAtPosition(
+  stringIndex: number,
+  fret: number,
+): PitchClassName | null {
+  const openPitch = STANDARD_TUNING_PITCHES[stringIndex]
+
+  if (openPitch === undefined || fret < 0) {
+    return null
+  }
+
+  return pitchClassToName(openPitch + fret)
+}
+
 export function derivePlayableStringMidis(
   fretting: Fretting,
 ): readonly number[] {

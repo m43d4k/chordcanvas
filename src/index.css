@@ -325,6 +325,13 @@ button {
   align-items: flex-start;
 }
 
+.manual-builder-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .manual-builder-header h3 {
   margin: 0.2rem 0 0;
   font-size: 1rem;

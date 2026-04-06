@@ -1,4 +1,4 @@
-import type { CSSProperties, ChangeEvent } from 'react'
+import { useState, type CSSProperties, type ChangeEvent } from 'react'
 import type {
   ChordForm,
   ChordQuality,
@@ -11,6 +11,7 @@ import {
   CHORD_QUALITIES,
   CHORD_QUALITY_LABELS,
   PITCH_CLASSES,
+  deriveNoteNameAtPosition,
 } from '../music/chords'
 import type { UiText } from '../uiText'
 import ChordDiagram from './ChordDiagram'
@@ -77,6 +78,7 @@ function ChordComposer({
   onManualFretCountChange,
   onStringStateChange,
 }: ChordComposerProps) {
+  const [showNoteNames, setShowNoteNames] = useState(false)
   const manualGridStyle = {
     '--manual-grid-column-count': manualVisibleFrets.length + 3,
   } as CSSProperties
@@ -189,13 +191,23 @@ function ChordComposer({
                 <div>
                   <h3>{text.frettingInput}</h3>
                 </div>
-                <button
-                  className="secondary-button"
-                  onClick={onViewportSync}
-                  type="button"
-                >
-                  {text.autoAdjustViewport}
-                </button>
+                <div className="manual-builder-actions">
+                  <button
+                    aria-pressed={showNoteNames}
+                    className="secondary-button"
+                    onClick={() => setShowNoteNames((current) => !current)}
+                    type="button"
+                  >
+                    {text.toggleNoteNames}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    onClick={onViewportSync}
+                    type="button"
+                  >
+                    {text.autoAdjustViewport}
+                  </button>
+                </div>
               </div>
 
               <div className="manual-settings">
@@ -265,7 +277,9 @@ function ChordComposer({
                         onClick={() => onStringStateChange(stringIndex, fret)}
                         type="button"
                       >
-                        {fret}
+                        {showNoteNames
+                          ? deriveNoteNameAtPosition(stringIndex, fret) ?? fret
+                          : fret}
                       </button>
                     ))}
                   </div>

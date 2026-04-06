@@ -433,6 +433,25 @@ describe('App', () => {
     expect(getLayoutAddButton(1)).toHaveAccessibleName('Add chord')
   })
 
+  it('toggles note names on fret buttons in the chord form editor', () => {
+    render(<App />)
+
+    const dialog = openStockModal()
+    const firstStringFirstFretButton = within(dialog).getByRole('button', {
+      name: '1弦 1フレット',
+    })
+
+    expect(firstStringFirstFretButton).toHaveTextContent('1')
+
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: '音名',
+      }),
+    )
+
+    expect(firstStringFirstFretButton).toHaveTextContent('F')
+  })
+
   it('restores the saved language selection from localStorage', () => {
     window.localStorage.setItem('chordcanvas-locale', 'en')
 
