@@ -38,7 +38,7 @@ import {
   summarizeChord,
   toFretting,
 } from './music/chords'
-import { playChordFretting } from './audio/webAudioFont'
+import { playChordFretting, stopChordPlayback } from './audio/webAudioFont'
 import {
   cloneProjectSnapshot,
   parseProjectFile,
@@ -187,6 +187,7 @@ function App() {
   )
   const [appError, setAppError] = useState<string | null>(null)
   const [pdfExportKind, setPdfExportKind] = useState<PdfExportKind | null>(null)
+  const [isAudioMuted, setIsAudioMuted] = useState(false)
   const [editingLyricsRowId, setEditingLyricsRowId] = useState<string | null>(
     null,
   )
@@ -802,6 +803,21 @@ function App() {
     })
   }
 
+  function handleToggleAudioMute() {
+    hideLayoutHoverHint()
+    setVisibleBlockToolbarId(null)
+    setIsAudioMuted((current) => {
+      const next = !current
+
+      if (next) {
+        void stopChordPlayback()
+      }
+
+      return next
+    })
+    setAppError(null)
+  }
+
   function handleAddLayoutRow() {
     hideLayoutAddHint()
     hideLayoutHoverHint()
@@ -888,6 +904,14 @@ function App() {
     } catch (error) {
       setAppError(getAudioPlaybackErrorMessage(error, text))
     }
+  }
+
+  async function handlePlayLayoutChord(fretting: Fretting) {
+    if (isAudioMuted) {
+      return
+    }
+
+    await handlePlayChord(fretting)
   }
 
   async function handlePdfExport(kind: PdfExportKind) {
@@ -1092,6 +1116,7 @@ function App() {
         layoutToolbarRef={layoutToolbarRef}
         lyricsInputRefs={lyricsInputRefs}
         highlightedBlockId={highlightedLayoutBlockId}
+        isAudioMuted={isAudioMuted}
         onActivateBlock={activateBlock}
         onAddLayoutRow={handleAddLayoutRow}
         onDeleteBlock={handleDeleteBlock}
@@ -1105,9 +1130,10 @@ function App() {
         onLayoutRowInputChange={handleLyricsLineChange}
         onLyricsBlur={() => setEditingLyricsRowId(null)}
         onMoveBlock={handleMoveBlock}
+        onToggleAudioMute={handleToggleAudioMute}
         onOpenLayoutChordModal={openLayoutChordModal}
         onPlayLayoutChord={(block) => {
-          void handlePlayChord(block.fretting)
+          void handlePlayLayoutChord(block.fretting)
         }}
         onScheduleLayoutAddHint={scheduleLayoutAddHint}
         onScheduleLayoutHoverHint={scheduleLayoutHoverHint}

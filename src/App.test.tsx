@@ -116,6 +116,13 @@ vi.mock('jspdf', () => ({
 
 vi.mock('pdf-lib', () => pdfLibMocks)
 
+const audioMocks = vi.hoisted(() => ({
+  playChordFretting: vi.fn().mockResolvedValue(true),
+  stopChordPlayback: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('./audio/webAudioFont', () => audioMocks)
+
 import App from './App'
 import './index.css'
 import { toFretting } from './music/chords'
@@ -128,6 +135,8 @@ import { UI_TEXT } from './uiText'
 afterEach(() => {
   cleanup()
   window.localStorage.clear()
+  audioMocks.playChordFretting.mockClear()
+  audioMocks.stopChordPlayback.mockClear()
   pdfMocks.html2canvas.mockReset()
   pdfMocks.jsPDF.mockClear()
   pdfMocks.pdfInstances.length = 0
@@ -485,6 +494,69 @@ describe('App', () => {
     expect(
       screen.getByLabelText(UI_TEXT.en.projectFileInputAriaLabel),
     ).toBeInTheDocument()
+  })
+
+  it('toggles audio mute from the chart editor heading', async () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'ミュート',
+      }),
+    )
+
+    expect(audioMocks.stopChordPlayback).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'ミュート解除',
+      }),
+    )
+
+    const selectedBlock =
+      document.querySelector('.layout-chord-block.selected') ??
+      document.querySelector('.layout-chord-block')
+
+    if (!(selectedBlock instanceof HTMLElement)) {
+      throw new Error('Expected selected layout block')
+    }
+
+    fireEvent.click(selectedBlock.querySelector('.layout-chord-block-button')!)
+
+    const playButton = document.querySelector('.layout-card-play-button')
+
+    if (!(playButton instanceof HTMLElement)) {
+      throw new Error('Expected layout play button')
+    }
+
+    fireEvent.click(playButton)
+
+    await waitFor(() => {
+      expect(audioMocks.playChordFretting).toHaveBeenCalled()
+    })
+  })
+
+  it('keeps chord diagram playback available while chart audio is muted', async () => {
+    render(<App />)
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'ミュート',
+      }),
+    )
+
+    addCurrentChordToStock()
+
+    const dialog = openStockModal()
+    const playButton = within(dialog).getByRole('button', {
+      name: 'E を再生',
+    })
+
+    fireEvent.click(playButton)
+
+    await waitFor(() => {
+      expect(audioMocks.playChordFretting).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('shows localized project import errors in English', async () => {
