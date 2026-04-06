@@ -5,7 +5,6 @@ import type {
   RefObject,
 } from 'react'
 import ChordDiagram from './ChordDiagram'
-import PlayChordButton from './PlayChordButton'
 import type { LayoutOverlayAnchor } from '../hooks/useLayoutOverlayAnchors'
 import type { LayoutEntriesResult } from '../layout/layoutEntries'
 import type { ChordBlockState } from '../project/projectFile'
@@ -42,7 +41,7 @@ interface LayoutStageProps {
   visibleBlockToolbarId: string | null
   onActivateBlock: (
     block: ChordBlockState,
-    options?: { revealToolbar?: boolean },
+    options?: { playAudio?: boolean; revealToolbar?: boolean },
   ) => void
   onAddLayoutRow: () => void
   onDeleteBlock: (blockId?: string) => void
@@ -98,6 +97,7 @@ function LayoutStage({
   layoutToolbarRef,
   lyricsInputRefs,
   highlightedBlockId,
+  isAudioMuted,
   selectedBlockId,
   selectedLayoutRowId,
   shouldShowLayoutRowAddHint,
@@ -286,13 +286,6 @@ function LayoutStage({
                             >
                               <span aria-hidden="true">×</span>
                             </button>
-                          ) : null}
-                          {isDismissButtonVisible && !isExportingPdf ? (
-                            <PlayChordButton
-                              ariaLabel={text.playChordAria(entry.displayName)}
-                              className="layout-card-play-button"
-                              onClick={() => onPlayLayoutChord(entry.block)}
-                            />
                           ) : null}
                           <button
                             aria-label={text.selectLayoutBlockAria(
