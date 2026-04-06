@@ -172,3 +172,12 @@ export async function playChordFretting(fretting: Fretting): Promise<boolean> {
 
   return true
 }
+
+export async function stopChordPlayback(): Promise<void> {
+  if (!playbackStatePromise) {
+    return
+  }
+
+  const { audioContext, player } = await getPlaybackState()
+  player.cancelQueue(audioContext)
+}
