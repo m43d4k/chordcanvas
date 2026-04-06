@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import ChordDiagram from './ChordDiagram'
-import PlayChordButton from './PlayChordButton'
 import type { StockEntryViewModel } from './viewModels'
 import type { UiText } from '../uiText'
 
@@ -80,9 +79,15 @@ function StockPanel({
   }, [activeRevealedStockChordId])
 
   function toggleStockChordActions(stockChordId: string) {
-    setRevealedStockChordId((currentId) =>
-      currentId === stockChordId ? null : stockChordId,
-    )
+    setRevealedStockChordId((currentId) => {
+      const nextId = currentId === stockChordId ? null : stockChordId
+
+      if (nextId === stockChordId) {
+        onPlayStockChord(stockChordId)
+      }
+
+      return nextId
+    })
   }
 
   function handleRemoveStockChord(stockChordId: string) {
@@ -172,13 +177,6 @@ function StockPanel({
                   >
                     <span aria-hidden="true">×</span>
                   </button>
-                ) : null}
-                {isActionButtonsVisible ? (
-                  <PlayChordButton
-                    ariaLabel={text.playChordAria(displayName)}
-                    className="stock-card-play-button"
-                    onClick={() => onPlayStockChord(stockChord.id)}
-                  />
                 ) : null}
                 <button
                   aria-describedby={toggleHintId}

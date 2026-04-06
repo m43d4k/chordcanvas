@@ -612,7 +612,10 @@ function App() {
 
   function activateBlock(
     block: ChordBlockState,
-    { revealToolbar = false }: { revealToolbar?: boolean } = {},
+    {
+      playAudio = false,
+      revealToolbar = false,
+    }: { playAudio?: boolean; revealToolbar?: boolean } = {},
   ) {
     dispatchProjectAction({
       type: 'activateBlock',
@@ -622,6 +625,10 @@ function App() {
     hideLayoutHoverHint()
     setHighlightedLayoutBlockId(block.id)
     setVisibleBlockToolbarId(revealToolbar ? block.id : null)
+
+    if (playAudio) {
+      void handlePlayLayoutChord(block.fretting)
+    }
   }
 
   function selectLayoutRow(rowId: string) {
@@ -1132,9 +1139,6 @@ function App() {
         onMoveBlock={handleMoveBlock}
         onToggleAudioMute={handleToggleAudioMute}
         onOpenLayoutChordModal={openLayoutChordModal}
-        onPlayLayoutChord={(block) => {
-          void handlePlayLayoutChord(block.fretting)
-        }}
         onScheduleLayoutAddHint={scheduleLayoutAddHint}
         onScheduleLayoutHoverHint={scheduleLayoutHoverHint}
         onScheduleLayoutRowAddHint={scheduleLayoutRowAddHint}

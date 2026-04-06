@@ -523,17 +523,11 @@ describe('App', () => {
 
     fireEvent.click(selectedBlock.querySelector('.layout-chord-block-button')!)
 
-    const playButton = document.querySelector('.layout-card-play-button')
-
-    if (!(playButton instanceof HTMLElement)) {
-      throw new Error('Expected layout play button')
-    }
-
-    fireEvent.click(playButton)
-
     await waitFor(() => {
       expect(audioMocks.playChordFretting).toHaveBeenCalled()
     })
+
+    expect(document.querySelector('.layout-card-play-button')).toBeNull()
   })
 
   it('keeps chord diagram playback available while chart audio is muted', async () => {
@@ -769,6 +763,13 @@ describe('App', () => {
         name: 'E',
       }),
     )
+
+    expect(audioMocks.playChordFretting).toHaveBeenCalledTimes(1)
+    expect(
+      within(stockPanel).queryByRole('button', {
+        name: 'E を再生',
+      }),
+    ).not.toBeInTheDocument()
 
     expect(
       within(stockPanel).getByRole('button', {
