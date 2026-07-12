@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CHORD_QUALITIES,
+  PITCH_CLASSES,
   detectChordCandidates,
   deriveBassNote,
   deriveNoteNameAtPosition,
@@ -79,6 +81,56 @@ describe('music/chords', () => {
     expect(detectChordCandidates(fretting)[0]?.label).toBe('Em7b5')
   })
 
+  it('keeps exact matches ahead of candidates with permitted omissions', () => {
+    const fretting = toFretting(['x', 3, 2, 3, 'x', 'x'])
+    const candidates = detectChordCandidates(fretting)
+
+    expect(candidates[0]).toMatchObject({
+      label: 'C7',
+      matchKind: 'omission',
+      omittedIntervals: [7],
+    })
+  })
+
+  it('separates rootless interpretations from the regular candidates', () => {
+    const summary = summarizeChord(toFretting([0, 1, 0, 'x', 'x', 'x']))
+
+    expect(
+      summary.candidates.map((candidate) => candidate.label),
+    ).not.toContain('C9/E')
+    expect(summary.inferredCandidates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'C9/E',
+          matchKind: 'inferred',
+        }),
+      ]),
+    )
+  })
+
+  it.each([
+    ['madd9', 'Emadd9'],
+    ['mMaj7', 'EmMaj7'],
+    ['6/9', 'E6/9'],
+    ['9', 'E9'],
+    ['11', 'E11'],
+    ['13', 'E13'],
+    ['m11', 'Em11'],
+    ['7b5', 'E7b5'],
+    ['7#5', 'E7#5'],
+    ['7b9', 'E7b9'],
+    ['7#9', 'E7#9'],
+  ] as const)('provides a recognizable %s form', (quality, expectedLabel) => {
+    const form = getChordForms('E', quality)[0]
+
+    expect(form).toBeDefined()
+    expect(
+      detectChordCandidates(
+        form?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
+      ).map((candidate) => candidate.label),
+    ).toContain(expectedLabel)
+  })
+
   it('derives degree labels for fretted notes from the detected chord', () => {
     const fretting = toFretting([0, 2, 2, 1, 0, 0])
 
@@ -114,5 +166,40 @@ describe('music/chords', () => {
         forms[0]?.fretting ?? toFretting(['x', 'x', 'x', 'x', 'x', 'x']),
       ).currentName,
     ).toBe('C')
+  })
+
+  it('provides multiple recognizable forms for every root and quality', () => {
+    for (const root of PITCH_CLASSES) {
+      for (const quality of CHORD_QUALITIES) {
+        const forms = getChordForms(root, quality)
+
+        expect(forms.length, `${root} ${quality}`).toBeGreaterThanOrEqual(3)
+        expect(new Set(forms.map((form) => form.fretting.join('-'))).size).toBe(
+          forms.length,
+        )
+
+        for (const form of forms) {
+          expect(
+            detectChordCandidates(form.fretting).some(
+              (candidate) =>
+                candidate.root === root && candidate.quality === quality,
+            ),
+            `${root} ${quality}: ${form.label}`,
+          ).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('offers several E diminished positions instead of a single preset', () => {
+    const forms = getChordForms('E', 'dim')
+
+    expect(forms.length).toBeGreaterThanOrEqual(3)
+    expect(forms.map((form) => form.label)).toEqual(
+      expect.arrayContaining([
+        'Diminished triad form',
+        expect.stringContaining('Compact form'),
+      ]),
+    )
   })
 })

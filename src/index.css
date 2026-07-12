@@ -432,7 +432,8 @@ button {
       (
           100cqw -
             (var(--manual-grid-gap) * (var(--manual-grid-column-count) - 1))
-        ) / var(--manual-grid-column-count)
+        ) /
+        var(--manual-grid-column-count)
     ),
     var(--manual-grid-max-unit)
   );
@@ -617,6 +618,18 @@ button {
   line-height: 1.4;
   text-align: left;
   overflow-wrap: anywhere;
+}
+
+.candidate-toggle {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.candidate-toggle input {
+  margin: 0;
+  accent-color: var(--accent);
 }
 
 .layout-panel,

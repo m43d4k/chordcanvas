@@ -36,6 +36,10 @@ export interface UiText {
   infoHeading: string
   currentChordName: string
   candidateChordNames: string
+  inferredChordNames: string
+  showAdvancedCandidates: string
+  omissionCandidateNote: string
+  inferredCandidateNote: string
   noCandidates: string
   bassNote: string
   chordTones: string
@@ -119,6 +123,10 @@ export const UI_TEXT: Record<Locale, UiText> = {
     infoHeading: 'コード情報',
     currentChordName: '現在のコード名',
     candidateChordNames: '候補コード名',
+    inferredChordNames: '推測候補',
+    showAdvancedCandidates: '高度な候補を表示',
+    omissionCandidateNote: '省略音を含む解釈',
+    inferredCandidateNote: 'ルート省略を仮定',
     noCandidates: '該当なし',
     bassNote: 'ベース音',
     chordTones: '構成音',
@@ -236,6 +244,10 @@ export const UI_TEXT: Record<Locale, UiText> = {
     infoHeading: 'Chord Info',
     currentChordName: 'Current Chord Name',
     candidateChordNames: 'Equivalent Names',
+    inferredChordNames: 'Inferred Candidates',
+    showAdvancedCandidates: 'Show advanced candidates',
+    omissionCandidateNote: 'Allows omitted tones',
+    inferredCandidateNote: 'Assumes an omitted root',
     noCandidates: 'No matches',
     bassNote: 'Bass Note',
     chordTones: 'Chord notes',

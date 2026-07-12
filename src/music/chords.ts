@@ -16,111 +16,206 @@ export const PITCH_CLASSES = [
 const CHORD_DEFINITIONS = {
   major: {
     intervals: [0, 4, 7],
+    optionalIntervals: [],
     label: 'major',
     priority: 0,
     symbol: '',
   },
   minor: {
     intervals: [0, 3, 7],
+    optionalIntervals: [],
     label: 'minor',
     priority: 1,
     symbol: 'm',
   },
   '5': {
     intervals: [0, 7],
+    optionalIntervals: [],
     label: '5',
     priority: 2,
     symbol: '5',
   },
   sus2: {
     intervals: [0, 2, 7],
+    optionalIntervals: [],
     label: 'sus2',
     priority: 3,
     symbol: 'sus2',
   },
   sus4: {
     intervals: [0, 5, 7],
+    optionalIntervals: [],
     label: 'sus4',
     priority: 4,
     symbol: 'sus4',
   },
   dim: {
     intervals: [0, 3, 6],
+    optionalIntervals: [],
     label: 'dim',
     priority: 12,
     symbol: 'dim',
   },
   aug: {
     intervals: [0, 4, 8],
+    optionalIntervals: [],
     label: 'aug',
     priority: 13,
     symbol: 'aug',
   },
   '6': {
     intervals: [0, 4, 7, 9],
+    optionalIntervals: [7],
     label: '6',
     priority: 5,
     symbol: '6',
   },
   m6: {
     intervals: [0, 3, 7, 9],
+    optionalIntervals: [7],
     label: 'm6',
     priority: 6,
     symbol: 'm6',
   },
   '7': {
     intervals: [0, 4, 7, 10],
+    optionalIntervals: [7],
     label: '7',
     priority: 7,
     symbol: '7',
   },
   maj7: {
     intervals: [0, 4, 7, 11],
+    optionalIntervals: [7],
     label: 'maj7',
     priority: 8,
     symbol: 'maj7',
   },
   m7: {
     intervals: [0, 3, 7, 10],
+    optionalIntervals: [7],
     label: 'm7',
     priority: 9,
     symbol: 'm7',
   },
   m7b5: {
     intervals: [0, 3, 6, 10],
+    optionalIntervals: [],
     label: 'm7b5',
     priority: 14,
     symbol: 'm7b5',
   },
   dim7: {
     intervals: [0, 3, 6, 9],
+    optionalIntervals: [],
     label: 'dim7',
     priority: 15,
     symbol: 'dim7',
   },
   add9: {
     intervals: [0, 4, 7, 14],
+    optionalIntervals: [7],
     label: 'add9',
     priority: 10,
     symbol: 'add9',
   },
   maj9: {
     intervals: [0, 4, 7, 11, 14],
+    optionalIntervals: [7],
     label: 'maj9',
     priority: 16,
     symbol: 'maj9',
   },
   m9: {
     intervals: [0, 3, 7, 10, 14],
+    optionalIntervals: [7],
     label: 'm9',
     priority: 17,
     symbol: 'm9',
   },
   '7sus4': {
     intervals: [0, 5, 7, 10],
+    optionalIntervals: [7],
     label: '7sus4',
     priority: 11,
     symbol: '7sus4',
+  },
+  madd9: {
+    intervals: [0, 3, 7, 14],
+    optionalIntervals: [7],
+    label: 'madd9',
+    priority: 18,
+    symbol: 'madd9',
+  },
+  mMaj7: {
+    intervals: [0, 3, 7, 11],
+    optionalIntervals: [7],
+    label: 'mMaj7',
+    priority: 19,
+    symbol: 'mMaj7',
+  },
+  '6/9': {
+    intervals: [0, 4, 7, 9, 14],
+    optionalIntervals: [7],
+    label: '6/9',
+    priority: 20,
+    symbol: '6/9',
+  },
+  '9': {
+    intervals: [0, 4, 7, 10, 14],
+    optionalIntervals: [7],
+    label: '9',
+    priority: 21,
+    symbol: '9',
+  },
+  '11': {
+    intervals: [0, 4, 7, 10, 14, 17],
+    optionalIntervals: [7, 14],
+    label: '11',
+    priority: 24,
+    symbol: '11',
+  },
+  '13': {
+    intervals: [0, 4, 7, 10, 14, 21],
+    optionalIntervals: [7, 14],
+    label: '13',
+    priority: 25,
+    symbol: '13',
+  },
+  m11: {
+    intervals: [0, 3, 7, 10, 14, 17],
+    optionalIntervals: [7, 14],
+    label: 'm11',
+    priority: 26,
+    symbol: 'm11',
+  },
+  '7b5': {
+    intervals: [0, 4, 6, 10],
+    optionalIntervals: [],
+    label: '7b5',
+    priority: 22,
+    symbol: '7b5',
+  },
+  '7#5': {
+    intervals: [0, 4, 8, 10],
+    optionalIntervals: [],
+    label: '7#5',
+    priority: 23,
+    symbol: '7#5',
+  },
+  '7b9': {
+    intervals: [0, 4, 7, 10, 13],
+    optionalIntervals: [7],
+    label: '7b9',
+    priority: 27,
+    symbol: '7b9',
+  },
+  '7#9': {
+    intervals: [0, 4, 7, 10, 15],
+    optionalIntervals: [7],
+    label: '7#9',
+    priority: 28,
+    symbol: '7#9',
   },
 } as const
 
@@ -163,8 +258,18 @@ const NORMALIZED_INTERVALS = Object.fromEntries(
   ]),
 ) as Record<ChordQuality, readonly number[]>
 
+const NORMALIZED_OPTIONAL_INTERVALS = Object.fromEntries(
+  Object.entries(CHORD_DEFINITIONS).map(([quality, definition]) => [
+    quality,
+    normalizeIntervals(definition.optionalIntervals),
+  ]),
+) as Record<ChordQuality, readonly number[]>
+
 const STANDARD_TUNING_PITCHES = [4, 9, 2, 7, 11, 4] as const
 const STANDARD_TUNING_MIDI = [40, 45, 50, 55, 59, 64] as const
+const MAX_CHORD_FORM_COUNT = 6
+const GENERATED_FORM_MAX_FRET = 12
+const GENERATED_FORM_FRET_SPAN = 3
 const DEFAULT_DEGREE_LABELS = [
   'R',
   'b2',
@@ -223,6 +328,8 @@ export interface ChordCandidate {
   bass: PitchClassName | null
   intervals: readonly number[]
   label: string
+  matchKind: 'exact' | 'omission' | 'inferred'
+  omittedIntervals: readonly number[]
 }
 
 export interface ChordSummary {
@@ -231,6 +338,7 @@ export interface ChordSummary {
   bassNote: PitchClassName | null
   viewport: DiagramViewport
   candidates: readonly ChordCandidate[]
+  inferredCandidates: readonly ChordCandidate[]
   currentName: string
   chordTones: readonly PitchClassName[]
   stringDegreeLabels: readonly (string | null)[]
@@ -274,6 +382,12 @@ interface RelativeChordFormDefinition {
     RelativeStringState,
   ]
 }
+
+interface ScoredChordForm extends ChordForm {
+  score: number
+}
+
+const GENERATED_FORM_CACHE = new Map<string, readonly ChordForm[]>()
 
 const ABSOLUTE_FORM_LIBRARY: readonly AbsoluteChordFormDefinition[] = [
   {
@@ -653,6 +767,94 @@ const RELATIVE_FORM_LIBRARY: Record<
       frets: [0, 2, 0, 2, 0, 0],
     },
   ],
+  madd9: [
+    {
+      id: '6th-root-madd9',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 2, 4, 0, 0, 0],
+    },
+  ],
+  mMaj7: [
+    {
+      id: '6th-root-m-maj7',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 2, 1, 0, 0, 0],
+    },
+  ],
+  '6/9': [
+    {
+      id: '6th-root-6-9',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 2, 2, 1, 2, 2],
+    },
+  ],
+  '9': [
+    {
+      id: '6th-root-9',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 2, 0, 1, 0, 2],
+    },
+  ],
+  '11': [
+    {
+      id: '6th-root-11',
+      label: '6th-string form (9 omitted)',
+      rootStringIndex: 0,
+      frets: [0, 'x', 0, 1, 0, 5],
+    },
+  ],
+  '13': [
+    {
+      id: '6th-root-13',
+      label: '6th-string form (5 omitted)',
+      rootStringIndex: 0,
+      frets: [0, 'x', 0, 1, 2, 2],
+    },
+  ],
+  m11: [
+    {
+      id: '6th-root-m11',
+      label: '6th-string form (9 omitted)',
+      rootStringIndex: 0,
+      frets: [0, 'x', 0, 0, 0, 5],
+    },
+  ],
+  '7b5': [
+    {
+      id: '6th-root-7b5',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 1, 0, 1, 'x', 'x'],
+    },
+  ],
+  '7#5': [
+    {
+      id: '6th-root-7-sharp-5',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 3, 0, 1, 1, 'x'],
+    },
+  ],
+  '7b9': [
+    {
+      id: '6th-root-7b9',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 2, 0, 1, 0, 1],
+    },
+  ],
+  '7#9': [
+    {
+      id: '6th-root-7-sharp-9',
+      label: '6th-string form',
+      rootStringIndex: 0,
+      frets: [0, 2, 0, 1, 3, 3],
+    },
+  ],
 }
 
 export const CHORD_QUALITIES = Object.keys(
@@ -774,6 +976,8 @@ function detectChordCandidatesFromAnalysis(
             bass: slashBass,
             intervals: targetIntervals,
             label: buildChordLabel(root, quality, slashBass),
+            matchKind: 'exact' as const,
+            omittedIntervals: [],
             score:
               CHORD_PRIORITY[quality] +
               (slashBass ? 20 : 0) +
@@ -793,6 +997,168 @@ function detectChordCandidatesFromAnalysis(
       bass: candidate.bass,
       intervals: candidate.intervals,
       label: candidate.label,
+      matchKind: candidate.matchKind,
+      omittedIntervals: candidate.omittedIntervals,
+    }))
+}
+
+function detectOmissionCandidatesFromAnalysis(
+  analysis: FrettingAnalysis,
+): readonly ChordCandidate[] {
+  if (analysis.uniquePitchClasses.length < 3) {
+    return []
+  }
+
+  const exactKeys = new Set(
+    detectChordCandidatesFromAnalysis(analysis).map(candidateToKey),
+  )
+  const candidates = analysis.uniquePitchClasses.flatMap<ScoredChordCandidate>(
+    (rootPitchClass, rootIndex) =>
+      CHORD_QUALITIES.flatMap((quality) => {
+        const observed = relativeIntervalsForRoot(
+          analysis.uniquePitchClasses,
+          rootPitchClass,
+        )
+        const target = NORMALIZED_INTERVALS[quality]
+        const optional = NORMALIZED_OPTIONAL_INTERVALS[quality]
+        const required = target.filter(
+          (interval) => !optional.includes(interval),
+        )
+        const omitted = target.filter(
+          (interval) => !observed.includes(interval),
+        )
+
+        if (
+          optional.length === 0 ||
+          omitted.length === 0 ||
+          !isSubset(observed, target) ||
+          !isSubset(required, observed) ||
+          !isSubset(omitted, optional)
+        ) {
+          return []
+        }
+
+        const root = pitchClassToName(rootPitchClass)
+        const bass =
+          analysis.bassNote && analysis.bassNote !== root
+            ? analysis.bassNote
+            : null
+        const candidate: ScoredChordCandidate = {
+          root,
+          quality,
+          bass,
+          intervals: target,
+          label: buildChordLabel(root, quality, bass),
+          matchKind: 'omission',
+          omittedIntervals: omitted,
+          score:
+            CHORD_PRIORITY[quality] + omitted.length * 4 + rootIndex * 0.25,
+        }
+
+        return exactKeys.has(candidateToKey(candidate)) ? [] : [candidate]
+      }),
+  )
+
+  return toPublicCandidates(candidates)
+}
+
+function detectInferredCandidatesFromAnalysis(
+  analysis: FrettingAnalysis,
+): readonly ChordCandidate[] {
+  if (analysis.uniquePitchClasses.length < 3) {
+    return []
+  }
+
+  const regularKeys = new Set(
+    [
+      ...detectChordCandidatesFromAnalysis(analysis),
+      ...detectOmissionCandidatesFromAnalysis(analysis),
+    ].map(candidateToKey),
+  )
+  const candidates = PITCH_CLASSES.flatMap<ScoredChordCandidate>(
+    (root, rootIndex) => {
+      const rootPitchClass = pitchClassNameToValue(root)
+
+      if (analysis.uniquePitchClasses.includes(rootPitchClass)) {
+        return []
+      }
+
+      return CHORD_QUALITIES.flatMap((quality) => {
+        const observed = relativeIntervalsForRoot(
+          analysis.uniquePitchClasses,
+          rootPitchClass,
+        )
+        const target = NORMALIZED_INTERVALS[quality]
+        const optional = NORMALIZED_OPTIONAL_INTERVALS[quality]
+        const requiredWithoutRoot = target.filter(
+          (interval) => interval !== 0 && !optional.includes(interval),
+        )
+        const omitted = target.filter(
+          (interval) => !observed.includes(interval),
+        )
+
+        if (
+          requiredWithoutRoot.length < 3 ||
+          !isSubset(observed, target) ||
+          !isSubset(requiredWithoutRoot, observed)
+        ) {
+          return []
+        }
+
+        const bass = analysis.bassNote
+        const candidate: ScoredChordCandidate = {
+          root,
+          quality,
+          bass,
+          intervals: target,
+          label: buildChordLabel(root, quality, bass),
+          matchKind: 'inferred',
+          omittedIntervals: omitted,
+          score:
+            CHORD_PRIORITY[quality] + omitted.length * 5 + rootIndex * 0.25,
+        }
+
+        return regularKeys.has(candidateToKey(candidate)) ? [] : [candidate]
+      })
+    },
+  )
+
+  return toPublicCandidates(candidates)
+}
+
+function relativeIntervalsForRoot(
+  pitchClasses: readonly number[],
+  rootPitchClass: number,
+): readonly number[] {
+  return sortUniqueNumbers(
+    pitchClasses.map((pitchClass) => mod12(pitchClass - rootPitchClass)),
+  )
+}
+
+function isSubset(
+  subset: readonly number[],
+  superset: readonly number[],
+): boolean {
+  return subset.every((interval) => superset.includes(interval))
+}
+
+function candidateToKey(candidate: ChordCandidate): string {
+  return `${candidate.root}:${candidate.quality}:${candidate.bass ?? ''}`
+}
+
+function toPublicCandidates(
+  candidates: readonly ScoredChordCandidate[],
+): readonly ChordCandidate[] {
+  return [...candidates]
+    .sort((left, right) => left.score - right.score)
+    .map((candidate) => ({
+      root: candidate.root,
+      quality: candidate.quality,
+      bass: candidate.bass,
+      intervals: candidate.intervals,
+      label: candidate.label,
+      matchKind: candidate.matchKind,
+      omittedIntervals: candidate.omittedIntervals,
     }))
 }
 
@@ -888,13 +1254,21 @@ export function buildChordLabel(
 export function detectChordCandidates(
   fretting: Fretting,
 ): readonly ChordCandidate[] {
-  return detectChordCandidatesFromAnalysis(analyzeFretting(fretting))
+  const analysis = analyzeFretting(fretting)
+  return [
+    ...detectChordCandidatesFromAnalysis(analysis),
+    ...detectOmissionCandidatesFromAnalysis(analysis),
+  ]
 }
 
 export function summarizeChord(fretting: Fretting): ChordSummary {
   const analysis = analyzeFretting(fretting)
   const viewport = deriveViewport(fretting)
-  const candidates = detectChordCandidatesFromAnalysis(analysis)
+  const candidates = [
+    ...detectChordCandidatesFromAnalysis(analysis),
+    ...detectOmissionCandidatesFromAnalysis(analysis),
+  ]
+  const inferredCandidates = detectInferredCandidatesFromAnalysis(analysis)
   const currentCandidate = candidates[0]
 
   return {
@@ -903,6 +1277,7 @@ export function summarizeChord(fretting: Fretting): ChordSummary {
     bassNote: analysis.bassNote,
     viewport,
     candidates,
+    inferredCandidates,
     currentName: currentCandidate?.label ?? 'Unrecognized',
     chordTones: currentCandidate
       ? getChordToneNames(currentCandidate.root, currentCandidate.quality)
@@ -937,7 +1312,9 @@ export function deriveStringDegreeLabels(
     const interval = mod12(pitchClass - rootValue)
 
     return (
-      degreeLabelByInterval.get(interval) ?? DEFAULT_DEGREE_LABELS[interval] ?? null
+      degreeLabelByInterval.get(interval) ??
+      DEFAULT_DEGREE_LABELS[interval] ??
+      null
     )
   })
 }
@@ -959,10 +1336,11 @@ export function getChordForms(
     label: form.label,
     fretting: buildRelativeForm(root, form),
   }))
+  const generatedForms = generateChordForms(root, quality)
 
   const deduped = new Map<string, ChordForm>()
 
-  ;[...absoluteForms, ...movableForms].forEach((form) => {
+  ;[...absoluteForms, ...movableForms, ...generatedForms].forEach((form) => {
     const key = frettingToKey(form.fretting)
 
     if (!deduped.has(key)) {
@@ -970,7 +1348,174 @@ export function getChordForms(
     }
   })
 
-  return [...deduped.values()]
+  return [...deduped.values()].slice(0, MAX_CHORD_FORM_COUNT)
+}
+
+function generateChordForms(
+  root: PitchClassName,
+  quality: ChordQuality,
+): readonly ChordForm[] {
+  const cacheKey = `${root}:${quality}`
+  const cachedForms = GENERATED_FORM_CACHE.get(cacheKey)
+
+  if (cachedForms) {
+    return cachedForms
+  }
+
+  const rootPitchClass = pitchClassNameToValue(root)
+  const targetIntervals = NORMALIZED_INTERVALS[quality]
+  const optionalIntervals = NORMALIZED_OPTIONAL_INTERVALS[quality]
+  const requiredIntervals = targetIntervals.filter(
+    (interval) => !optionalIntervals.includes(interval),
+  )
+  const candidates = new Map<string, ScoredChordForm>()
+
+  for (
+    let startFret = 1;
+    startFret <= GENERATED_FORM_MAX_FRET;
+    startFret += 1
+  ) {
+    const statesByString = STANDARD_TUNING_PITCHES.map(
+      (openPitch): readonly StringState[] => {
+        const states: StringState[] = ['x']
+
+        if (
+          startFret === 1 &&
+          targetIntervals.includes(mod12(openPitch - rootPitchClass))
+        ) {
+          states.push(0)
+        }
+
+        for (
+          let fret = startFret;
+          fret <=
+          Math.min(
+            startFret + GENERATED_FORM_FRET_SPAN,
+            GENERATED_FORM_MAX_FRET,
+          );
+          fret += 1
+        ) {
+          if (
+            targetIntervals.includes(mod12(openPitch + fret - rootPitchClass))
+          ) {
+            states.push(fret)
+          }
+        }
+
+        return states
+      },
+    )
+
+    enumerateFrettings(statesByString, (fretting) => {
+      const analysis = analyzeFretting(fretting)
+
+      if (analysis.playedNotes.length < 3 || analysis.playedNotes.length > 4) {
+        return
+      }
+
+      const observedIntervals = relativeIntervalsForRoot(
+        analysis.uniquePitchClasses,
+        rootPitchClass,
+      )
+      const omittedIntervals = targetIntervals.filter(
+        (interval) => !observedIntervals.includes(interval),
+      )
+
+      if (
+        !observedIntervals.includes(0) ||
+        !isSubset(observedIntervals, targetIntervals) ||
+        !isSubset(requiredIntervals, observedIntervals) ||
+        !isSubset(omittedIntervals, optionalIntervals)
+      ) {
+        return
+      }
+
+      const frettedNotes = analysis.playedNotes.filter((note) => note.fret > 0)
+      const frets = frettedNotes.map((note) => note.fret)
+      const minFret = frets.length > 0 ? Math.min(...frets) : 0
+      const maxFret = frets.length > 0 ? Math.max(...frets) : 0
+      const span = maxFret - minFret
+      const interiorMutedStrings = countInteriorMutedStrings(fretting)
+      const bassPenalty = analysis.bassNote === root ? 0 : 5
+      const score =
+        omittedIntervals.length * 20 +
+        bassPenalty +
+        span * 2 +
+        interiorMutedStrings * 2 +
+        Math.abs(4 - analysis.playedNotes.length) +
+        minFret * 0.1
+      const key = frettingToKey(fretting)
+      const previous = candidates.get(key)
+
+      if (!previous || score < previous.score) {
+        candidates.set(key, {
+          id: `generated-${quality}-${root}-${key}`,
+          label: '',
+          fretting,
+          score,
+        })
+      }
+    })
+  }
+
+  const forms = [...candidates.values()]
+    .sort((left, right) => left.score - right.score)
+    .slice(0, MAX_CHORD_FORM_COUNT)
+    .map((form, index) => ({
+      id: form.id,
+      label: buildGeneratedFormLabel(form.fretting, index),
+      fretting: form.fretting,
+    }))
+
+  GENERATED_FORM_CACHE.set(cacheKey, forms)
+  return forms
+}
+
+function enumerateFrettings(
+  statesByString: readonly (readonly StringState[])[],
+  visit: (fretting: Fretting) => void,
+  stringIndex = 0,
+  states: StringState[] = [],
+): void {
+  const availableStates = statesByString[stringIndex]
+
+  if (!availableStates) {
+    visit(toFretting([...states]))
+    return
+  }
+
+  for (const state of availableStates) {
+    states.push(state)
+    enumerateFrettings(statesByString, visit, stringIndex + 1, states)
+    states.pop()
+  }
+}
+
+function countInteriorMutedStrings(fretting: Fretting): number {
+  const playedIndexes = fretting.flatMap((state, index) =>
+    state === 'x' ? [] : [index],
+  )
+  const firstPlayed = playedIndexes[0]
+  const lastPlayed = playedIndexes[playedIndexes.length - 1]
+
+  if (firstPlayed === undefined || lastPlayed === undefined) {
+    return 0
+  }
+
+  return fretting
+    .slice(firstPlayed, lastPlayed + 1)
+    .filter((state) => state === 'x').length
+}
+
+function buildGeneratedFormLabel(fretting: Fretting, index: number): string {
+  const frets = fretting.flatMap((state) =>
+    typeof state === 'number' && state > 0 ? [state] : [],
+  )
+  const minFret = Math.min(...frets)
+  const maxFret = Math.max(...frets)
+  const fretLabel = minFret === maxFret ? `${minFret}` : `${minFret}-${maxFret}`
+
+  return `Compact form ${index + 1} (frets ${fretLabel})`
 }
 
 function buildRelativeForm(
@@ -995,7 +1540,9 @@ function normalizeIntervals(intervals: readonly number[]): readonly number[] {
   return sortUniqueNumbers(intervals.map((interval) => mod12(interval)))
 }
 
-function createDegreeLabelByInterval(quality: ChordQuality): Map<number, string> {
+function createDegreeLabelByInterval(
+  quality: ChordQuality,
+): Map<number, string> {
   return CHORD_INTERVALS[quality].reduce((labels, interval) => {
     labels.set(mod12(interval), getDegreeLabel(interval))
     return labels

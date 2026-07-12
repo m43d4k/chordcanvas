@@ -79,6 +79,7 @@ function ChordComposer({
   onStringStateChange,
 }: ChordComposerProps) {
   const [showNoteNames, setShowNoteNames] = useState(false)
+  const [showAdvancedCandidates, setShowAdvancedCandidates] = useState(false)
   const manualGridStyle = {
     '--manual-grid-column-count': manualVisibleFrets.length + 3,
   } as CSSProperties
@@ -241,49 +242,52 @@ function ChordComposer({
                 role="group"
                 style={manualGridStyle}
               >
-                {manualStringEntries.map(({ state, stringIndex, stringNumber }) => (
-                  <div
-                    className="manual-grid-row"
-                    key={`manual-row-${stringIndex}`}
-                    style={manualGridRowStyle}
-                  >
-                    <span className="manual-grid-string">
-                      {text.stringLabel(stringNumber)}
-                    </span>
-                    <button
-                      aria-label={text.stringMuteLabel(stringNumber)}
-                      aria-pressed={state === 'x'}
-                      className={state === 'x' ? 'active' : ''}
-                      onClick={() => onStringStateChange(stringIndex, 'x')}
-                      type="button"
+                {manualStringEntries.map(
+                  ({ state, stringIndex, stringNumber }) => (
+                    <div
+                      className="manual-grid-row"
+                      key={`manual-row-${stringIndex}`}
+                      style={manualGridRowStyle}
                     >
-                      X
-                    </button>
-                    <button
-                      aria-label={text.stringOpenLabel(stringNumber)}
-                      aria-pressed={state === 0}
-                      className={state === 0 ? 'active' : ''}
-                      onClick={() => onStringStateChange(stringIndex, 0)}
-                      type="button"
-                    >
-                      O
-                    </button>
-                    {manualVisibleFrets.map((fret) => (
+                      <span className="manual-grid-string">
+                        {text.stringLabel(stringNumber)}
+                      </span>
                       <button
-                        aria-label={text.stringFretLabel(stringNumber, fret)}
-                        aria-pressed={state === fret}
-                        className={state === fret ? 'active' : ''}
-                        key={`manual-string-${stringIndex}-fret-${fret}`}
-                        onClick={() => onStringStateChange(stringIndex, fret)}
+                        aria-label={text.stringMuteLabel(stringNumber)}
+                        aria-pressed={state === 'x'}
+                        className={state === 'x' ? 'active' : ''}
+                        onClick={() => onStringStateChange(stringIndex, 'x')}
                         type="button"
                       >
-                        {showNoteNames
-                          ? deriveNoteNameAtPosition(stringIndex, fret) ?? fret
-                          : fret}
+                        X
                       </button>
-                    ))}
-                  </div>
-                ))}
+                      <button
+                        aria-label={text.stringOpenLabel(stringNumber)}
+                        aria-pressed={state === 0}
+                        className={state === 0 ? 'active' : ''}
+                        onClick={() => onStringStateChange(stringIndex, 0)}
+                        type="button"
+                      >
+                        O
+                      </button>
+                      {manualVisibleFrets.map((fret) => (
+                        <button
+                          aria-label={text.stringFretLabel(stringNumber, fret)}
+                          aria-pressed={state === fret}
+                          className={state === fret ? 'active' : ''}
+                          key={`manual-string-${stringIndex}-fret-${fret}`}
+                          onClick={() => onStringStateChange(stringIndex, fret)}
+                          type="button"
+                        >
+                          {showNoteNames
+                            ? (deriveNoteNameAtPosition(stringIndex, fret) ??
+                              fret)
+                            : fret}
+                        </button>
+                      ))}
+                    </div>
+                  ),
+                )}
               </div>
             </div>
           </div>
@@ -308,11 +312,46 @@ function ChordComposer({
                 {summary.candidates.length > 0
                   ? summary.candidates
                       .slice(0, 3)
-                      .map((candidate) => candidate.label)
+                      .map((candidate) =>
+                        candidate.matchKind === 'omission'
+                          ? `${candidate.label} (${text.omissionCandidateNote})`
+                          : candidate.label,
+                      )
                       .join(', ')
                   : text.noCandidates}
               </dd>
             </div>
+            <div>
+              <dt>{text.showAdvancedCandidates}</dt>
+              <dd>
+                <label className="candidate-toggle">
+                  <input
+                    checked={showAdvancedCandidates}
+                    onChange={(event) =>
+                      setShowAdvancedCandidates(event.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span>{text.showAdvancedCandidates}</span>
+                </label>
+              </dd>
+            </div>
+            {showAdvancedCandidates ? (
+              <div>
+                <dt>{text.inferredChordNames}</dt>
+                <dd>
+                  {summary.inferredCandidates.length > 0
+                    ? summary.inferredCandidates
+                        .slice(0, 3)
+                        .map(
+                          (candidate) =>
+                            `${candidate.label} (${text.inferredCandidateNote})`,
+                        )
+                        .join(', ')
+                    : text.noCandidates}
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt>{text.bassNote}</dt>
               <dd>{summary.bassNote ?? '-'}</dd>
@@ -320,13 +359,17 @@ function ChordComposer({
             <div>
               <dt>{text.chordTones}</dt>
               <dd>
-                {summary.chordTones.length > 0 ? summary.chordTones.join(', ') : '-'}
+                {summary.chordTones.length > 0
+                  ? summary.chordTones.join(', ')
+                  : '-'}
               </dd>
             </div>
             <div>
               <dt>{text.uniqueNotes}</dt>
               <dd>
-                {summary.uniqueNotes.length > 0 ? summary.uniqueNotes.join(', ') : '-'}
+                {summary.uniqueNotes.length > 0
+                  ? summary.uniqueNotes.join(', ')
+                  : '-'}
               </dd>
             </div>
             <div>

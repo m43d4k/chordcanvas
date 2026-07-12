@@ -461,6 +461,38 @@ describe('App', () => {
     expect(firstStringFirstFretButton).toHaveTextContent('F')
   })
 
+  it('keeps inferred chord candidates behind the advanced-candidate toggle', () => {
+    render(<App />)
+
+    const dialog = openStockModal()
+    const toggle = within(dialog).getByRole('checkbox', {
+      name: '高度な候補を表示',
+    })
+
+    expect(within(dialog).queryByText('推測候補')).toBeNull()
+
+    fireEvent.click(toggle)
+
+    expect(within(dialog).getByText('推測候補')).toBeInTheDocument()
+  })
+
+  it('shows multiple chord-form choices for E diminished', () => {
+    render(<App />)
+
+    const dialog = openStockModal()
+    fireEvent.change(within(dialog).getByLabelText('コード種別'), {
+      target: { value: 'dim' },
+    })
+    const formSelect = within(dialog).getByLabelText('候補フォーム')
+
+    expect(
+      within(formSelect).getAllByRole('option').length,
+    ).toBeGreaterThanOrEqual(3)
+    expect(
+      within(formSelect).getByRole('option', { name: 'Diminished triad form' }),
+    ).toBeInTheDocument()
+  })
+
   it('restores the saved language selection from localStorage', () => {
     window.localStorage.setItem('chordcanvas-locale', 'en')
 
@@ -1277,7 +1309,9 @@ describe('App', () => {
         name: 'E をレイアウトから削除',
       }),
     ).toBeInTheDocument()
-    expect(document.querySelector('.layout-chord-block.selected')).not.toBeNull()
+    expect(
+      document.querySelector('.layout-chord-block.selected'),
+    ).not.toBeNull()
 
     fireEvent.pointerDown(document.body)
 
