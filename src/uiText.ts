@@ -74,6 +74,9 @@ export interface UiText {
   layoutHeading: string
   openLayoutAddModal: string
   addRow: string
+  insertLayoutRowAbove: string
+  insertLayoutRowAria: (index: number) => string
+  layoutRowActionsAria: (index: number) => string
   muteAudio: string
   unmuteAudio: string
   removeLayoutRowAria: string
@@ -179,6 +182,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutHeading: 'コード譜編集',
     openLayoutAddModal: 'コードを追加',
     addRow: '行を追加',
+    insertLayoutRowAbove: 'この行の上に挿入',
+    insertLayoutRowAria: (index) => `${index + 1}行目の上に行を挿入`,
+    layoutRowActionsAria: (index) => `${index + 1}行目の操作`,
     muteAudio: 'ミュート',
     unmuteAudio: 'ミュート解除',
     removeLayoutRowAria: '行を削除',
@@ -317,6 +323,9 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutHeading: 'Chord Chart Editor',
     openLayoutAddModal: 'Add chord',
     addRow: 'Add Row',
+    insertLayoutRowAbove: 'Insert row above',
+    insertLayoutRowAria: (index) => `Insert a row above row ${index + 1}`,
+    layoutRowActionsAria: (index) => `Row ${index + 1} actions`,
     muteAudio: 'Mute',
     unmuteAudio: 'Unmute',
     removeLayoutRowAria: 'Delete row',

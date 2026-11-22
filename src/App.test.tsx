@@ -944,6 +944,48 @@ describe('App', () => {
     expect(screen.queryByLabelText('Block row')).not.toBeInTheDocument()
   })
 
+  it('inserts and selects empty layout rows before the first row and between rows', () => {
+    render(<App />)
+
+    const verse = getLayoutRow(1)
+    const verseInput = openLyricsLineInput(1)
+    fireEvent.change(verseInput, { target: { value: 'Verse' } })
+    fireEvent.blur(verseInput)
+    const chord = within(verse).getByRole('button', {
+      name: layoutBlockButtonNamePattern,
+    })
+    fireEvent.click(screen.getByRole('button', { name: '行を追加' }))
+    const chorus = getLayoutRow(2)
+    const chorusInput = openLyricsLineInput(2)
+    fireEvent.change(chorusInput, { target: { value: 'Chorus' } })
+    fireEvent.blur(chorusInput)
+
+    fireEvent.click(screen.getByRole('button', { name: '2行目の上に行を挿入' }))
+
+    const insertedBetween = getLayoutRow(2)
+    expect(insertedBetween).toHaveClass('selected')
+    expect(getLayoutRow(1)).toBe(verse)
+    expect(getLayoutRow(3)).toBe(chorus)
+
+    fireEvent.click(screen.getByRole('button', { name: '1行目の上に行を挿入' }))
+
+    expect(getLayoutRow(1)).toHaveClass('selected')
+    expect(getLayoutRow(2)).toBe(verse)
+    expect(getLayoutRow(3)).toBe(insertedBetween)
+    expect(getLayoutRow(4)).toBe(chorus)
+    expect(getLyricsLineButton(1)).toHaveTextContent(
+      UI_TEXT.ja.lyricsPlaceholder,
+    )
+    expect(getLyricsLineButton(2)).toHaveTextContent('Verse')
+    expect(getLyricsLineButton(3)).toHaveTextContent(
+      UI_TEXT.ja.lyricsPlaceholder,
+    )
+    expect(getLyricsLineButton(4)).toHaveTextContent('Chorus')
+    expect(
+      within(verse).getByRole('button', { name: layoutBlockButtonNamePattern }),
+    ).toBe(chord)
+  })
+
   it('shows layout actions only after explicit block selection and keeps rows compact', () => {
     render(<App />)
 

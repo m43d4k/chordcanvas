@@ -817,7 +817,7 @@ function App() {
     setAppError(null)
   }
 
-  function handleAddLayoutRow() {
+  function handleAddLayoutRow(beforeRowId?: string) {
     hideLayoutAddHint()
     hideLayoutHoverHint()
     hideLayoutRowAddHint()
@@ -825,6 +825,7 @@ function App() {
     setVisibleBlockToolbarId(null)
     dispatchProjectAction({
       type: 'addLayoutRow',
+      beforeRowId,
     })
   }
 

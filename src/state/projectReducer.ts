@@ -55,6 +55,7 @@ export type ProjectAction =
     }
   | {
       type: 'addLayoutRow'
+      beforeRowId?: string
     }
   | {
       type: 'addStockChord'
@@ -287,17 +288,29 @@ export function projectReducer(
         selectedLayoutRowId: action.rowId,
       }
 
-    case 'addLayoutRow':
-      {
-        const nextEntry = createLayoutRow(state)
+    case 'addLayoutRow': {
+      const insertionIndex =
+        action.beforeRowId === undefined
+          ? state.layoutRows.length
+          : state.layoutRows.findIndex((row) => row.id === action.beforeRowId)
 
-        return {
-          ...state,
-          nextIds: nextEntry.nextIds,
-          layoutRows: [...state.layoutRows, nextEntry.row],
-          selectedLayoutRowId: nextEntry.row.id,
-        }
+      if (insertionIndex === -1) {
+        return state
       }
+
+      const nextEntry = createLayoutRow(state)
+
+      return {
+        ...state,
+        nextIds: nextEntry.nextIds,
+        layoutRows: [
+          ...state.layoutRows.slice(0, insertionIndex),
+          nextEntry.row,
+          ...state.layoutRows.slice(insertionIndex),
+        ],
+        selectedLayoutRowId: nextEntry.row.id,
+      }
+    }
 
     case 'updateLyrics':
       return {

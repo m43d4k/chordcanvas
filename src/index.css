@@ -961,10 +961,11 @@ button {
 
 .layout-stage {
   --layout-block-width: 160px;
+  --layout-row-gap: 0.85rem;
   --layout-row-padding-inline: 14px;
   --layout-stage-padding-inline: 14px;
   display: grid;
-  gap: 0.85rem;
+  gap: var(--layout-row-gap);
   padding: 0.9rem var(--layout-stage-padding-inline) 1rem;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -1064,6 +1065,95 @@ button {
   border-color: rgba(115, 103, 240, 0.28);
   background: var(--surface-tint);
   box-shadow: inset 0 0 0 1px rgba(115, 103, 240, 0.1);
+}
+
+.layout-row-insertion {
+  position: absolute;
+  z-index: 2;
+  inset: calc(-1 * var(--layout-row-gap)) 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: var(--layout-row-gap);
+  padding-inline-end: var(--layout-row-padding-inline);
+}
+
+.layout-row-insertion::before {
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  content: '';
+}
+
+.layout-row-insert-button,
+.layout-row-touch-actions summary {
+  display: grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  border: 1px solid var(--border-hover);
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.layout-row-insert-button {
+  position: sticky;
+  inset-inline-end: calc(
+    var(--layout-stage-padding-inline) + var(--layout-row-padding-inline) + 1px
+  );
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.layout-row-insertion:hover::before,
+.layout-row-insertion:hover .layout-row-insert-button,
+.layout-row-insert-button:focus-visible {
+  opacity: 1;
+}
+
+.layout-row-insertion:hover .layout-row-insert-button {
+  pointer-events: auto;
+}
+
+.layout-row-insert-button:hover {
+  background: var(--accent);
+}
+
+.layout-row-touch-actions {
+  display: none;
+}
+
+.layout-row-touch-actions summary {
+  cursor: pointer;
+}
+
+.layout-row-touch-actions summary::-webkit-details-marker {
+  display: none;
+}
+
+.layout-row-touch-insert {
+  position: absolute;
+  inset: calc(100% + 0.25rem) 0 auto auto;
+  background: var(--surface-muted);
+  white-space: nowrap;
+}
+
+@media (hover: none) {
+  .layout-row-insertion {
+    display: none;
+  }
+
+  .layout-row-touch-actions {
+    display: block;
+  }
 }
 
 .layout-row-header {

@@ -43,7 +43,7 @@ interface LayoutStageProps {
     block: ChordBlockState,
     options?: { playAudio?: boolean; revealToolbar?: boolean },
   ) => void
-  onAddLayoutRow: () => void
+  onAddLayoutRow: (beforeRowId?: string) => void
   onDeleteBlock: (blockId: string) => void
   onDeleteLayoutRow: (rowId: string) => void
   onDuplicateBlock: () => void
@@ -217,6 +217,7 @@ function LayoutStage({
             {layoutEntries.rows.map((rowEntry, index) => {
               const rowLabel = text.layoutRowLabel(index)
               const lyricsLineLabel = text.lyricsLineLabel(index)
+              const insertRowLabel = text.insertLayoutRowAria(index)
               const showLyricsPlaceholder =
                 rowEntry.row.lyrics === '' && !isExportingPdf
 
@@ -228,6 +229,19 @@ function LayoutStage({
                   }`}
                   key={rowEntry.row.id}
                 >
+                  {!isExportingPdf ? (
+                    <div className="layout-row-insertion">
+                      <button
+                        aria-label={insertRowLabel}
+                        className="layout-row-insert-button"
+                        onClick={() => onAddLayoutRow(rowEntry.row.id)}
+                        title={insertRowLabel}
+                        type="button"
+                      >
+                        <span aria-hidden="true">+</span>
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="layout-row-header">
                     <h3
                       className="visually-hidden"
@@ -235,6 +249,27 @@ function LayoutStage({
                     >
                       {rowLabel}
                     </h3>
+                    {!isExportingPdf ? (
+                      <details className="layout-row-touch-actions">
+                        <summary aria-label={text.layoutRowActionsAria(index)}>
+                          <span aria-hidden="true">⋯</span>
+                        </summary>
+                        <button
+                          className="secondary-button layout-row-touch-insert"
+                          onClick={(event) => {
+                            const actions =
+                              event.currentTarget.closest('details')
+                            if (actions) {
+                              actions.open = false
+                            }
+                            onAddLayoutRow(rowEntry.row.id)
+                          }}
+                          type="button"
+                        >
+                          {text.insertLayoutRowAbove}
+                        </button>
+                      </details>
+                    ) : null}
                     <button
                       aria-label={text.removeLayoutRowAria}
                       className="layout-row-delete-button"
@@ -399,7 +434,7 @@ function LayoutStage({
               aria-label={text.addRow}
               className="layout-row-add-button"
               onBlur={onHideLayoutRowAddHint}
-              onClick={onAddLayoutRow}
+              onClick={() => onAddLayoutRow()}
               onFocus={onShowLayoutRowAddHintImmediately}
               onMouseEnter={onScheduleLayoutRowAddHint}
               onMouseLeave={onHideLayoutRowAddHint}
