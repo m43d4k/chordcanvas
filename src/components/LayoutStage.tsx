@@ -231,15 +231,17 @@ function LayoutStage({
                 >
                   {!isExportingPdf ? (
                     <div className="layout-row-insertion">
-                      <button
-                        aria-label={insertRowLabel}
-                        className="layout-row-insert-button"
-                        onClick={() => onAddLayoutRow(rowEntry.row.id)}
-                        title={insertRowLabel}
-                        type="button"
-                      >
-                        <span aria-hidden="true">+</span>
-                      </button>
+                      <div className="layout-row-insertion-center">
+                        <button
+                          aria-label={insertRowLabel}
+                          className="layout-row-insert-button"
+                          onClick={() => onAddLayoutRow(rowEntry.row.id)}
+                          title={insertRowLabel}
+                          type="button"
+                        >
+                          <span aria-hidden="true">+</span>
+                        </button>
+                      </div>
                     </div>
                   ) : null}
                   <div className="layout-row-header">

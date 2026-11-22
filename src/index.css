@@ -951,6 +951,7 @@ button {
 .layout-stage-frame {
   position: relative;
   margin-top: 1rem;
+  container-type: inline-size;
   overflow: visible;
 }
 
@@ -1069,13 +1070,9 @@ button {
 
 .layout-row-insertion {
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   inset: calc(-1 * var(--layout-row-gap)) 0 auto;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
   height: var(--layout-row-gap);
-  padding-inline-end: var(--layout-row-padding-inline);
 }
 
 .layout-row-insertion::before {
@@ -1085,6 +1082,25 @@ button {
   opacity: 0;
   pointer-events: none;
   content: '';
+}
+
+.layout-row-insertion-center {
+  position: sticky;
+  inset-inline-start: var(--layout-stage-padding-inline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: calc(100cqi - 2 * var(--layout-stage-padding-inline));
+  height: 100%;
+  pointer-events: none;
+}
+
+.layout-row:first-child .layout-row-insertion::before {
+  inset-block-start: 100%;
+}
+
+.layout-row:first-child .layout-row-insertion-center {
+  translate: 0 calc(var(--layout-row-gap) / 2);
 }
 
 .layout-row-insert-button,
@@ -1103,10 +1119,6 @@ button {
 }
 
 .layout-row-insert-button {
-  position: sticky;
-  inset-inline-end: calc(
-    var(--layout-stage-padding-inline) + var(--layout-row-padding-inline) + 1px
-  );
   border-color: var(--accent);
   color: var(--accent-ink);
   opacity: 0;
