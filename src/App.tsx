@@ -981,36 +981,27 @@ function App() {
             />
             <span className="visually-hidden">ChordCanvas</span>
           </h1>
-          <div className="hero-header-controls">
+          <div
+            aria-label={text.languageToggleGroupLabel}
+            className="language-toggle"
+            role="group"
+          >
             <button
-              className="secondary-button audio-mute-button"
-              onClick={handleToggleAudioMute}
+              aria-pressed={locale === 'ja'}
+              className="secondary-button"
+              onClick={() => handleLocaleChange('ja')}
               type="button"
             >
-              {isAudioMuted ? text.unmuteAudio : text.muteAudio}
+              {text.languageJa}
             </button>
-            <div
-              aria-label={text.languageToggleGroupLabel}
-              className="language-toggle"
-              role="group"
+            <button
+              aria-pressed={locale === 'en'}
+              className="secondary-button"
+              onClick={() => handleLocaleChange('en')}
+              type="button"
             >
-              <button
-                aria-pressed={locale === 'ja'}
-                className="secondary-button"
-                onClick={() => handleLocaleChange('ja')}
-                type="button"
-              >
-                {text.languageJa}
-              </button>
-              <button
-                aria-pressed={locale === 'en'}
-                className="secondary-button"
-                onClick={() => handleLocaleChange('en')}
-                type="button"
-              >
-                {text.languageEn}
-              </button>
-            </div>
+              {text.languageEn}
+            </button>
           </div>
         </div>
 
@@ -1057,6 +1048,14 @@ function App() {
               type="file"
             />
           </div>
+
+          <button
+            className="secondary-button audio-mute-button"
+            onClick={handleToggleAudioMute}
+            type="button"
+          >
+            {isAudioMuted ? text.unmuteAudio : text.muteAudio}
+          </button>
 
           {appError ? (
             <p className="project-feedback error" role="alert">

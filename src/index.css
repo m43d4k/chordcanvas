@@ -123,15 +123,11 @@ button {
   height: 24px;
 }
 
-.hero-header-controls,
 .language-toggle {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.45rem;
-}
-
-.hero-header-controls {
   margin-left: auto;
 }
 
@@ -145,6 +141,8 @@ button {
 
 .hero-actions {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 0.75rem;
   margin-top: 0.9rem;
 }
@@ -156,6 +154,7 @@ button {
 }
 
 .project-feedback {
+  grid-column: 1 / -1;
   margin: 0;
   color: var(--text-soft);
   font-size: 0.92rem;
@@ -382,7 +381,7 @@ button {
   color: var(--accent-ink);
 }
 
-.project-actions button:hover,
+.hero-actions button:hover,
 .generator-actions button:hover,
 .layout-block-toolbar button:hover,
 .stock-card-actions button:hover,
@@ -1722,7 +1721,7 @@ button {
     align-items: stretch;
   }
 
-  .hero-header-controls {
+  .language-toggle {
     width: 100%;
   }
 
