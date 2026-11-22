@@ -1521,6 +1521,22 @@ button {
   margin-top: 1rem;
 }
 
+.composer-mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.composer-mode-tabs [aria-selected='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.composer-mode-panel {
+  min-width: 0;
+}
+
 .composer-section {
   min-width: 0;
   padding: 1rem;

@@ -1,5 +1,6 @@
 import {
   CHORD_QUALITIES,
+  MAX_SINGLE_NOTE_FRET,
   PITCH_CLASSES,
   toFretting,
   type ChordQuality,
@@ -54,6 +55,7 @@ export interface ChordBlockState {
   id: string
   fretting: Fretting
   displayName?: string
+  isSingleNote?: true
   xOffset: number
   spacing: number
   rowId: string
@@ -68,6 +70,7 @@ export interface StockChordState {
   id: string
   fretting: Fretting
   displayName?: string
+  isSingleNote?: true
 }
 
 export interface ProjectSnapshot {
@@ -251,10 +254,7 @@ function parseStockChords(value: unknown): StockChordState[] {
 
     return {
       id: parseString(stockChord.id, `stockChords[${index}].id`),
-      fretting: parseFretting(
-        stockChord.fretting,
-        `stockChords[${index}].fretting`,
-      ),
+      ...parseDiagramFretting(stockChord, entryFieldName),
       displayName: parseOptionalString(
         stockChord.displayName,
         `stockChords[${index}].displayName`,
@@ -294,7 +294,7 @@ function parseBlocks(
 
     return {
       id: parseString(block.id, `blocks[${index}].id`),
-      fretting: parseFretting(block.fretting, `blocks[${index}].fretting`),
+      ...parseDiagramFretting(block, entryFieldName),
       displayName: parseOptionalString(
         block.displayName,
         `blocks[${index}].displayName`,
@@ -334,6 +334,34 @@ function parseChordQuality(value: unknown): ChordQuality {
   throw new ProjectFileError('invalidField', {
     fieldName: 'selectedQuality',
   })
+}
+
+function parseDiagramFretting(
+  entry: Record<string, unknown>,
+  fieldName: string,
+): { fretting: Fretting; isSingleNote?: true } {
+  const fretting = parseFretting(entry.fretting, `${fieldName}.fretting`)
+  if (entry.isSingleNote === undefined) {
+    return { fretting }
+  }
+
+  if (entry.isSingleNote !== true) {
+    throw new ProjectFileError('invalidField', {
+      fieldName: `${fieldName}.isSingleNote`,
+    })
+  }
+
+  const soundingFrets = fretting.filter((state) => state !== 'x')
+  if (
+    soundingFrets.length !== 1 ||
+    soundingFrets.some((fret) => fret > MAX_SINGLE_NOTE_FRET)
+  ) {
+    throw new ProjectFileError('invalidField', {
+      fieldName: `${fieldName}.fretting`,
+    })
+  }
+
+  return { fretting, isSingleNote: true }
 }
 
 function parseFretting(value: unknown, fieldName: string): Fretting {

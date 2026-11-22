@@ -281,6 +281,7 @@ const NORMALIZED_OPTIONAL_INTERVALS = Object.fromEntries(
 
 const STANDARD_TUNING_PITCHES = [4, 9, 2, 7, 11, 4] as const
 const STANDARD_TUNING_MIDI = [40, 45, 50, 55, 59, 64] as const
+export const MAX_SINGLE_NOTE_FRET = 24
 const MAX_GENERATED_FORM_COUNT = 6
 const GENERATED_FORM_MAX_FRET = 12
 const GENERATED_FORM_FRET_SPAN = 3
@@ -1286,33 +1287,45 @@ export function frettingToKey(fretting: Fretting): string {
   return fretting.join('-')
 }
 
+function playedNoteAtPosition(
+  stringIndex: number,
+  fret: number,
+  openMidi: number,
+): PlayedNote {
+  const midi = openMidi + fret
+  const pitchClass = mod12(midi)
+
+  return {
+    stringIndex,
+    fret,
+    midi,
+    pitchClass,
+    note: pitchClassToName(pitchClass),
+  }
+}
+
 function collectPlayedNotes(fretting: Fretting): readonly PlayedNote[] {
   return fretting.flatMap((state, stringIndex) => {
-    if (state === 'x') {
-      return []
-    }
-
-    const fret = state
     const openMidi = STANDARD_TUNING_MIDI[stringIndex]
-    const openPitch = STANDARD_TUNING_PITCHES[stringIndex]
-
-    if (openMidi === undefined || openPitch === undefined) {
-      return []
-    }
-
-    const midi = openMidi + fret
-    const pitchClass = mod12(openPitch + fret)
-
-    return [
-      {
-        stringIndex,
-        fret,
-        midi,
-        pitchClass,
-        note: pitchClassToName(pitchClass),
-      },
-    ]
+    return state === 'x' || openMidi === undefined
+      ? []
+      : [playedNoteAtPosition(stringIndex, state, openMidi)]
   })
+}
+
+export function getSingleNotePositions(note: PitchClassName): PlayedNote[] {
+  return STANDARD_TUNING_MIDI.flatMap((midi, stringIndex) => {
+    const firstFret = mod12(pitchClassNameToValue(note) - midi)
+    return Array.from(
+      { length: Math.floor((MAX_SINGLE_NOTE_FRET - firstFret) / 12) + 1 },
+      (_, octave) =>
+        playedNoteAtPosition(stringIndex, firstFret + octave * 12, midi),
+    )
+  }).sort((left, right) => left.fret - right.fret)
+}
+
+export function formatPlayedNote({ note, midi }: PlayedNote): string {
+  return `${chartRootName(note)}${Math.floor(midi / 12) - 1}`
 }
 
 function analyzeFretting(fretting: Fretting): FrettingAnalysis {
@@ -1570,7 +1583,10 @@ export function deriveBassNote(fretting: Fretting): PitchClassName | null {
   return analyzeFretting(fretting).bassNote
 }
 
-export function deriveViewport(fretting: Fretting): DiagramViewport {
+export function deriveViewport(
+  fretting: Fretting,
+  lastFret = Infinity,
+): DiagramViewport {
   const frettedValues = fretting.flatMap((state) =>
     typeof state === 'number' && state > 0 ? [state] : [],
   )
@@ -1588,7 +1604,9 @@ export function deriveViewport(fretting: Fretting): DiagramViewport {
   const minFret = Math.min(...frettedValues)
   const maxFret = Math.max(...frettedValues)
   const isNutPosition = maxFret <= 4
-  const startFret = isNutPosition ? 1 : minFret
+  const startFret = isNutPosition
+    ? 1
+    : Math.min(minFret, lastFret - MINIMUM_DIAGRAM_FRET_COUNT + 1)
   const fretCount = Math.max(
     MINIMUM_DIAGRAM_FRET_COUNT,
     maxFret - startFret + 1,
@@ -1689,9 +1707,34 @@ export function detectChordCandidates(
   return detectChordCandidatesFromAnalysis(analyzeFretting(fretting))
 }
 
-export function summarizeChord(fretting: Fretting): ChordSummary {
+export function summarizeChord(
+  fretting: Fretting,
+  isSingleNote = false,
+): ChordSummary {
   const analysis = analyzeFretting(fretting)
-  const viewport = deriveViewport(fretting)
+  const viewport = deriveViewport(
+    fretting,
+    isSingleNote ? MAX_SINGLE_NOTE_FRET : undefined,
+  )
+  if (isSingleNote) {
+    const [note] = analysis.playedNotes
+    if (!note || analysis.playedNotes.length !== 1) {
+      throw new Error('Single-note fretting must have one sounding string')
+    }
+
+    return {
+      bassNote: note.note,
+      playedNotes: analysis.playedNotes,
+      uniqueNotes: analysis.uniqueNotes,
+      viewport,
+      candidates: [],
+      inferredCandidates: [],
+      currentName: formatPlayedNote(note),
+      chordTones: [],
+      stringDegreeLabels: fretting.map(() => null),
+    }
+  }
+
   const candidates = detectChordCandidatesFromAnalysis(analysis)
   const inferredCandidates = detectInferredCandidatesFromAnalysis(analysis)
   const currentCandidate = candidates[0]

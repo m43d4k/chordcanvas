@@ -4,15 +4,19 @@ import type {
   ChordSummary,
   Fretting,
   PitchClassName,
+  PlayedNote,
   StringState,
 } from '../music/chords'
 import {
   CHORD_QUALITIES,
   BASIC_QUALITIES,
+  MAX_SINGLE_NOTE_FRET,
   buildChordLabel,
   chartRootName,
+  formatPlayedNote,
   frettingToKey,
   getChordForms,
+  getSingleNotePositions,
   spellChordNote,
   PITCH_CLASSES,
   deriveNoteNameAtPosition,
@@ -37,6 +41,7 @@ interface ChordComposerProps {
   displayName: string
   chordName: string
   isAudioMuted: boolean
+  isSingleNote: boolean
   manualStartFret: number
   manualFretCount: number
   minManualFretCount: number
@@ -49,10 +54,16 @@ interface ChordComposerProps {
   onQualityChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onFormChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onChordNameChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onNoteChange: (note: PitchClassName) => void
+  onNotePositionChange: (position: PlayedNote) => void
   onViewportSync: () => void
   onManualStartFretChange: (event: ChangeEvent<HTMLInputElement>) => void
   onManualFretCountChange: (event: ChangeEvent<HTMLInputElement>) => void
   onStringStateChange: (stringIndex: number, nextState: StringState) => void
+}
+
+function notePositionValue({ stringIndex, fret }: PlayedNote) {
+  return `${stringIndex}:${fret}`
 }
 
 function ChordComposer({
@@ -65,6 +76,7 @@ function ChordComposer({
   displayName,
   chordName,
   isAudioMuted,
+  isSingleNote,
   manualStartFret,
   manualFretCount,
   minManualFretCount,
@@ -77,6 +89,8 @@ function ChordComposer({
   onQualityChange,
   onFormChange,
   onChordNameChange,
+  onNoteChange,
+  onNotePositionChange,
   onViewportSync,
   onManualStartFretChange,
   onManualFretCountChange,
@@ -87,11 +101,13 @@ function ChordComposer({
   const [showGenerated, setShowGenerated] = useState(
     selectedFormId.startsWith('generated-'),
   )
-  const availableForms = getChordForms(
-    selectedRoot,
-    selectedQuality,
-    showGenerated,
-  )
+  const singleNote = isSingleNote ? summary.playedNotes[0] : undefined
+  const notePositions = singleNote
+    ? getSingleNotePositions(singleNote.note)
+    : []
+  const availableForms = singleNote
+    ? []
+    : getChordForms(selectedRoot, selectedQuality, showGenerated)
   const frettingKey = frettingToKey(fretting)
   const currentForm = availableForms.find(
     (form) => frettingToKey(form.fretting) === frettingKey,
@@ -107,6 +123,9 @@ function ChordComposer({
     const note = deriveNoteNameAtPosition(stringIndex, fret)
     return note ? displayNote(note) : fret
   }
+  function notePositionLabel(position: PlayedNote) {
+    return text.formatNotePosition(6 - position.stringIndex, position.fret)
+  }
   const manualGridStyle = {
     '--manual-grid-column-count': manualVisibleFrets.length + 3,
   } as CSSProperties
@@ -121,80 +140,126 @@ function ChordComposer({
         aria-labelledby="modal-generator-heading"
       >
         <div className="panel-heading">
-          <h2 id="modal-generator-heading">{text.generatorHeading}</h2>
+          <h2 id="modal-generator-heading">
+            {singleNote ? text.noteSelectionHeading : text.generatorHeading}
+          </h2>
         </div>
 
-        <div className="field-grid">
-          <label className="field">
-            <span>{text.rootNote}</span>
-            <select
-              aria-label={text.rootNote}
-              onChange={onRootChange}
-              value={selectedRoot}
-            >
-              {PITCH_CLASSES.map((pitchClass) => (
-                <option key={pitchClass} value={pitchClass}>
-                  {chartRootName(pitchClass)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>{text.chordQuality}</span>
-            <select
-              aria-label={text.chordQuality}
-              onChange={onQualityChange}
-              value={selectedQuality}
-            >
-              {[
-                { label: text.commonChords, qualities: BASIC_QUALITIES },
-                {
-                  label: text.otherChords,
-                  qualities: CHORD_QUALITIES.filter(
-                    (quality) => !BASIC_QUALITIES.includes(quality),
-                  ),
-                },
-              ].map(({ label, qualities }) => (
-                <optgroup key={label} label={label}>
-                  {qualities.map((quality) => (
-                    <option key={quality} value={quality}>
-                      {buildChordLabel(selectedRoot, quality)}
+        {singleNote ? (
+          <div className="field-grid">
+            <label className="field">
+              <span>{text.noteName}</span>
+              <select
+                onChange={(event) =>
+                  onNoteChange(event.target.value as PitchClassName)
+                }
+                value={singleNote.note}
+              >
+                {PITCH_CLASSES.map((pitchClass) => (
+                  <option key={pitchClass} value={pitchClass}>
+                    {chartRootName(pitchClass)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>{text.notePosition}</span>
+              <select
+                onChange={(event) => {
+                  const position = notePositions.find(
+                    (option) =>
+                      notePositionValue(option) === event.target.value,
+                  )
+                  if (position) onNotePositionChange(position)
+                }}
+                value={notePositionValue(singleNote)}
+              >
+                {notePositions.map((position) => (
+                  <option
+                    key={notePositionValue(position)}
+                    value={notePositionValue(position)}
+                  >
+                    {notePositionLabel(position)} · {formatPlayedNote(position)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : (
+          <>
+            <div className="field-grid">
+              <label className="field">
+                <span>{text.rootNote}</span>
+                <select
+                  aria-label={text.rootNote}
+                  onChange={onRootChange}
+                  value={selectedRoot}
+                >
+                  {PITCH_CLASSES.map((pitchClass) => (
+                    <option key={pitchClass} value={pitchClass}>
+                      {chartRootName(pitchClass)}
                     </option>
                   ))}
-                </optgroup>
-              ))}
-            </select>
-          </label>
+                </select>
+              </label>
 
-          <label className="field">
-            <span>{text.chordForm}</span>
-            <select
-              aria-label={text.chordForm}
-              onChange={onFormChange}
-              value={currentForm?.id ?? ''}
-            >
-              {!currentForm && (
-                <option value="" disabled>
-                  {text.customFretting}
-                </option>
-              )}
-              {availableForms.map((form) => (
-                <option key={form.id} value={form.id}>
-                  {form.label} · {form.fretting.join('-')}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label className="candidate-toggle">
-          <input
-            type="checkbox"
-            checked={showGenerated}
-            onChange={(event) => setShowGenerated(event.target.checked)}
-          />
-          {text.includeGeneratedForms}
-        </label>
+              <label className="field">
+                <span>{text.chordQuality}</span>
+                <select
+                  aria-label={text.chordQuality}
+                  onChange={onQualityChange}
+                  value={selectedQuality}
+                >
+                  {[
+                    { label: text.commonChords, qualities: BASIC_QUALITIES },
+                    {
+                      label: text.otherChords,
+                      qualities: CHORD_QUALITIES.filter(
+                        (quality) => !BASIC_QUALITIES.includes(quality),
+                      ),
+                    },
+                  ].map(({ label, qualities }) => (
+                    <optgroup key={label} label={label}>
+                      {qualities.map((quality) => (
+                        <option key={quality} value={quality}>
+                          {buildChordLabel(selectedRoot, quality)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>{text.chordForm}</span>
+                <select
+                  aria-label={text.chordForm}
+                  onChange={onFormChange}
+                  value={currentForm?.id ?? ''}
+                >
+                  {!currentForm && (
+                    <option value="" disabled>
+                      {text.customFretting}
+                    </option>
+                  )}
+                  {availableForms.map((form) => (
+                    <option key={form.id} value={form.id}>
+                      {form.label} · {form.fretting.join('-')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="candidate-toggle">
+              <input
+                type="checkbox"
+                checked={showGenerated}
+                onChange={(event) => setShowGenerated(event.target.checked)}
+              />
+              {text.includeGeneratedForms}
+            </label>
+          </>
+        )}
       </section>
 
       <div className="composer-editor-layout">
@@ -203,7 +268,9 @@ function ChordComposer({
           aria-labelledby="modal-editor-heading"
         >
           <div className="panel-heading">
-            <h2 id="modal-editor-heading">{text.editorHeading}</h2>
+            <h2 id="modal-editor-heading">
+              {singleNote ? text.noteDiagramHeading : text.editorHeading}
+            </h2>
           </div>
 
           <div className="editor-content modal-editor-content">
@@ -211,17 +278,21 @@ function ChordComposer({
               <div className="diagram-card-header">
                 <div>
                   <h3>{displayName}</h3>
-                  <label className="field small diagram-name-field">
-                    <span>{text.displayChordName}</span>
-                    <input
-                      aria-label={text.displayChordName}
-                      onChange={onChordNameChange}
-                      placeholder={summary.currentName}
-                      type="text"
-                      value={chordName}
-                    />
-                  </label>
-                  <p className="meta-note">{text.useAutoDetectedName}</p>
+                  {!singleNote && (
+                    <>
+                      <label className="field small diagram-name-field">
+                        <span>{text.displayChordName}</span>
+                        <input
+                          aria-label={text.displayChordName}
+                          onChange={onChordNameChange}
+                          placeholder={summary.currentName}
+                          type="text"
+                          value={chordName}
+                        />
+                      </label>
+                      <p className="meta-note">{text.useAutoDetectedName}</p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -243,7 +314,9 @@ function ChordComposer({
             <div className="manual-builder">
               <div className="manual-builder-header">
                 <div>
-                  <h3>{text.frettingInput}</h3>
+                  <h3>
+                    {singleNote ? text.noteFrettingInput : text.frettingInput}
+                  </h3>
                 </div>
                 <div className="manual-builder-actions">
                   <button
@@ -269,6 +342,11 @@ function ChordComposer({
                   <span>{text.startFret}</span>
                   <input
                     aria-label={text.startFret}
+                    max={
+                      singleNote
+                        ? MAX_SINGLE_NOTE_FRET - manualFretCount + 1
+                        : undefined
+                    }
                     min="1"
                     onChange={onManualStartFretChange}
                     type="number"
@@ -290,7 +368,9 @@ function ChordComposer({
               </div>
 
               <div
-                aria-label={text.frettingInput}
+                aria-label={
+                  singleNote ? text.noteFrettingInput : text.frettingInput
+                }
                 className="manual-grid"
                 role="group"
                 style={manualGridStyle}
@@ -307,8 +387,11 @@ function ChordComposer({
                       </span>
                       <button
                         aria-label={text.stringMuteLabel(stringNumber)}
-                        aria-pressed={state === 'x'}
-                        className={state === 'x' ? 'active' : ''}
+                        aria-pressed={isSingleNote ? undefined : state === 'x'}
+                        className={
+                          !isSingleNote && state === 'x' ? 'active' : ''
+                        }
+                        disabled={isSingleNote}
                         onClick={() => onStringStateChange(stringIndex, 'x')}
                         type="button"
                       >
@@ -348,94 +431,113 @@ function ChordComposer({
           aria-labelledby="modal-info-heading"
         >
           <div className="panel-heading">
-            <h2 id="modal-info-heading">{text.infoHeading}</h2>
+            <h2 id="modal-info-heading">
+              {singleNote ? text.noteInfoHeading : text.infoHeading}
+            </h2>
           </div>
 
           <dl className="info-list">
-            <div>
-              <dt>{text.currentChordName}</dt>
-              <dd>{displayName}</dd>
-            </div>
-            <div>
-              <dt>{text.candidateChordNames}</dt>
-              <dd>
-                {summary.candidates.length > 0
-                  ? summary.candidates
-                      .slice(0, 3)
-                      .map((candidate) => {
-                        const name =
-                          candidate.matchKind === 'omission'
-                            ? `${candidate.label} (${text.omissionCandidateNote})`
-                            : candidate.label
-                        return candidate.explicitTensionLabel
-                          ? `${name} · ${candidate.explicitTensionLabel}`
-                          : name
-                      })
-                      .join(', ')
-                  : text.noCandidates}
-              </dd>
-            </div>
-            <div>
-              <dt>{text.showAdvancedCandidates}</dt>
-              <dd>
-                <label className="candidate-toggle">
-                  <input
-                    checked={showAdvancedCandidates}
-                    onChange={(event) =>
-                      setShowAdvancedCandidates(event.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <span>{text.showAdvancedCandidates}</span>
-                </label>
-              </dd>
-            </div>
-            {showAdvancedCandidates ? (
-              <div>
-                <dt>{text.inferredChordNames}</dt>
-                <dd>
-                  {summary.inferredCandidates.length > 0
-                    ? summary.inferredCandidates
-                        .slice(0, 3)
-                        .map(
-                          (candidate) =>
-                            `${candidate.label} (${text.inferredCandidateNote})`,
-                        )
-                        .join(', ')
-                    : text.noCandidates}
-                </dd>
-              </div>
-            ) : null}
-            <div>
-              <dt>{text.bassNote}</dt>
-              <dd>{summary.bassNote ? displayNote(summary.bassNote) : '-'}</dd>
-            </div>
-            <div>
-              <dt>{text.chordTones}</dt>
-              <dd>
-                {summary.chordTones.length > 0
-                  ? summary.chordTones.map(displayNote).join(', ')
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt>{text.uniqueNotes}</dt>
-              <dd>
-                {summary.uniqueNotes.length > 0
-                  ? summary.uniqueNotes.map(displayNote).join(', ')
-                  : '-'}
-              </dd>
-            </div>
-            <div>
-              <dt>{text.playedNotes}</dt>
-              <dd>
-                {summary.playedNotes.length > 0
-                  ? summary.playedNotes
-                      .map((note) => displayNote(note.note))
-                      .join(', ')
-                  : '-'}
-              </dd>
-            </div>
+            {singleNote ? (
+              <>
+                <div>
+                  <dt>{text.soundingNote}</dt>
+                  <dd>{displayName}</dd>
+                </div>
+                <div>
+                  <dt>{text.notePosition}</dt>
+                  <dd>{notePositionLabel(singleNote)}</dd>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <dt>{text.currentChordName}</dt>
+                  <dd>{displayName}</dd>
+                </div>
+                <div>
+                  <dt>{text.candidateChordNames}</dt>
+                  <dd>
+                    {summary.candidates.length > 0
+                      ? summary.candidates
+                          .slice(0, 3)
+                          .map((candidate) => {
+                            const name =
+                              candidate.matchKind === 'omission'
+                                ? `${candidate.label} (${text.omissionCandidateNote})`
+                                : candidate.label
+                            return candidate.explicitTensionLabel
+                              ? `${name} · ${candidate.explicitTensionLabel}`
+                              : name
+                          })
+                          .join(', ')
+                      : text.noCandidates}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{text.showAdvancedCandidates}</dt>
+                  <dd>
+                    <label className="candidate-toggle">
+                      <input
+                        checked={showAdvancedCandidates}
+                        onChange={(event) =>
+                          setShowAdvancedCandidates(event.target.checked)
+                        }
+                        type="checkbox"
+                      />
+                      <span>{text.showAdvancedCandidates}</span>
+                    </label>
+                  </dd>
+                </div>
+                {showAdvancedCandidates ? (
+                  <div>
+                    <dt>{text.inferredChordNames}</dt>
+                    <dd>
+                      {summary.inferredCandidates.length > 0
+                        ? summary.inferredCandidates
+                            .slice(0, 3)
+                            .map(
+                              (candidate) =>
+                                `${candidate.label} (${text.inferredCandidateNote})`,
+                            )
+                            .join(', ')
+                        : text.noCandidates}
+                    </dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt>{text.bassNote}</dt>
+                  <dd>
+                    {summary.bassNote ? displayNote(summary.bassNote) : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{text.chordTones}</dt>
+                  <dd>
+                    {summary.chordTones.length > 0
+                      ? summary.chordTones.map(displayNote).join(', ')
+                      : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{text.uniqueNotes}</dt>
+                  <dd>
+                    {summary.uniqueNotes.length > 0
+                      ? summary.uniqueNotes.map(displayNote).join(', ')
+                      : '-'}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{text.playedNotes}</dt>
+                  <dd>
+                    {summary.playedNotes.length > 0
+                      ? summary.playedNotes
+                          .map((note) => displayNote(note.note))
+                          .join(', ')
+                      : '-'}
+                  </dd>
+                </div>
+              </>
+            )}
           </dl>
         </section>
       </div>

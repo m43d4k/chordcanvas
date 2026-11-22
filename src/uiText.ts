@@ -14,6 +14,17 @@ export interface UiText {
   importProject: string
   projectFileInputAriaLabel: string
   generatorHeading: string
+  diagramMode: string
+  chordMode: string
+  singleNoteMode: string
+  noteSelectionHeading: string
+  noteName: string
+  soundingNote: string
+  notePosition: string
+  formatNotePosition: (stringNumber: number, fret: number) => string
+  noteDiagramHeading: string
+  noteFrettingInput: string
+  noteInfoHeading: string
   rootNote: string
   chordQuality: string
   commonChords: string
@@ -22,6 +33,7 @@ export interface UiText {
   customFretting: string
   chordForm: string
   alreadyStockedButton: string
+  alreadyStockedNoteButton: string
   addToStock: string
   editorHeading: string
   currentChord: string
@@ -104,6 +116,18 @@ export const UI_TEXT: Record<Locale, UiText> = {
     importProject: 'プロジェクトを開く',
     projectFileInputAriaLabel: 'プロジェクト JSON ファイル',
     generatorHeading: 'コード選択',
+    diagramMode: '追加する種類',
+    chordMode: 'コード',
+    singleNoteMode: '単音',
+    noteSelectionHeading: '単音選択',
+    noteName: '音名',
+    soundingNote: '鳴る音',
+    notePosition: '位置',
+    formatNotePosition: (stringNumber, fret) =>
+      `${stringNumber}弦・${fret === 0 ? '開放弦' : `${fret}フレット`}`,
+    noteDiagramHeading: '単音ダイアグラム',
+    noteFrettingInput: '演奏位置',
+    noteInfoHeading: '単音情報',
     rootNote: 'ルート',
     chordQuality: 'コード種別',
     commonChords: '基本コード',
@@ -112,6 +136,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     customFretting: 'カスタムフォーム',
     chordForm: '候補フォーム',
     alreadyStockedButton: 'このコードはストック済み',
+    alreadyStockedNoteButton: 'この単音はストック済み',
     addToStock: 'ストックに追加',
     editorHeading: 'コードダイアグラム',
     currentChord: '現在のコード',
@@ -229,6 +254,18 @@ export const UI_TEXT: Record<Locale, UiText> = {
     importProject: 'Import Project',
     projectFileInputAriaLabel: 'Project JSON file',
     generatorHeading: 'Chord Selection',
+    diagramMode: 'Diagram type',
+    chordMode: 'Chord',
+    singleNoteMode: 'Single note',
+    noteSelectionHeading: 'Note Selection',
+    noteName: 'Note',
+    soundingNote: 'Sounding note',
+    notePosition: 'Position',
+    formatNotePosition: (stringNumber, fret) =>
+      `String ${stringNumber} · ${fret === 0 ? 'Open' : `Fret ${fret}`}`,
+    noteDiagramHeading: 'Single-note Diagram',
+    noteFrettingInput: 'Fretboard Position',
+    noteInfoHeading: 'Note Information',
     rootNote: 'Root',
     chordQuality: 'Chord Quality',
     commonChords: 'Common chords',
@@ -237,6 +274,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     customFretting: 'Custom shape',
     chordForm: 'Chord Shape',
     alreadyStockedButton: 'Already in Stock',
+    alreadyStockedNoteButton: 'Note Already in Stock',
     addToStock: 'Add to Stock',
     editorHeading: 'Chord Diagram',
     currentChord: 'Current Chord',

@@ -1282,6 +1282,100 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
+  it('selects and edits one sounding note from the layout add dialog', () => {
+    render(<App />)
+
+    const dialog = openLayoutAddModal(1)
+    const chordTab = within(dialog).getByRole('tab', { name: 'コード' })
+    const noteTab = within(dialog).getByRole('tab', { name: '単音' })
+    fireEvent.change(within(dialog).getByLabelText('任意コード名'), {
+      target: { value: 'Intro E' },
+    })
+    chordTab.focus()
+    fireEvent.keyDown(chordTab, { key: 'ArrowRight' })
+
+    expect(noteTab).toHaveFocus()
+    expect(noteTab).toHaveAttribute('aria-selected', 'true')
+    expect(within(dialog).queryByLabelText('任意コード名')).toBeNull()
+    expect(
+      within(dialog).getByRole('option', { name: '2弦・1フレット · C4' }),
+    ).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('option', { name: '5弦・3フレット · C3' }),
+    ).toBeInTheDocument()
+
+    fireEvent.change(within(dialog).getByLabelText('音名'), {
+      target: { value: 'E' },
+    })
+    fireEvent.change(within(dialog).getByLabelText('位置'), {
+      target: { value: '5:24' },
+    })
+    const noteInfo = within(dialog).getByRole('region', { name: '単音情報' })
+    expect(within(noteInfo).getByText('E6')).toBeInTheDocument()
+    expect(within(noteInfo).getByText('1弦・24フレット')).toBeInTheDocument()
+    expect(
+      within(dialog).getByRole('button', {
+        name: UI_TEXT.ja.stringFretLabel(1, 24),
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(chordTab)
+    expect(within(dialog).getByLabelText('任意コード名')).toHaveValue('Intro E')
+    fireEvent.click(noteTab)
+    expect(within(dialog).getByLabelText('位置')).toHaveValue('5:24')
+
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: UI_TEXT.ja.stringOpenLabel(2),
+      }),
+    )
+    expect(within(dialog).getByLabelText('音名')).toHaveValue('B')
+    expect(within(dialog).getByLabelText('位置')).toHaveValue('4:0')
+    expect(within(noteInfo).getByText('2弦・開放弦')).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'B3 を再生' }))
+    expect(audioMocks.playChordFretting).toHaveBeenLastCalledWith(
+      toFretting(['x', 'x', 'x', 'x', 0, 'x']),
+    )
+
+    submitModal(dialog, '追加')
+    expect(getLayoutBlockByName('B3')).toBeInTheDocument()
+
+    const editDialog = openEditModal()
+    expect(within(editDialog).getByLabelText('位置')).toHaveValue('4:0')
+    fireEvent.change(within(editDialog).getByLabelText('位置'), {
+      target: { value: '3:4' },
+    })
+    submitModal(editDialog, '変更を保存')
+    const reopenedDialog = openEditModal()
+    expect(within(reopenedDialog).getByLabelText('位置')).toHaveValue('3:4')
+  })
+
+  it('keeps the stock add dialog in chord mode after stocking a note from a row', () => {
+    render(<App />)
+
+    const dialog = openLayoutAddModal(1)
+    fireEvent.click(within(dialog).getByRole('tab', { name: '単音' }))
+    submitModal(dialog, 'ストックに追加')
+    expect(getStockCard('C4')).toBeInTheDocument()
+    expect(
+      within(getModalActions(dialog)).getByRole('button', {
+        name: 'この単音はストック済み',
+      }),
+    ).toBeDisabled()
+    const modalStock = within(dialog).getByRole('region', {
+      name: 'コードストック',
+    })
+    fireEvent.click(within(modalStock).getByRole('button', { name: '追加' }))
+    expect(getLayoutBlockByName('C4')).toBeInTheDocument()
+
+    const stockDialog = openStockModal()
+    expect(within(stockDialog).queryByRole('tablist')).toBeNull()
+    expect(within(stockDialog).getByLabelText('ルート')).toHaveValue('E')
+    expect(
+      within(stockDialog).getByLabelText('任意コード名'),
+    ).toBeInTheDocument()
+  })
+
   it('updates a selected layout block from the edit modal', () => {
     render(<App />)
 

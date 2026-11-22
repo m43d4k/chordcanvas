@@ -187,7 +187,7 @@ export function buildLayoutEntries(
     const entries = blocks
       .filter((block) => block.rowId === row.id)
       .map((block) => {
-        const summary = summarizeChord(block.fretting)
+        const summary = summarizeChord(block.fretting, block.isSingleNote)
         const flowLeft = Math.max(cursor, nextFlowLeft)
         const minXOffset = minLeft - flowLeft
         const left = Math.max(minLeft, flowLeft + block.xOffset)
@@ -198,7 +198,10 @@ export function buildLayoutEntries(
 
         return {
           block,
-          displayName: getDisplayName(summary, block.displayName),
+          displayName: getDisplayName(
+            summary,
+            block.isSingleNote ? undefined : block.displayName,
+          ),
           hasFollowingBlock: false,
           left,
           minXOffset,

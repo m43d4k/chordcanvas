@@ -230,17 +230,21 @@ function App() {
   )
   const selectedBlockDisplayName = selectedBlock
     ? getDisplayName(
-        summarizeChord(selectedBlock.fretting).currentName,
-        selectedBlock.displayName,
+        summarizeChord(selectedBlock.fretting, selectedBlock.isSingleNote)
+          .currentName,
+        selectedBlock.isSingleNote ? undefined : selectedBlock.displayName,
       )
     : ''
   const stockEntries = stockChords.map((stockChord) => {
-    const summary = summarizeChord(stockChord.fretting)
+    const summary = summarizeChord(stockChord.fretting, stockChord.isSingleNote)
 
     return {
       stockChord,
       summary,
-      displayName: getDisplayName(summary.currentName, stockChord.displayName),
+      displayName: getDisplayName(
+        summary.currentName,
+        stockChord.isSingleNote ? undefined : stockChord.displayName,
+      ),
     }
   })
   const layoutStagePaddingInline = isExportingPdf
@@ -275,7 +279,10 @@ function App() {
     handleChordModalFormChange,
     handleChordModalManualFretCountChange,
     handleChordModalManualStartFretChange,
+    handleChordModalModeChange,
     handleChordModalNameChange,
+    handleChordModalNoteChange,
+    handleChordModalNotePositionChange,
     handleChordModalQualityChange,
     handleChordModalRootChange,
     handleChordModalStringStateChange,
@@ -297,7 +304,9 @@ function App() {
     onUpdateBlockFromDraft: updateBlockFromDraft,
     stockChords,
   })
-  const modalSummary = modalDraft ? summarizeChord(modalDraft.fretting) : null
+  const modalSummary = modalDraft
+    ? summarizeChord(modalDraft.fretting, modalDraft.isSingleNote)
+    : null
   const modalDisplayName =
     modalDraft && modalSummary
       ? getDisplayName(modalSummary.currentName, modalDraft.chordName)
@@ -643,6 +652,10 @@ function App() {
   }
 
   function commitChordDraft(draft: ChordDraftState) {
+    if (draft.isSingleNote) {
+      return
+    }
+
     dispatchProjectAction({
       type: 'commitDraft',
       draft,
@@ -651,27 +664,29 @@ function App() {
 
   function addBlockToLayoutRow(
     rowId: string,
-    fretting: Fretting,
-    displayName?: string,
+    diagram: Pick<ChordBlockState, 'fretting' | 'displayName' | 'isSingleNote'>,
   ) {
     dispatchProjectAction({
       type: 'addBlock',
-      displayName: toStoredDisplayName(displayName),
-      fretting: copyFretting(fretting),
+      displayName: toStoredDisplayName(diagram.displayName),
+      fretting: copyFretting(diagram.fretting),
+      isSingleNote: diagram.isSingleNote,
       rowId,
     })
   }
 
   function addLayoutBlockFromDraft(rowId: string, draft: ChordDraftState) {
     commitChordDraft(draft)
-    addBlockToLayoutRow(rowId, draft.fretting, draft.chordName)
+    addBlockToLayoutRow(rowId, { ...draft, displayName: draft.chordName })
     setAppError(null)
   }
 
   function addChordDraftToStock(draft: ChordDraftState): boolean {
     if (
-      stockChords.some((stockChord) =>
-        isSameFretting(stockChord.fretting, draft.fretting),
+      stockChords.some(
+        (stockChord) =>
+          stockChord.isSingleNote === draft.isSingleNote &&
+          isSameFretting(stockChord.fretting, draft.fretting),
       )
     ) {
       return false
@@ -682,6 +697,7 @@ function App() {
       type: 'addStockChord',
       displayName: toStoredDisplayName(draft.chordName),
       fretting: copyFretting(draft.fretting),
+      isSingleNote: draft.isSingleNote,
     })
     setAppError(null)
     return true
@@ -748,11 +764,7 @@ function App() {
       return
     }
 
-    addBlockToLayoutRow(
-      rowId ?? selectedLayoutRowId,
-      stockChord.fretting,
-      stockChord.displayName,
-    )
+    addBlockToLayoutRow(rowId ?? selectedLayoutRowId, stockChord)
     setAppError(null)
   }
 
@@ -1143,6 +1155,7 @@ function App() {
           isAudioMuted={isAudioMuted}
           isModalChordStocked={isModalChordStocked}
           isModalDraftStocked={isModalDraftStocked}
+          isSingleNote={modalDraft.isSingleNote ?? false}
           manualFretCount={modalDraft.manualFretCount}
           manualGridTemplate={modalManualGridTemplate}
           manualStartFret={modalDraft.manualStartFret}
@@ -1157,6 +1170,9 @@ function App() {
           onFormChange={handleChordModalFormChange}
           onManualFretCountChange={handleChordModalManualFretCountChange}
           onManualStartFretChange={handleChordModalManualStartFretChange}
+          onModeChange={handleChordModalModeChange}
+          onNoteChange={handleChordModalNoteChange}
+          onNotePositionChange={handleChordModalNotePositionChange}
           onPlayChord={() => {
             void handlePlayChord(modalDraft.fretting)
           }}

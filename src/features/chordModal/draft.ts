@@ -1,12 +1,16 @@
 import {
+  MAX_SINGLE_NOTE_FRET,
   MINIMUM_DIAGRAM_FRET_COUNT,
+  deriveViewport,
   frettingToKey,
   getChordForms,
+  getSingleNotePositions,
   summarizeChord,
   toFretting,
   type ChordQuality,
   type Fretting,
   type PitchClassName,
+  type PlayedNote,
   type StringState,
 } from '../../music/chords'
 import type { ChordBlockState } from '../../project/projectFile'
@@ -24,6 +28,7 @@ export interface CurrentChordDraftSource {
 }
 
 export interface ChordDraftState {
+  isSingleNote?: true
   selectedRoot: PitchClassName
   selectedQuality: ChordQuality
   selectedFormId: string
@@ -33,21 +38,22 @@ export interface ChordDraftState {
   manualFretCount: number
 }
 
-export type ChordModalSession =
+export type ChordModalSession = {
+  draft: ChordDraftState
+  alternateDraft?: ChordDraftState
+} & (
   | {
       kind: 'stock'
-      draft: ChordDraftState
     }
   | {
       kind: 'layout'
-      draft: ChordDraftState
       targetRowId: string
     }
   | {
       blockId: string
-      draft: ChordDraftState
       kind: 'edit'
     }
+)
 
 export function clampManualFretCount(value: number): number {
   return Math.min(
@@ -88,7 +94,10 @@ export function createChordDraftFromBlock(
     'selectedFormId' | 'selectedQuality' | 'selectedRoot'
   >,
 ): ChordDraftState {
-  const { viewport, candidates } = summarizeChord(block.fretting)
+  const { viewport, candidates } = summarizeChord(
+    block.fretting,
+    block.isSingleNote,
+  )
   const selectedRoot = candidates[0]?.root ?? source.selectedRoot
   const selectedQuality = candidates[0]?.quality ?? source.selectedQuality
   const key = frettingToKey(block.fretting)
@@ -99,7 +108,8 @@ export function createChordDraftFromBlock(
   ).find((form) => frettingToKey(form.fretting) === key)
 
   return {
-    chordName: block.displayName ?? '',
+    isSingleNote: block.isSingleNote,
+    chordName: block.isSingleNote ? '' : (block.displayName ?? ''),
     fretting: copyFretting(block.fretting),
     manualFretCount: clampManualFretCount(viewport.fretCount),
     manualStartFret: viewport.startFret,
@@ -109,11 +119,45 @@ export function createChordDraftFromBlock(
   }
 }
 
+export function createSingleNoteDraft(source: CurrentChordDraftSource) {
+  return updateDraftNote(
+    { ...createChordDraft(source), chordName: '', isSingleNote: true },
+    'C',
+  )
+}
+
+export function updateDraftNote(
+  draft: ChordDraftState,
+  note: PitchClassName,
+): ChordDraftState {
+  const [position] = getSingleNotePositions(note)
+  if (!position) {
+    throw new Error(`No guitar positions for ${note}`)
+  }
+
+  return updateDraftNotePosition(draft, position)
+}
+
+export function updateDraftNotePosition(
+  draft: ChordDraftState,
+  position: PlayedNote,
+): ChordDraftState {
+  const nextDraft = updateDraftStringState(
+    draft,
+    position.stringIndex,
+    position.fret,
+  )
+  return syncDraftViewport(nextDraft, nextDraft.fretting)
+}
+
 export function syncDraftViewport(
   draft: ChordDraftState,
   fretting: Fretting,
 ): ChordDraftState {
-  const viewport = summarizeChord(fretting).viewport
+  const viewport = deriveViewport(
+    fretting,
+    draft.isSingleNote ? MAX_SINGLE_NOTE_FRET : undefined,
+  )
 
   return {
     ...draft,
@@ -201,10 +245,13 @@ export function updateDraftManualStartFret(
   value: string,
 ): ChordDraftState {
   const parsed = Number.parseInt(value, 10)
+  const startFret = Number.isNaN(parsed) ? 1 : Math.max(1, parsed)
 
   return {
     ...draft,
-    manualStartFret: Number.isNaN(parsed) ? 1 : Math.max(1, parsed),
+    manualStartFret: draft.isSingleNote
+      ? Math.min(MAX_SINGLE_NOTE_FRET - draft.manualFretCount + 1, startFret)
+      : startFret,
   }
 }
 
@@ -213,12 +260,19 @@ export function updateDraftManualFretCount(
   value: string,
 ): ChordDraftState {
   const parsed = Number.parseInt(value, 10)
+  const manualFretCount = Number.isNaN(parsed)
+    ? MINIMUM_DIAGRAM_FRET_COUNT
+    : clampManualFretCount(parsed)
 
   return {
     ...draft,
-    manualFretCount: Number.isNaN(parsed)
-      ? MINIMUM_DIAGRAM_FRET_COUNT
-      : clampManualFretCount(parsed),
+    manualFretCount,
+    manualStartFret: draft.isSingleNote
+      ? Math.min(
+          MAX_SINGLE_NOTE_FRET - manualFretCount + 1,
+          draft.manualStartFret,
+        )
+      : draft.manualStartFret,
   }
 }
 
@@ -227,7 +281,16 @@ export function updateDraftStringState(
   stringIndex: number,
   nextState: StringState,
 ): ChordDraftState {
-  const nextFretting = [...draft.fretting]
+  if (
+    draft.isSingleNote &&
+    (nextState === 'x' || nextState > MAX_SINGLE_NOTE_FRET)
+  ) {
+    return draft
+  }
+
+  const nextFretting = draft.isSingleNote
+    ? draft.fretting.map<StringState>(() => 'x')
+    : [...draft.fretting]
   nextFretting[stringIndex] = nextState
 
   return {

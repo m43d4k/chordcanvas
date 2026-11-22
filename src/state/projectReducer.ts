@@ -50,6 +50,7 @@ export type ProjectAction =
       type: 'addBlock'
       displayName?: string
       fretting: Fretting
+      isSingleNote?: true
       rowId: string
     }
   | {
@@ -59,6 +60,7 @@ export type ProjectAction =
       type: 'addStockChord'
       displayName?: string
       fretting: Fretting
+      isSingleNote?: true
     }
   | {
       type: 'applySnapshot'
@@ -191,6 +193,7 @@ function createChordBlock(
       id: `${BLOCK_ID_PREFIX}${state.nextIds.block}`,
       fretting: copyFretting(action.fretting),
       displayName: action.displayName,
+      ...(action.isSingleNote && { isSingleNote: action.isSingleNote }),
       xOffset: 0,
       spacing: DEFAULT_SPACING,
       rowId: action.rowId,
@@ -211,12 +214,9 @@ function createDuplicatedBlock(state: ProjectState, selectedIndex: number) {
 
   return {
     block: {
+      ...selectedBlock,
       id: `${BLOCK_ID_PREFIX}${state.nextIds.block}`,
-      displayName: selectedBlock.displayName,
       fretting: copyFretting(selectedBlock.fretting),
-      xOffset: selectedBlock.xOffset,
-      spacing: selectedBlock.spacing,
-      rowId: selectedBlock.rowId,
     },
     nextIds: {
       ...state.nextIds,
@@ -238,6 +238,7 @@ function createStockChord(
       id: `${STOCK_ID_PREFIX}${state.nextIds.stock}`,
       displayName: action.displayName,
       fretting: copyFretting(action.fretting),
+      ...(action.isSingleNote && { isSingleNote: action.isSingleNote }),
     },
   }
 }

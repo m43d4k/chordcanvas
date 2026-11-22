@@ -4,6 +4,7 @@ import type {
   ChordQuality,
   Fretting,
   PitchClassName,
+  PlayedNote,
   StringState,
 } from '../music/chords'
 import type {
@@ -14,6 +15,7 @@ import type {
 import {
   createChordDraft,
   createChordDraftFromBlock,
+  createSingleNoteDraft,
   type ChordDraftState,
   type ChordModalSession,
   type CurrentChordDraftSource,
@@ -22,6 +24,8 @@ import {
   updateDraftManualFretCount,
   updateDraftManualStartFret,
   updateDraftName,
+  updateDraftNote,
+  updateDraftNotePosition,
   updateDraftQuality,
   updateDraftRoot,
   updateDraftStringState,
@@ -52,6 +56,9 @@ interface UseChordModalControllerResult {
     event: ChangeEvent<HTMLInputElement>,
   ) => void
   handleChordModalNameChange: (event: ChangeEvent<HTMLInputElement>) => void
+  handleChordModalNoteChange: (note: PitchClassName) => void
+  handleChordModalNotePositionChange: (position: PlayedNote) => void
+  handleChordModalModeChange: (isSingleNote: boolean) => void
   handleChordModalQualityChange: (
     event: ChangeEvent<HTMLSelectElement>,
   ) => void
@@ -87,8 +94,10 @@ export function useChordModalController({
   const [chordModal, setChordModal] = useState<ChordModalSession | null>(null)
   const modalDraft = chordModal?.draft ?? null
   const isModalDraftStocked = modalDraft
-    ? stockChords.some((stockChord) =>
-        isSameFretting(stockChord.fretting, modalDraft.fretting),
+    ? stockChords.some(
+        (stockChord) =>
+          stockChord.isSingleNote === modalDraft.isSingleNote &&
+          isSameFretting(stockChord.fretting, modalDraft.fretting),
       )
     : false
 
@@ -165,6 +174,32 @@ export function useChordModalController({
 
   function handleChordModalNameChange(event: ChangeEvent<HTMLInputElement>) {
     updateChordModalDraft((draft) => updateDraftName(draft, event.target.value))
+  }
+
+  function handleChordModalModeChange(isSingleNote: boolean) {
+    setChordModal((current) => {
+      if (
+        current?.kind !== 'layout' ||
+        Boolean(current.draft.isSingleNote) === isSingleNote
+      ) {
+        return current
+      }
+
+      return {
+        ...current,
+        alternateDraft: current.draft,
+        draft:
+          current.alternateDraft ?? createSingleNoteDraft(currentDraftSource),
+      }
+    })
+  }
+
+  function handleChordModalNoteChange(note: PitchClassName) {
+    updateChordModalDraft((draft) => updateDraftNote(draft, note))
+  }
+
+  function handleChordModalNotePositionChange(position: PlayedNote) {
+    updateChordModalDraft((draft) => updateDraftNotePosition(draft, position))
   }
 
   function handleChordModalManualStartFretChange(
@@ -254,7 +289,10 @@ export function useChordModalController({
     handleChordModalFormChange,
     handleChordModalManualFretCountChange,
     handleChordModalManualStartFretChange,
+    handleChordModalModeChange,
     handleChordModalNameChange,
+    handleChordModalNoteChange,
+    handleChordModalNotePositionChange,
     handleChordModalQualityChange,
     handleChordModalRootChange,
     handleChordModalStringStateChange,

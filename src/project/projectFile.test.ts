@@ -45,6 +45,36 @@ describe('projectFile', () => {
     expect(parseProjectFile(serializeProjectFile(snapshot))).toEqual(snapshot)
   })
 
+  it('round-trips explicit single notes alongside legacy one-string chords', () => {
+    const snapshot = createProjectSnapshot()
+    const fretting = toFretting(['x', 'x', 'x', 'x', 1, 'x'])
+    snapshot.stockChords.push({ id: 'stock-2', fretting, isSingleNote: true })
+    snapshot.blocks.push(
+      {
+        ...snapshot.blocks[0]!,
+        id: 'chord-2',
+        displayName: undefined,
+        fretting,
+        isSingleNote: true,
+      },
+      { ...snapshot.blocks[0]!, id: 'chord-3', fretting },
+    )
+
+    expect(parseProjectFile(serializeProjectFile(snapshot))).toEqual(snapshot)
+  })
+
+  it('rejects a single-note block with more than one sounding string', () => {
+    const snapshot = createProjectSnapshot()
+    snapshot.blocks[0]!.isSingleNote = true
+
+    expect(() => parseProjectFile(serializeProjectFile(snapshot))).toThrowError(
+      expect.objectContaining({
+        code: 'invalidField',
+        fieldName: 'blocks[0].fretting',
+      }),
+    )
+  })
+
   it('round-trips a project with no chord cards through JSON', () => {
     const snapshot = {
       ...createProjectSnapshot(),

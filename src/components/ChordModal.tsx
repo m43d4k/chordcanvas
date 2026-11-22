@@ -1,3 +1,10 @@
+import {
+  useId,
+  useRef,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 import AudioMuteButton from './AudioMuteButton'
 import ChordDiagram from './ChordDiagram'
 import ChordComposer, { type ManualStringEntry } from './ChordComposer'
@@ -6,11 +13,11 @@ import type {
   ChordQuality,
   Fretting,
   PitchClassName,
+  PlayedNote,
   StringState,
 } from '../music/chords'
 import type { StockEntryViewModel } from './viewModels'
 import type { UiText } from '../uiText'
-import type { ChangeEvent, FormEvent } from 'react'
 
 interface ChordModalProps {
   chordModalKind: 'stock' | 'layout' | 'edit'
@@ -18,6 +25,7 @@ interface ChordModalProps {
   isAudioMuted: boolean
   isModalChordStocked: boolean
   isModalDraftStocked: boolean
+  isSingleNote: boolean
   manualFretCount: number
   manualGridTemplate: string
   manualStartFret: number
@@ -43,6 +51,9 @@ interface ChordModalProps {
   onFormChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onManualFretCountChange: (event: ChangeEvent<HTMLInputElement>) => void
   onManualStartFretChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onModeChange: (isSingleNote: boolean) => void
+  onNoteChange: (note: PitchClassName) => void
+  onNotePositionChange: (position: PlayedNote) => void
   onPlayChord: () => void
   onQualityChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onRootChange: (event: ChangeEvent<HTMLSelectElement>) => void
@@ -58,6 +69,7 @@ function ChordModal({
   isAudioMuted,
   isModalChordStocked,
   isModalDraftStocked,
+  isSingleNote,
   manualFretCount,
   manualGridTemplate,
   manualStartFret,
@@ -83,6 +95,9 @@ function ChordModal({
   onFormChange,
   onManualFretCountChange,
   onManualStartFretChange,
+  onModeChange,
+  onNoteChange,
+  onNotePositionChange,
   onPlayChord,
   onQualityChange,
   onRootChange,
@@ -91,6 +106,72 @@ function ChordModal({
   onToggleAudioMute,
   onViewportSync,
 }: ChordModalProps) {
+  const modeId = useId()
+  const chordTabRef = useRef<HTMLButtonElement>(null)
+  const noteTabRef = useRef<HTMLButtonElement>(null)
+  const hasModeTabs = chordModalKind === 'layout'
+  const activeMode = isSingleNote ? 'note' : 'chord'
+  const inactiveMode = isSingleNote ? 'chord' : 'note'
+  const alreadyStockedLabel = isSingleNote
+    ? text.alreadyStockedNoteButton
+    : text.alreadyStockedButton
+
+  function handleModeKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    let selectNote: boolean
+    switch (event.key) {
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        selectNote = !isSingleNote
+        break
+      case 'Home':
+        selectNote = false
+        break
+      case 'End':
+        selectNote = true
+        break
+      default:
+        return
+    }
+
+    event.preventDefault()
+    onModeChange(selectNote)
+    const nextTabRef = selectNote ? noteTabRef : chordTabRef
+    nextTabRef.current?.focus()
+  }
+
+  const composer = (
+    <ChordComposer
+      chordName={valueChordName}
+      displayName={displayName}
+      fretting={valueFretting}
+      isAudioMuted={isAudioMuted}
+      isSingleNote={isSingleNote}
+      manualFretCount={manualFretCount}
+      manualGridTemplate={manualGridTemplate}
+      manualStartFret={manualStartFret}
+      manualStringEntries={manualStringEntries}
+      manualVisibleFrets={manualVisibleFrets}
+      maxManualFretCount={maxManualFretCount}
+      minManualFretCount={minManualFretCount}
+      onChordNameChange={onChordNameChange}
+      onFormChange={onFormChange}
+      onManualFretCountChange={onManualFretCountChange}
+      onManualStartFretChange={onManualStartFretChange}
+      onNoteChange={onNoteChange}
+      onNotePositionChange={onNotePositionChange}
+      onPlayChord={onPlayChord}
+      onQualityChange={onQualityChange}
+      onRootChange={onRootChange}
+      onStringStateChange={onStringStateChange}
+      onViewportSync={onViewportSync}
+      selectedFormId={selectedFormId}
+      selectedQuality={selectedQuality}
+      selectedRoot={selectedRoot}
+      summary={summary}
+      text={text}
+    />
+  )
+
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div
@@ -130,33 +211,49 @@ function ChordModal({
         </div>
 
         <form className="chord-modal-form" onSubmit={onSubmit}>
-          <ChordComposer
-            chordName={valueChordName}
-            displayName={displayName}
-            fretting={valueFretting}
-            isAudioMuted={isAudioMuted}
-            manualFretCount={manualFretCount}
-            manualGridTemplate={manualGridTemplate}
-            manualStartFret={manualStartFret}
-            manualStringEntries={manualStringEntries}
-            manualVisibleFrets={manualVisibleFrets}
-            maxManualFretCount={maxManualFretCount}
-            minManualFretCount={minManualFretCount}
-            onChordNameChange={onChordNameChange}
-            onFormChange={onFormChange}
-            onManualFretCountChange={onManualFretCountChange}
-            onManualStartFretChange={onManualStartFretChange}
-            onPlayChord={onPlayChord}
-            onQualityChange={onQualityChange}
-            onRootChange={onRootChange}
-            onStringStateChange={onStringStateChange}
-            onViewportSync={onViewportSync}
-            selectedFormId={selectedFormId}
-            selectedQuality={selectedQuality}
-            selectedRoot={selectedRoot}
-            summary={summary}
-            text={text}
-          />
+          {hasModeTabs ? (
+            <>
+              <div
+                aria-label={text.diagramMode}
+                className="composer-mode-tabs"
+                onKeyDown={handleModeKeyDown}
+                role="tablist"
+              >
+                {(['chord', 'note'] as const).map((mode) => (
+                  <button
+                    aria-controls={`${modeId}-panel-${mode}`}
+                    aria-selected={activeMode === mode}
+                    className="secondary-button"
+                    id={`${modeId}-tab-${mode}`}
+                    key={mode}
+                    onClick={() => onModeChange(mode === 'note')}
+                    ref={mode === 'note' ? noteTabRef : chordTabRef}
+                    role="tab"
+                    tabIndex={activeMode === mode ? 0 : -1}
+                    type="button"
+                  >
+                    {mode === 'note' ? text.singleNoteMode : text.chordMode}
+                  </button>
+                ))}
+              </div>
+              <div
+                aria-labelledby={`${modeId}-tab-${activeMode}`}
+                className="composer-mode-panel"
+                id={`${modeId}-panel-${activeMode}`}
+                role="tabpanel"
+              >
+                {composer}
+              </div>
+              <div
+                aria-labelledby={`${modeId}-tab-${inactiveMode}`}
+                hidden
+                id={`${modeId}-panel-${inactiveMode}`}
+                role="tabpanel"
+              />
+            </>
+          ) : (
+            composer
+          )}
 
           {chordModalKind === 'layout' ? (
             <>
@@ -173,9 +270,7 @@ function ChordModal({
                   onClick={onAddChordDraftToStock}
                   type="button"
                 >
-                  {isModalDraftStocked
-                    ? text.alreadyStockedButton
-                    : text.addToStock}
+                  {isModalDraftStocked ? alreadyStockedLabel : text.addToStock}
                 </button>
               </div>
 
