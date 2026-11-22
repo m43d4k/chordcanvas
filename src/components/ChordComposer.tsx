@@ -359,11 +359,15 @@ function ChordComposer({
                 {summary.candidates.length > 0
                   ? summary.candidates
                       .slice(0, 3)
-                      .map((candidate) =>
-                        candidate.matchKind === 'omission'
-                          ? `${candidate.label} (${text.omissionCandidateNote})`
-                          : candidate.label,
-                      )
+                      .map((candidate) => {
+                        const name =
+                          candidate.matchKind === 'omission'
+                            ? `${candidate.label} (${text.omissionCandidateNote})`
+                            : candidate.label
+                        return candidate.explicitTensionLabel
+                          ? `${name} · ${candidate.explicitTensionLabel}`
+                          : name
+                      })
                       .join(', ')
                   : text.noCandidates}
               </dd>

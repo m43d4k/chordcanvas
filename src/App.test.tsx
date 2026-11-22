@@ -461,6 +461,17 @@ describe('App', () => {
     expect(firstStringFirstFretButton).toHaveTextContent('F')
   })
 
+  it('lists the explicit tension name beside the detected chord after manual entry', () => {
+    render(<App />)
+    const dialog = within(openStockModal())
+    for (const [index, fret] of [2, 0, 0, 0, 1, 0].entries()) {
+      const name = `${6 - index}弦 ${fret ? `${fret}フレット` : '開放'}`
+      fireEvent.click(dialog.getByRole('button', { name }))
+    }
+    expect(dialog.getByRole('heading', { name: 'D11/F#' })).toBeInTheDocument()
+    expect(dialog.getByText('D11/F# · D7(add9,11)/F#')).toBeInTheDocument()
+  })
+
   it('keeps inferred chord candidates behind the advanced-candidate toggle', () => {
     render(<App />)
 

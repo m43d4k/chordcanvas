@@ -4,6 +4,7 @@ import {
   PITCH_CLASSES,
   detectChordCandidates,
   buildChordLabel,
+  chartRootName,
   pitchClassToName,
   spellChordNote,
   deriveBassNote,
@@ -93,6 +94,38 @@ describe('music/chords', () => {
       matchKind: 'omission',
       omittedIntervals: [7],
     })
+  })
+
+  it('shows the sounded tensions alongside the canonical name in every key', () => {
+    for (let shift = 0; shift < 12; shift++) {
+      const root = pitchClassToName(2 + shift)
+      const bass = pitchClassToName(6 + shift)
+      const chord = summarizeChord(
+        toFretting([2, 0, 0, 0, 1, 0].map((fret) => fret + shift)),
+      )
+      expect(chord.currentName).toBe(buildChordLabel(root, '11', bass))
+      expect(chord.candidates[0]?.explicitTensionLabel).toBe(
+        `${chartRootName(root)}7(add9,11)/${spellChordNote(root, '11', bass)}`,
+      )
+    }
+  })
+
+  it('includes only sounded tensions and uses the correct underlying chord', () => {
+    const examples = [
+      [[2, 0, 0, 0, 1, 'x'], 'D11/F#', 'D7(add11)/F#'],
+      [['x', 5, 4, 5, 5, 3], 'D11', 'D7(add9,11)'],
+      [[0, 0, 0, 0, 0, 0], 'Em11', 'Em7(add11)'],
+      [['x', 3, 2, 4, 3, 'x'], 'Cmaj9', 'Cmaj7(add9)'],
+      [[8, 'x', 8, 9, 10, 10], 'C13', 'C7(add9,13)'],
+      [['x', 3, 2, 3, 4, 'x'], 'C7#9', 'C7(#9)'],
+      [['x', 3, 2, 0, 3, 3], 'Cadd9', undefined],
+      [['x', 3, 2, 3, 1, 0], 'C7', undefined],
+    ] as const
+    for (const [fretting, name, explicit] of examples) {
+      const candidate = detectChordCandidates(toFretting(fretting))[0]
+      expect(candidate?.label).toBe(name)
+      expect(candidate?.explicitTensionLabel).toBe(explicit)
+    }
   })
 
   it('separates rootless interpretations from the regular candidates', () => {

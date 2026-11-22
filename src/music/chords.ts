@@ -343,6 +343,7 @@ export interface ChordCandidate {
   bass: PitchClassName | null
   intervals: readonly number[]
   label: string
+  explicitTensionLabel?: string
   matchKind: 'exact' | 'omission' | 'inferred'
   omittedIntervals: readonly number[]
 }
@@ -1374,6 +1375,12 @@ function detectChordCandidatesFromAnalysis(
         intervals,
         omittedIntervals,
         label: buildChordLabel(root, quality, slashBass),
+        explicitTensionLabel: buildExplicitTensionLabel(
+          root,
+          quality,
+          slashBass,
+          observed,
+        ),
         matchKind: omittedIntervals.length ? 'omission' : 'exact',
       })
     }
@@ -1614,11 +1621,45 @@ export function buildChordLabel(
   root: PitchClassName,
   quality: ChordQuality,
   bass: PitchClassName | null = null,
+  symbol = CHORD_SYMBOLS[quality],
 ): string {
   const rootName = chartRootName(root)
   const slash =
     bass && bass !== root ? `/${spellChordNote(root, quality, bass)}` : ''
-  return `${rootName}${CHORD_SYMBOLS[quality]}${slash}`
+  return `${rootName}${symbol}${slash}`
+}
+
+// Expand compound chord symbols using only the tensions present in this voicing.
+function buildExplicitTensionLabel(
+  root: PitchClassName,
+  quality: ChordQuality,
+  bass: PitchClassName | null,
+  observed: readonly number[],
+): string | undefined {
+  const intervals = CHORD_INTERVALS[quality]
+  const tensions = intervals.filter(
+    (interval) => interval >= 12 && observed.includes(mod12(interval)),
+  )
+  if (tensions.length === 0) return undefined
+
+  const baseIntervals = intervals.filter((interval) => interval < 12)
+  // Triad-based symbols such as add9 already name the added note.
+  if (baseIntervals.length !== 4) return undefined
+  const base = CHORD_QUALITIES.find((entry) =>
+    isSameIntervalSet(CHORD_INTERVALS[entry], baseIntervals),
+  )
+  if (!base) return undefined
+
+  const degrees = tensions
+    .map((interval) => getDegreeLabel(interval, quality))
+    .join(',')
+  const prefix = /^[b#]/.test(degrees) ? '' : 'add'
+  return buildChordLabel(
+    root,
+    quality,
+    bass,
+    `${CHORD_SYMBOLS[base]}(${prefix}${degrees})`,
+  )
 }
 
 // A chord degree fixes the letter as well as the pitch (e.g. G# in E/G#).
