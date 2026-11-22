@@ -312,9 +312,6 @@ function App() {
     onUpdateBlockFromDraft: updateBlockFromDraft,
     stockChords,
   })
-  const modalAvailableForms = modalDraft
-    ? getChordForms(modalDraft.selectedRoot, modalDraft.selectedQuality)
-    : []
   const modalSummary = modalDraft ? summarizeChord(modalDraft.fretting) : null
   const modalDisplayName =
     modalDraft && modalSummary
@@ -1158,7 +1155,6 @@ function App() {
 
       {chordModal && modalDraft && modalSummary ? (
         <ChordModal
-          availableForms={modalAvailableForms}
           chordModalKind={chordModal.kind}
           displayName={modalDisplayName}
           isModalChordStocked={isModalChordStocked}

@@ -15,8 +15,8 @@
 ## Current features
 
 - Generate chords from a root note, chord quality, and available forms
-- Choose from curated forms and multiple compact forms generated across the fretboard
-- Supports `major` `minor` `5` `sus2` `sus4` `dim` `aug` `6` `m6` `7` `maj7` `m7` `m7b5` `dim7` `add9` `maj9` `m9` `7sus4` `madd9` `mMaj7` `6/9` `9` `11` `13` `m11` `7b5` `7#5` `7b9` `7#9`
+- Choose from open chords, barre shapes, upper-string triads, shell voicings, and slash chords. Enable “Include generated shapes” to explore more fingerings.
+- Supports `major` `minor` `5` `sus2` `sus4` `dim` `aug` `6` `m6` `7` `maj7` `m7` `m7b5` `dim7` `add9` `maj9` `m9` `7sus4` `madd9` `mMaj7` `6/9` `9` `11` `13` `m11` `7b5` `7#5` `7b9` `7#9` `9sus4` `7#11`
 - Recognizes exact and explicitly permitted omitted-tone voicings, while keeping rootless interpretations in a separate advanced-candidate view
 - Edit fretting directly in the chord builder modal and manually adjust the start fret and visible fret count
 - Review auto-fit viewport results, candidate chord names, bass note, chord tones, unique notes, and per-string notes

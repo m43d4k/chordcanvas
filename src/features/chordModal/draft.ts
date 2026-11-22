@@ -1,5 +1,6 @@
 import {
   MINIMUM_DIAGRAM_FRET_COUNT,
+  frettingToKey,
   getChordForms,
   summarizeChord,
   toFretting,
@@ -87,16 +88,24 @@ export function createChordDraftFromBlock(
     'selectedFormId' | 'selectedQuality' | 'selectedRoot'
   >,
 ): ChordDraftState {
-  const viewport = summarizeChord(block.fretting).viewport
+  const { viewport, candidates } = summarizeChord(block.fretting)
+  const selectedRoot = candidates[0]?.root ?? source.selectedRoot
+  const selectedQuality = candidates[0]?.quality ?? source.selectedQuality
+  const key = frettingToKey(block.fretting)
+  const selectedForm = getChordForms(
+    selectedRoot,
+    selectedQuality,
+    source.selectedFormId.startsWith('generated-'),
+  ).find((form) => frettingToKey(form.fretting) === key)
 
   return {
     chordName: block.displayName ?? '',
     fretting: copyFretting(block.fretting),
     manualFretCount: clampManualFretCount(viewport.fretCount),
     manualStartFret: viewport.startFret,
-    selectedFormId: source.selectedFormId,
-    selectedQuality: source.selectedQuality,
-    selectedRoot: source.selectedRoot,
+    selectedFormId: selectedForm?.id ?? '',
+    selectedQuality,
+    selectedRoot,
   }
 }
 
@@ -120,7 +129,9 @@ export function updateDraftRoot(
 ): ChordDraftState {
   const nextForms = getChordForms(nextRoot, draft.selectedQuality)
   const nextForm = nextForms[0]
-  const nextFretting = nextForm ? copyFretting(nextForm.fretting) : draft.fretting
+  const nextFretting = nextForm
+    ? copyFretting(nextForm.fretting)
+    : draft.fretting
 
   return syncDraftViewport(
     {
@@ -138,7 +149,9 @@ export function updateDraftQuality(
 ): ChordDraftState {
   const nextForms = getChordForms(draft.selectedRoot, nextQuality)
   const nextForm = nextForms[0]
-  const nextFretting = nextForm ? copyFretting(nextForm.fretting) : draft.fretting
+  const nextFretting = nextForm
+    ? copyFretting(nextForm.fretting)
+    : draft.fretting
 
   return syncDraftViewport(
     {
@@ -154,9 +167,11 @@ export function updateDraftForm(
   draft: ChordDraftState,
   nextFormId: string,
 ): ChordDraftState {
-  const nextForm = getChordForms(draft.selectedRoot, draft.selectedQuality).find(
-    (form) => form.id === nextFormId,
-  )
+  const nextForm = getChordForms(
+    draft.selectedRoot,
+    draft.selectedQuality,
+    nextFormId.startsWith('generated-'),
+  ).find((form) => form.id === nextFormId)
 
   if (!nextForm) {
     return draft

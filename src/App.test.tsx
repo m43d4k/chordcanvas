@@ -489,8 +489,23 @@ describe('App', () => {
       within(formSelect).getAllByRole('option').length,
     ).toBeGreaterThanOrEqual(3)
     expect(
-      within(formSelect).getByRole('option', { name: 'Diminished triad form' }),
+      within(formSelect).getByRole('option', { name: /^Diminished triad form/ }),
     ).toBeInTheDocument()
+  })
+
+  it('selects named inversions and opts into additional generated shapes', () => {
+    render(<App />)
+    const dialog = within(openStockModal())
+    fireEvent.change(dialog.getByLabelText('ルート'), { target: { value: 'D' } })
+    const shapes = dialog.getByLabelText('候補フォーム')
+    const slash = within(shapes).getByRole('option', { name: /^D\/F# · 2-x-0-2-3-2$/ })
+    fireEvent.change(shapes, { target: { value: slash.getAttribute('value') } })
+    expect(dialog.getByRole('heading', { name: 'D/F#' })).toBeInTheDocument()
+    expect(within(shapes).queryByRole('option', { name: /Compact form/ })).toBeNull()
+    fireEvent.click(dialog.getByRole('checkbox', { name: '自動生成フォームも表示' }))
+    const generated = within(shapes).getAllByRole('option', { name: /Compact form/ })[0]!
+    fireEvent.change(shapes, { target: { value: generated.getAttribute('value') } })
+    expect(shapes).toHaveValue(generated.getAttribute('value'))
   })
 
   it('restores the saved language selection from localStorage', () => {

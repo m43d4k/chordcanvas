@@ -1,7 +1,6 @@
 import ChordDiagram from './ChordDiagram'
 import ChordComposer, { type ManualStringEntry } from './ChordComposer'
 import type {
-  ChordForm,
   ChordSummary,
   ChordQuality,
   Fretting,
@@ -35,7 +34,6 @@ interface ChordModalProps {
   title: string
   valueChordName: string
   valueFretting: Fretting
-  availableForms: readonly ChordForm[]
   onAddChordDraftToStock: () => void
   onAddStockChordFromModal: (stockChordId: string) => void
   onChordNameChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -74,7 +72,6 @@ function ChordModal({
   title,
   valueChordName,
   valueFretting,
-  availableForms,
   onAddChordDraftToStock,
   onAddStockChordFromModal,
   onChordNameChange,
@@ -122,7 +119,6 @@ function ChordModal({
 
         <form className="chord-modal-form" onSubmit={onSubmit}>
           <ChordComposer
-            availableForms={availableForms}
             chordName={valueChordName}
             displayName={displayName}
             fretting={valueFretting}

@@ -217,6 +217,20 @@ const CHORD_DEFINITIONS = {
     priority: 28,
     symbol: '7#9',
   },
+  '9sus4': {
+    intervals: [0, 5, 7, 10, 14],
+    optionalIntervals: [7],
+    label: '9sus4',
+    priority: 29,
+    symbol: '9sus4',
+  },
+  '7#11': {
+    intervals: [0, 4, 7, 10, 18],
+    optionalIntervals: [7],
+    label: '7#11',
+    priority: 30,
+    symbol: '7#11',
+  },
 } as const
 
 export type ChordQuality = keyof typeof CHORD_DEFINITIONS
@@ -267,7 +281,7 @@ const NORMALIZED_OPTIONAL_INTERVALS = Object.fromEntries(
 
 const STANDARD_TUNING_PITCHES = [4, 9, 2, 7, 11, 4] as const
 const STANDARD_TUNING_MIDI = [40, 45, 50, 55, 59, 64] as const
-const MAX_CHORD_FORM_COUNT = 6
+const MAX_GENERATED_FORM_COUNT = 6
 const GENERATED_FORM_MAX_FRET = 12
 const GENERATED_FORM_FRET_SPAN = 3
 const DEFAULT_DEGREE_LABELS = [
@@ -289,6 +303,7 @@ const EXTENDED_DEGREE_LABELS: Partial<Record<number, string>> = {
   14: '9',
   15: '#9',
   17: '11',
+  18: '#11',
   20: 'b13',
   21: '13',
 }
@@ -372,7 +387,7 @@ interface AbsoluteChordFormDefinition {
 interface RelativeChordFormDefinition {
   id: string
   label: string
-  rootStringIndex: 0 | 1
+  rootStringIndex: 0 | 1 | 2 | 3
   frets: readonly [
     RelativeStringState,
     RelativeStringState,
@@ -551,6 +566,202 @@ const ABSOLUTE_FORM_LIBRARY: readonly AbsoluteChordFormDefinition[] = [
     quality: 'sus4',
     fretting: toFretting([0, 2, 2, 2, 0, 0]),
   },
+  {
+    id: 'open-b7',
+    label: 'Open B7 form',
+    root: 'B',
+    quality: '7',
+    fretting: toFretting(['x', 2, 1, 2, 0, 2]),
+  },
+  {
+    id: 'open-c7-muted',
+    label: 'C7',
+    root: 'C',
+    quality: '7',
+    fretting: toFretting(['x', 3, 2, 3, 1, 'x']),
+  },
+  {
+    id: 'open-f-maj7',
+    label: 'Open Fmaj7 form',
+    root: 'F',
+    quality: 'maj7',
+    fretting: toFretting(['x', 'x', 3, 2, 1, 0]),
+  },
+  {
+    id: 'open-g-maj7',
+    label: 'Open Gmaj7 form',
+    root: 'G',
+    quality: 'maj7',
+    fretting: toFretting([3, 2, 0, 0, 0, 2]),
+  },
+  {
+    id: 'open-c-add9',
+    label: 'Open Cadd9 form',
+    root: 'C',
+    quality: 'add9',
+    fretting: toFretting(['x', 3, 2, 0, 3, 3]),
+  },
+  {
+    id: 'open-d-add9',
+    label: 'Open Dadd9 form',
+    root: 'D',
+    quality: 'add9',
+    fretting: toFretting(['x', 5, 4, 2, 3, 0]),
+  },
+  {
+    id: 'open-d-sus2',
+    label: 'Open Dsus2 form',
+    root: 'D',
+    quality: 'sus2',
+    fretting: toFretting(['x', 'x', 0, 2, 3, 0]),
+  },
+  {
+    id: 'open-a-sus2',
+    label: 'Open Asus2 form',
+    root: 'A',
+    quality: 'sus2',
+    fretting: toFretting(['x', 0, 2, 2, 0, 0]),
+  },
+  {
+    id: 'open-g-sus4',
+    label: 'Open Gsus4 form',
+    root: 'G',
+    quality: 'sus4',
+    fretting: toFretting([3, 'x', 0, 0, 1, 3]),
+  },
+  {
+    id: 'open-d7-sus4',
+    label: 'Open D7sus4 form',
+    root: 'D',
+    quality: '7sus4',
+    fretting: toFretting(['x', 'x', 0, 2, 1, 3]),
+  },
+  {
+    id: 'open-a7-sus4',
+    label: 'Open A7sus4 form',
+    root: 'A',
+    quality: '7sus4',
+    fretting: toFretting(['x', 0, 2, 0, 3, 0]),
+  },
+  {
+    id: 'open-em7-high-d',
+    label: 'Em7',
+    root: 'E',
+    quality: 'm7',
+    fretting: toFretting([0, 2, 2, 0, 3, 0]),
+  },
+  {
+    id: 'open-g-high-d',
+    label: 'G',
+    root: 'G',
+    quality: 'major',
+    fretting: toFretting([3, 2, 0, 0, 3, 3]),
+  },
+  {
+    id: 'compact-f-major',
+    label: 'F',
+    root: 'F',
+    quality: 'major',
+    fretting: toFretting(['x', 'x', 3, 2, 1, 1]),
+  },
+  {
+    id: 'open-d-power',
+    label: 'D5',
+    root: 'D',
+    quality: '5',
+    fretting: toFretting(['x', 'x', 0, 2, 3, 'x']),
+  },
+  {
+    id: 'open-g-over-b',
+    label: 'G/B',
+    root: 'G',
+    quality: 'major',
+    fretting: toFretting(['x', 2, 0, 0, 0, 3]),
+  },
+  {
+    id: 'open-d-over-f-sharp',
+    label: 'D/F#',
+    root: 'D',
+    quality: 'major',
+    fretting: toFretting([2, 'x', 0, 2, 3, 2]),
+  },
+  {
+    id: 'open-c-over-e',
+    label: 'C/E',
+    root: 'C',
+    quality: 'major',
+    fretting: toFretting([0, 3, 2, 0, 1, 0]),
+  },
+  {
+    id: 'open-c-over-g',
+    label: 'C/G',
+    root: 'C',
+    quality: 'major',
+    fretting: toFretting([3, 3, 2, 0, 1, 0]),
+  },
+  {
+    id: 'open-a-over-c-sharp',
+    label: 'A/C#',
+    root: 'A',
+    quality: 'major',
+    fretting: toFretting(['x', 4, 2, 2, 2, 0]),
+  },
+  {
+    id: 'open-e-over-g-sharp',
+    label: 'E/G#',
+    root: 'E',
+    quality: 'major',
+    fretting: toFretting([4, 'x', 2, 1, 0, 0]),
+  },
+  {
+    id: 'open-f-over-a',
+    label: 'F/A',
+    root: 'F',
+    quality: 'major',
+    fretting: toFretting(['x', 0, 3, 2, 1, 1]),
+  },
+  {
+    id: 'open-am-over-e',
+    label: 'Am/E',
+    root: 'A',
+    quality: 'minor',
+    fretting: toFretting([0, 0, 2, 2, 1, 0]),
+  },
+  {
+    id: 'open-em-add9',
+    label: 'Emadd9',
+    root: 'E',
+    quality: 'madd9',
+    fretting: toFretting([0, 2, 4, 0, 0, 0]),
+  },
+  {
+    id: 'open-a-add9',
+    label: 'Aadd9',
+    root: 'A',
+    quality: 'add9',
+    fretting: toFretting(['x', 0, 2, 4, 2, 0]),
+  },
+  {
+    id: 'open-f-over-g',
+    label: 'F/G',
+    root: 'F',
+    quality: 'major',
+    fretting: toFretting([3, 'x', 3, 2, 1, 1]),
+  },
+  {
+    id: 'open-c-over-b',
+    label: 'C/B',
+    root: 'C',
+    quality: 'major',
+    fretting: toFretting(['x', 2, 2, 0, 1, 0]),
+  },
+  {
+    id: 'open-am-over-g',
+    label: 'Am/G',
+    root: 'A',
+    quality: 'minor',
+    fretting: toFretting([3, 'x', 2, 2, 1, 0]),
+  },
 ]
 
 const RELATIVE_FORM_LIBRARY: Record<
@@ -570,6 +781,30 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 1,
       frets: ['x', 0, 2, 2, 2, 0],
     },
+    {
+      id: 'upper-major',
+      label: '4th-string form',
+      rootStringIndex: 2,
+      frets: ['x', 'x', 0, 2, 3, 2],
+    },
+    {
+      id: 'upper-string-major',
+      label: 'Upper-string triad',
+      rootStringIndex: 3,
+      frets: ['x', 'x', 'x', 0, 0, -2],
+    },
+    {
+      id: 'major-first-inversion',
+      label: 'First inversion',
+      rootStringIndex: 3,
+      frets: ['x', 2, 0, 0, 0, 'x'],
+    },
+    {
+      id: 'major-second-inversion',
+      label: 'Second inversion',
+      rootStringIndex: 1,
+      frets: [0, 0, 2, 2, 2, 'x'],
+    },
   ],
   minor: [
     {
@@ -583,6 +818,30 @@ const RELATIVE_FORM_LIBRARY: Record<
       label: '5th-string form',
       rootStringIndex: 1,
       frets: ['x', 0, 2, 2, 1, 0],
+    },
+    {
+      id: 'upper-minor',
+      label: '4th-string form',
+      rootStringIndex: 2,
+      frets: ['x', 'x', 0, 2, 3, 1],
+    },
+    {
+      id: 'upper-string-minor',
+      label: 'Upper-string triad',
+      rootStringIndex: 3,
+      frets: ['x', 'x', 'x', 0, -1, -2],
+    },
+    {
+      id: 'minor-first-inversion',
+      label: 'First inversion',
+      rootStringIndex: 3,
+      frets: ['x', 1, 0, 0, 'x', 'x'],
+    },
+    {
+      id: 'minor-second-inversion',
+      label: 'Second inversion',
+      rootStringIndex: 1,
+      frets: [0, 0, 2, 2, 1, 'x'],
     },
   ],
   '5': [
@@ -598,13 +857,25 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 1,
       frets: ['x', 0, 2, 2, 'x', 'x'],
     },
+    {
+      id: '6th-root-power-dyad',
+      label: 'Two-string power chord',
+      rootStringIndex: 0,
+      frets: [0, 2, 'x', 'x', 'x', 'x'],
+    },
+    {
+      id: '5th-root-power-dyad',
+      label: 'Two-string power chord',
+      rootStringIndex: 1,
+      frets: ['x', 0, 2, 'x', 'x', 'x'],
+    },
   ],
   sus2: [
     {
-      id: '6th-root-sus2',
-      label: '6th-string form',
-      rootStringIndex: 0,
-      frets: [0, 2, 4, 4, 0, 0],
+      id: '4th-root-sus2',
+      label: '4th-string form',
+      rootStringIndex: 2,
+      frets: ['x', 'x', 0, 2, 3, 0],
     },
     {
       id: '5th-root-sus2',
@@ -633,6 +904,18 @@ const RELATIVE_FORM_LIBRARY: Record<
       label: 'Diminished triad form',
       rootStringIndex: 0,
       frets: [0, 1, 2, 0, 'x', 'x'],
+    },
+    {
+      id: '5th-root-dim',
+      label: '5th-string triad',
+      rootStringIndex: 1,
+      frets: ['x', 0, 1, 2, 1, 'x'],
+    },
+    {
+      id: '4th-root-dim',
+      label: '4th-string triad',
+      rootStringIndex: 2,
+      frets: ['x', 'x', 0, 1, 3, 1],
     },
   ],
   aug: [
@@ -684,6 +967,12 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 1,
       frets: ['x', 0, 2, 0, 2, 0],
     },
+    {
+      id: 'shell-7',
+      label: 'Shell (R, 3, b7)',
+      rootStringIndex: 1,
+      frets: ['x', 0, -1, 0, 'x', 'x'],
+    },
   ],
   maj7: [
     {
@@ -697,6 +986,18 @@ const RELATIVE_FORM_LIBRARY: Record<
       label: '5th-string form',
       rootStringIndex: 1,
       frets: ['x', 0, 2, 1, 2, 0],
+    },
+    {
+      id: 'shell-maj7',
+      label: 'Shell (R, 3, 7)',
+      rootStringIndex: 1,
+      frets: ['x', 0, -1, 1, 'x', 'x'],
+    },
+    {
+      id: '6th-root-drop3-maj7',
+      label: 'Drop 3',
+      rootStringIndex: 0,
+      frets: [0, 'x', 1, 1, 0, 'x'],
     },
   ],
   m7: [
@@ -712,6 +1013,18 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 1,
       frets: ['x', 0, 2, 0, 1, 0],
     },
+    {
+      id: 'shell-m7',
+      label: 'Shell (R, b3, b7)',
+      rootStringIndex: 1,
+      frets: ['x', 0, -2, 0, 'x', 'x'],
+    },
+    {
+      id: '6th-root-drop3-m7',
+      label: 'Drop 3',
+      rootStringIndex: 0,
+      frets: [0, 'x', 0, 0, 0, 'x'],
+    },
   ],
   m7b5: [
     {
@@ -720,6 +1033,12 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 0,
       frets: [0, 1, 0, 0, 'x', 'x'],
     },
+    {
+      id: '5th-root-half-dim',
+      label: '5th-string form',
+      rootStringIndex: 1,
+      frets: ['x', 0, 1, 0, 1, 'x'],
+    },
   ],
   dim7: [
     {
@@ -727,6 +1046,12 @@ const RELATIVE_FORM_LIBRARY: Record<
       label: 'Diminished seventh form',
       rootStringIndex: 0,
       frets: [0, 1, 2, 0, 2, 'x'],
+    },
+    {
+      id: '5th-root-dim7',
+      label: '5th-string form',
+      rootStringIndex: 1,
+      frets: ['x', 0, 1, -1, 1, 'x'],
     },
   ],
   add9: [
@@ -737,10 +1062,10 @@ const RELATIVE_FORM_LIBRARY: Record<
       frets: [0, 2, 2, 1, 0, 2],
     },
     {
-      id: '5th-root-add9',
-      label: '5th-string form',
+      id: '5th-root-compact-add9',
+      label: '5th-string add9',
       rootStringIndex: 1,
-      frets: ['x', 0, 2, 4, 2, 0],
+      frets: ['x', 0, -1, -3, 0, 'x'],
     },
   ],
   maj9: [
@@ -750,6 +1075,12 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 0,
       frets: [0, 'x', 1, 1, 0, 2],
     },
+    {
+      id: '5th-root-maj9',
+      label: '5th-string ninth',
+      rootStringIndex: 1,
+      frets: ['x', 0, -1, 1, 0, 'x'],
+    },
   ],
   m9: [
     {
@@ -757,6 +1088,12 @@ const RELATIVE_FORM_LIBRARY: Record<
       label: '6th-string form',
       rootStringIndex: 0,
       frets: [0, 'x', 0, 0, 0, 2],
+    },
+    {
+      id: '5th-root-m9',
+      label: '5th-string ninth',
+      rootStringIndex: 1,
+      frets: ['x', 0, -2, 0, 0, 'x'],
     },
   ],
   '7sus4': [
@@ -769,10 +1106,10 @@ const RELATIVE_FORM_LIBRARY: Record<
   ],
   madd9: [
     {
-      id: '6th-root-madd9',
-      label: '6th-string form',
-      rootStringIndex: 0,
-      frets: [0, 2, 4, 0, 0, 0],
+      id: '5th-root-madd9',
+      label: '5th-string form',
+      rootStringIndex: 1,
+      frets: ['x', 0, -2, -3, 0, 'x'],
     },
   ],
   mMaj7: [
@@ -790,6 +1127,12 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 0,
       frets: [0, 2, 2, 1, 2, 2],
     },
+    {
+      id: '5th-root-69',
+      label: '5th-string 6/9',
+      rootStringIndex: 1,
+      frets: ['x', 0, -1, -1, 0, 0],
+    },
   ],
   '9': [
     {
@@ -798,13 +1141,19 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 0,
       frets: [0, 2, 0, 1, 0, 2],
     },
+    {
+      id: '5th-root-9',
+      label: '5th-string ninth',
+      rootStringIndex: 1,
+      frets: ['x', 0, -1, 0, 0, 0],
+    },
   ],
   '11': [
     {
-      id: '6th-root-11',
-      label: '6th-string form (9 omitted)',
-      rootStringIndex: 0,
-      frets: [0, 'x', 0, 1, 0, 5],
+      id: '5th-root-11',
+      label: '5th-string eleventh',
+      rootStringIndex: 1,
+      frets: ['x', 0, 0, 0, 2, 'x'],
     },
   ],
   '13': [
@@ -817,10 +1166,10 @@ const RELATIVE_FORM_LIBRARY: Record<
   ],
   m11: [
     {
-      id: '6th-root-m11',
-      label: '6th-string form (9 omitted)',
-      rootStringIndex: 0,
-      frets: [0, 'x', 0, 0, 0, 5],
+      id: '5th-root-m11',
+      label: '5th-string eleventh',
+      rootStringIndex: 1,
+      frets: ['x', 0, -2, 0, 0, -2],
     },
   ],
   '7b5': [
@@ -846,6 +1195,12 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 0,
       frets: [0, 2, 0, 1, 0, 1],
     },
+    {
+      id: '5th-root-7b9',
+      label: '5th-string altered dominant',
+      rootStringIndex: 1,
+      frets: ['x', 0, -1, 0, -1, 'x'],
+    },
   ],
   '7#9': [
     {
@@ -854,12 +1209,57 @@ const RELATIVE_FORM_LIBRARY: Record<
       rootStringIndex: 0,
       frets: [0, 2, 0, 1, 3, 3],
     },
+    {
+      id: '5th-root-7sharp9',
+      label: '5th-string altered dominant',
+      rootStringIndex: 1,
+      frets: ['x', 0, -1, 0, 1, 'x'],
+    },
+  ],
+  '9sus4': [
+    {
+      id: '5th-root-9sus4',
+      label: '5th-string suspended ninth',
+      rootStringIndex: 1,
+      frets: ['x', 0, 0, 0, 0, 0],
+    },
+  ],
+  '7#11': [
+    {
+      id: '6th-root-7sharp11',
+      label: '6th-string altered dominant',
+      rootStringIndex: 0,
+      frets: [0, 1, 0, 1, 0, 'x'],
+    },
   ],
 }
 
 export const CHORD_QUALITIES = Object.keys(
   CHORD_INTERVALS,
 ) as readonly ChordQuality[]
+
+export const BASIC_QUALITIES: readonly ChordQuality[] = [
+  'major',
+  'minor',
+  '7',
+  'm7',
+  'maj7',
+  '5',
+  'sus4',
+  'sus2',
+  'add9',
+]
+
+// Keep pitch IDs stable in project files. Chord charts commonly mix flats and sharps.
+const CHART_ROOT_NAMES: Partial<Record<PitchClassName, string>> = {
+  'D#': 'Eb',
+  'G#': 'Ab',
+  'A#': 'Bb',
+}
+
+export function chartRootName(root: PitchClassName): string {
+  return CHART_ROOT_NAMES[root] ?? root
+}
 
 export function toFretting(states: readonly StringState[]): Fretting {
   if (states.length !== 6) {
@@ -980,7 +1380,7 @@ function detectChordCandidatesFromAnalysis(
             omittedIntervals: [],
             score:
               CHORD_PRIORITY[quality] +
-              (slashBass ? 20 : 0) +
+              (slashBass ? 64 : 0) +
               rootIndex * 0.25 +
               Math.max(0, relativeIntervals.length - 3) * 0.5,
           },
@@ -989,17 +1389,36 @@ function detectChordCandidatesFromAnalysis(
     },
   )
 
-  return matches
-    .sort((left, right) => left.score - right.score)
-    .map((candidate) => ({
-      root: candidate.root,
-      quality: candidate.quality,
-      bass: candidate.bass,
-      intervals: candidate.intervals,
-      label: candidate.label,
-      matchKind: candidate.matchKind,
-      omittedIntervals: candidate.omittedIntervals,
-    }))
+  // A single bass note beneath a complete triad can be written as F/G or Am/G.
+  const bass = analysis.bassNote
+  if (
+    bass &&
+    analysis.uniquePitchClasses.length === 4 &&
+    analysis.playedNotes.filter((note) => note.note === bass).length === 1
+  ) {
+    const upperNotes = analysis.uniquePitchClasses.filter(
+      (pitch) => pitch !== pitchClassNameToValue(bass),
+    )
+    for (const pitch of upperNotes) {
+      const intervals = relativeIntervalsForRoot(upperNotes, pitch)
+      for (const quality of ['major', 'minor'] as const) {
+        if (isSameIntervalSet(intervals, NORMALIZED_INTERVALS[quality])) {
+          const root = pitchClassToName(pitch)
+          matches.push({
+            root,
+            quality,
+            bass,
+            intervals,
+            label: buildChordLabel(root, quality, bass),
+            matchKind: 'exact',
+            omittedIntervals: [],
+            score: 32 + CHORD_PRIORITY[quality],
+          })
+        }
+      }
+    }
+  }
+  return toPublicCandidates(matches)
 }
 
 function detectOmissionCandidatesFromAnalysis(
@@ -1247,8 +1666,31 @@ export function buildChordLabel(
   quality: ChordQuality,
   bass: PitchClassName | null = null,
 ): string {
-  const slash = bass && bass !== root ? `/${bass}` : ''
-  return `${root}${CHORD_SYMBOLS[quality]}${slash}`
+  const rootName = chartRootName(root)
+  const slash =
+    bass && bass !== root ? `/${spellChordNote(root, quality, bass)}` : ''
+  return `${rootName}${CHORD_SYMBOLS[quality]}${slash}`
+}
+
+// A chord degree fixes the letter as well as the pitch (e.g. G# in E/G#).
+export function spellChordNote(
+  root: PitchClassName,
+  quality: ChordQuality,
+  note: PitchClassName,
+): string {
+  const pitch = pitchClassNameToValue(note)
+  const interval = CHORD_INTERVALS[quality].find(
+    (value) => mod12(value) === mod12(pitch - pitchClassNameToValue(root)),
+  )
+  if (interval === undefined) return chartRootName(note)
+  const label = getDegreeLabel(interval, quality)
+  const degree = label === 'R' ? 1 : Number(label.replace(/[^0-9]/g, ''))
+  const letters = 'CDEFGAB'
+  const letter = letters[
+    (letters.indexOf(chartRootName(root).charAt(0)) + degree - 1) % 7
+  ] as PitchClassName
+  const accidental = mod12(pitch - pitchClassNameToValue(letter) + 6) - 6
+  return letter + (accidental < 0 ? 'b' : '#').repeat(Math.abs(accidental))
 }
 
 export function detectChordCandidates(
@@ -1322,6 +1764,7 @@ export function deriveStringDegreeLabels(
 export function getChordForms(
   root: PitchClassName,
   quality: ChordQuality,
+  includeGenerated = false,
 ): readonly ChordForm[] {
   const absoluteForms = ABSOLUTE_FORM_LIBRARY.filter(
     (form) => form.root === root && form.quality === quality,
@@ -1331,16 +1774,30 @@ export function getChordForms(
     fretting,
   }))
 
-  const movableForms = RELATIVE_FORM_LIBRARY[quality].map((form) => ({
-    id: `${form.id}-${root}`,
-    label: form.label,
-    fretting: buildRelativeForm(root, form),
-  }))
-  const generatedForms = generateChordForms(root, quality)
+  const movableForms = RELATIVE_FORM_LIBRARY[quality].map((form) => {
+    const fretting = buildRelativeForm(root, form)
+    const bass = deriveBassNote(fretting)
+    return {
+      id: `${form.id}-${root}`,
+      label: bass === root ? form.label : buildChordLabel(root, quality, bass),
+      fretting,
+    }
+  })
+  movableForms.sort((a, b) => highestFret(a) - highestFret(b))
+  const registered = [...absoluteForms, ...movableForms]
+  const rootPosition = registered.filter(
+    (form) => deriveBassNote(form.fretting) === root,
+  )
+  const inversions = registered.filter(
+    (form) => deriveBassNote(form.fretting) !== root,
+  )
+  const generatedForms = includeGenerated
+    ? generateChordForms(root, quality)
+    : []
 
   const deduped = new Map<string, ChordForm>()
 
-  ;[...absoluteForms, ...movableForms, ...generatedForms].forEach((form) => {
+  ;[...rootPosition, ...inversions, ...generatedForms].forEach((form) => {
     const key = frettingToKey(form.fretting)
 
     if (!deduped.has(key)) {
@@ -1348,7 +1805,14 @@ export function getChordForms(
     }
   })
 
-  return [...deduped.values()].slice(0, MAX_CHORD_FORM_COUNT)
+  return [...deduped.values()]
+}
+
+function highestFret(form: ChordForm): number {
+  return Math.max(
+    0,
+    ...form.fretting.filter((fret) => typeof fret === 'number'),
+  )
 }
 
 function generateChordForms(
@@ -1458,14 +1922,20 @@ function generateChordForms(
     })
   }
 
-  const forms = [...candidates.values()]
-    .sort((left, right) => left.score - right.score)
-    .slice(0, MAX_CHORD_FORM_COUNT)
-    .map((form, index) => ({
+  const forms: ChordForm[] = []
+  for (const form of [...candidates.values()].sort(
+    (a, b) => a.score - b.score,
+  )) {
+    // A generated voicing should keep the requested name when placed on the chart.
+    const match = detectChordCandidates(form.fretting)[0]
+    if (match?.root !== root || match.quality !== quality) continue
+    forms.push({
       id: form.id,
-      label: buildGeneratedFormLabel(form.fretting, index),
+      label: `${match.label} · ${buildGeneratedFormLabel(form.fretting, forms.length)}`,
       fretting: form.fretting,
-    }))
+    })
+    if (forms.length === MAX_GENERATED_FORM_COUNT) break
+  }
 
   GENERATED_FORM_CACHE.set(cacheKey, forms)
   return forms
@@ -1511,6 +1981,7 @@ function buildGeneratedFormLabel(fretting: Fretting, index: number): string {
   const frets = fretting.flatMap((state) =>
     typeof state === 'number' && state > 0 ? [state] : [],
   )
+  if (frets.length === 0) return 'Open strings'
   const minFret = Math.min(...frets)
   const maxFret = Math.max(...frets)
   const fretLabel = minFret === maxFret ? `${minFret}` : `${minFret}-${maxFret}`
@@ -1523,7 +1994,13 @@ function buildRelativeForm(
   form: RelativeChordFormDefinition,
 ): Fretting {
   const anchorPitch = STANDARD_TUNING_PITCHES[form.rootStringIndex]
-  const rootFret = mod12(pitchClassNameToValue(root) - anchorPitch)
+  const lowestOffset = Math.min(
+    0,
+    ...form.frets.filter((fret) => typeof fret === 'number'),
+  )
+  const rootFret =
+    mod12(pitchClassNameToValue(root) - anchorPitch + lowestOffset) -
+    lowestOffset
 
   return toFretting(
     form.frets.map((state) =>
@@ -1544,12 +2021,13 @@ function createDegreeLabelByInterval(
   quality: ChordQuality,
 ): Map<number, string> {
   return CHORD_INTERVALS[quality].reduce((labels, interval) => {
-    labels.set(mod12(interval), getDegreeLabel(interval))
+    labels.set(mod12(interval), getDegreeLabel(interval, quality))
     return labels
   }, new Map<number, string>())
 }
 
-function getDegreeLabel(interval: number): string {
+function getDegreeLabel(interval: number, quality: ChordQuality): string {
+  if (quality === 'dim7' && interval === 9) return 'bb7'
   return (
     EXTENDED_DEGREE_LABELS[interval] ??
     DEFAULT_DEGREE_LABELS[mod12(interval)] ??

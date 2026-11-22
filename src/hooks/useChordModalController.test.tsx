@@ -109,6 +109,9 @@ describe('useChordModalController', () => {
     })
     expect(result.current.modalDraft).toMatchObject({
       chordName: 'Barre A',
+      selectedRoot: 'A',
+      selectedQuality: 'major',
+      selectedFormId: '6th-root-major-A',
       manualStartFret: 5,
     })
   })

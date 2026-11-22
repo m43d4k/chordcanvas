@@ -16,6 +16,10 @@ export interface UiText {
   generatorHeading: string
   rootNote: string
   chordQuality: string
+  commonChords: string
+  otherChords: string
+  includeGeneratedForms: string
+  customFretting: string
   chordForm: string
   alreadyStockedButton: string
   addToStock: string
@@ -102,6 +106,10 @@ export const UI_TEXT: Record<Locale, UiText> = {
     generatorHeading: 'コード選択',
     rootNote: 'ルート',
     chordQuality: 'コード種別',
+    commonChords: '基本コード',
+    otherChords: 'その他のコード',
+    includeGeneratedForms: '自動生成フォームも表示',
+    customFretting: 'カスタムフォーム',
     chordForm: '候補フォーム',
     alreadyStockedButton: 'このコードはストック済み',
     addToStock: 'ストックに追加',
@@ -223,6 +231,10 @@ export const UI_TEXT: Record<Locale, UiText> = {
     generatorHeading: 'Chord Selection',
     rootNote: 'Root',
     chordQuality: 'Chord Quality',
+    commonChords: 'Common chords',
+    otherChords: 'More chords',
+    includeGeneratedForms: 'Include generated shapes',
+    customFretting: 'Custom shape',
     chordForm: 'Chord Shape',
     alreadyStockedButton: 'Already in Stock',
     addToStock: 'Add to Stock',

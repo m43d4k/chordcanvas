@@ -3,6 +3,8 @@ import {
   CHORD_QUALITIES,
   PITCH_CLASSES,
   detectChordCandidates,
+  buildChordLabel,
+  spellChordNote,
   deriveBassNote,
   deriveNoteNameAtPosition,
   derivePlayableStringMidis,
@@ -168,24 +170,57 @@ describe('music/chords', () => {
     ).toBe('C')
   })
 
-  it('provides multiple recognizable forms for every root and quality', () => {
+  it.each([
+    ['B', '7', 'x-2-1-2-0-2'],
+    ['C', 'add9', 'x-3-2-0-3-3'],
+    ['D', 'sus2', 'x-x-0-2-3-0'],
+    ['F', 'maj7', 'x-x-3-2-1-0'],
+    ['B', 'minor', 'x-2-4-4-3-2'],
+  ] as const)(
+    'starts %s %s with its familiar fingering',
+    (root, quality, frets) => {
+      expect(getChordForms(root, quality)[0]?.fretting.join('-')).toBe(frets)
+    },
+  )
+
+  it('names a triad above a distinct bass while retaining a full root-position seventh', () => {
+    expect(summarizeChord(toFretting(['x', 2, 2, 0, 1, 0])).currentName).toBe(
+      'C/B',
+    )
+    expect(summarizeChord(toFretting([3, 'x', 3, 2, 1, 1])).currentName).toBe(
+      'F/G',
+    )
+    expect(summarizeChord(toFretting(['x', 0, 2, 0, 1, 0])).currentName).toBe(
+      'Am7',
+    )
+  })
+
+  it('spells chord names and chord tones according to their function', () => {
+    expect(buildChordLabel('A#', 'major', 'D')).toBe('Bb/D')
+    expect(buildChordLabel('E', 'major', 'G#')).toBe('E/G#')
+    expect(spellChordNote('D#', 'maj7', 'A#')).toBe('Bb')
+    expect(spellChordNote('C', 'dim7', 'A')).toBe('Bbb')
+  })
+
+  it('provides registered forms and correctly named alternatives for every root and quality', () => {
     for (const root of PITCH_CLASSES) {
       for (const quality of CHORD_QUALITIES) {
-        const forms = getChordForms(root, quality)
-
-        expect(forms.length, `${root} ${quality}`).toBeGreaterThanOrEqual(3)
+        const registered = getChordForms(root, quality)
+        const forms = getChordForms(root, quality, true)
+        expect(registered.length).toBeGreaterThan(0)
+        expect(
+          registered.every((form) => !form.id.startsWith('generated-')),
+        ).toBe(true)
+        expect(forms.slice(0, registered.length)).toEqual(registered)
         expect(new Set(forms.map((form) => form.fretting.join('-'))).size).toBe(
           forms.length,
         )
 
         for (const form of forms) {
           expect(
-            detectChordCandidates(form.fretting).some(
-              (candidate) =>
-                candidate.root === root && candidate.quality === quality,
-            ),
+            detectChordCandidates(form.fretting)[0],
             `${root} ${quality}: ${form.label}`,
-          ).toBe(true)
+          ).toMatchObject({ root, quality })
         }
       }
     }
@@ -198,7 +233,8 @@ describe('music/chords', () => {
     expect(forms.map((form) => form.label)).toEqual(
       expect.arrayContaining([
         'Diminished triad form',
-        expect.stringContaining('Compact form'),
+        '5th-string triad',
+        '4th-string triad',
       ]),
     )
   })

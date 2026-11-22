@@ -1,6 +1,5 @@
 import { useState, type CSSProperties, type ChangeEvent } from 'react'
 import type {
-  ChordForm,
   ChordQuality,
   ChordSummary,
   Fretting,
@@ -9,7 +8,12 @@ import type {
 } from '../music/chords'
 import {
   CHORD_QUALITIES,
-  CHORD_QUALITY_LABELS,
+  BASIC_QUALITIES,
+  buildChordLabel,
+  chartRootName,
+  frettingToKey,
+  getChordForms,
+  spellChordNote,
   PITCH_CLASSES,
   deriveNoteNameAtPosition,
 } from '../music/chords'
@@ -28,7 +32,6 @@ interface ChordComposerProps {
   selectedRoot: PitchClassName
   selectedQuality: ChordQuality
   selectedFormId: string
-  availableForms: readonly ChordForm[]
   fretting: Fretting
   summary: ChordSummary
   displayName: string
@@ -56,7 +59,6 @@ function ChordComposer({
   selectedRoot,
   selectedQuality,
   selectedFormId,
-  availableForms,
   fretting,
   summary,
   displayName,
@@ -80,6 +82,29 @@ function ChordComposer({
 }: ChordComposerProps) {
   const [showNoteNames, setShowNoteNames] = useState(false)
   const [showAdvancedCandidates, setShowAdvancedCandidates] = useState(false)
+  const [showGenerated, setShowGenerated] = useState(
+    selectedFormId.startsWith('generated-'),
+  )
+  const availableForms = getChordForms(
+    selectedRoot,
+    selectedQuality,
+    showGenerated,
+  )
+  const frettingKey = frettingToKey(fretting)
+  const currentForm = availableForms.find(
+    (form) => frettingToKey(form.fretting) === frettingKey,
+  )
+  const candidate = summary.candidates[0]
+  function displayNote(note: PitchClassName) {
+    return candidate
+      ? spellChordNote(candidate.root, candidate.quality, note)
+      : chartRootName(note)
+  }
+  function fretButtonLabel(stringIndex: number, fret: number) {
+    if (!showNoteNames) return fret
+    const note = deriveNoteNameAtPosition(stringIndex, fret)
+    return note ? displayNote(note) : fret
+  }
   const manualGridStyle = {
     '--manual-grid-column-count': manualVisibleFrets.length + 3,
   } as CSSProperties
@@ -107,7 +132,7 @@ function ChordComposer({
             >
               {PITCH_CLASSES.map((pitchClass) => (
                 <option key={pitchClass} value={pitchClass}>
-                  {pitchClass}
+                  {chartRootName(pitchClass)}
                 </option>
               ))}
             </select>
@@ -120,10 +145,22 @@ function ChordComposer({
               onChange={onQualityChange}
               value={selectedQuality}
             >
-              {CHORD_QUALITIES.map((quality) => (
-                <option key={quality} value={quality}>
-                  {CHORD_QUALITY_LABELS[quality]}
-                </option>
+              {[
+                { label: text.commonChords, qualities: BASIC_QUALITIES },
+                {
+                  label: text.otherChords,
+                  qualities: CHORD_QUALITIES.filter(
+                    (quality) => !BASIC_QUALITIES.includes(quality),
+                  ),
+                },
+              ].map(({ label, qualities }) => (
+                <optgroup key={label} label={label}>
+                  {qualities.map((quality) => (
+                    <option key={quality} value={quality}>
+                      {buildChordLabel(selectedRoot, quality)}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </label>
@@ -133,16 +170,29 @@ function ChordComposer({
             <select
               aria-label={text.chordForm}
               onChange={onFormChange}
-              value={selectedFormId}
+              value={currentForm?.id ?? ''}
             >
+              {!currentForm && (
+                <option value="" disabled>
+                  {text.customFretting}
+                </option>
+              )}
               {availableForms.map((form) => (
                 <option key={form.id} value={form.id}>
-                  {form.label}
+                  {form.label} · {form.fretting.join('-')}
                 </option>
               ))}
             </select>
           </label>
         </div>
+        <label className="candidate-toggle">
+          <input
+            type="checkbox"
+            checked={showGenerated}
+            onChange={(event) => setShowGenerated(event.target.checked)}
+          />
+          {text.includeGeneratedForms}
+        </label>
       </section>
 
       <div className="composer-editor-layout">
@@ -279,10 +329,7 @@ function ChordComposer({
                           onClick={() => onStringStateChange(stringIndex, fret)}
                           type="button"
                         >
-                          {showNoteNames
-                            ? (deriveNoteNameAtPosition(stringIndex, fret) ??
-                              fret)
-                            : fret}
+                          {fretButtonLabel(stringIndex, fret)}
                         </button>
                       ))}
                     </div>
@@ -354,13 +401,13 @@ function ChordComposer({
             ) : null}
             <div>
               <dt>{text.bassNote}</dt>
-              <dd>{summary.bassNote ?? '-'}</dd>
+              <dd>{summary.bassNote ? displayNote(summary.bassNote) : '-'}</dd>
             </div>
             <div>
               <dt>{text.chordTones}</dt>
               <dd>
                 {summary.chordTones.length > 0
-                  ? summary.chordTones.join(', ')
+                  ? summary.chordTones.map(displayNote).join(', ')
                   : '-'}
               </dd>
             </div>
@@ -368,7 +415,7 @@ function ChordComposer({
               <dt>{text.uniqueNotes}</dt>
               <dd>
                 {summary.uniqueNotes.length > 0
-                  ? summary.uniqueNotes.join(', ')
+                  ? summary.uniqueNotes.map(displayNote).join(', ')
                   : '-'}
               </dd>
             </div>
@@ -376,7 +423,9 @@ function ChordComposer({
               <dt>{text.playedNotes}</dt>
               <dd>
                 {summary.playedNotes.length > 0
-                  ? summary.playedNotes.map((note) => note.note).join(', ')
+                  ? summary.playedNotes
+                      .map((note) => displayNote(note.note))
+                      .join(', ')
                   : '-'}
               </dd>
             </div>
