@@ -123,12 +123,20 @@ button {
   height: 24px;
 }
 
+.hero-header-controls,
 .language-toggle {
   display: inline-flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.45rem;
+}
+
+.hero-header-controls {
   margin-left: auto;
+}
+
+.audio-mute-button {
+  white-space: nowrap;
 }
 
 .language-toggle .secondary-button {
@@ -775,12 +783,17 @@ button {
   line-height: 1;
 }
 
-.play-chord-button:hover,
+.play-chord-button:enabled:hover,
 .play-chord-button:focus-visible {
   border-color: rgba(138, 128, 255, 0.52);
   background: rgba(66, 60, 114, 0.96);
   color: #fff;
   outline: none;
+}
+
+.play-chord-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .play-chord-button-icon {
@@ -1490,6 +1503,11 @@ button {
   align-items: flex-start;
 }
 
+.chord-modal-header-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
 .chord-modal-header h2 {
   margin: 0.3rem 0 0;
   color: var(--text);
@@ -1704,9 +1722,8 @@ button {
     align-items: stretch;
   }
 
-  .language-toggle {
+  .hero-header-controls {
     width: 100%;
-    justify-content: flex-end;
   }
 
   .panel {

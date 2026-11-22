@@ -554,61 +554,56 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
-  it('toggles audio mute from the chart editor heading', async () => {
+  it('shares mute between the header and chord editor and applies it to all playback', () => {
     render(<App />)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'ミュート',
-      }),
-    )
-
-    expect(audioMocks.stopChordPlayback).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'ミュート解除',
-      }),
-    )
-
-    const selectedBlock =
-      document.querySelector('.layout-chord-block.selected') ??
-      document.querySelector('.layout-chord-block')
-
-    if (!(selectedBlock instanceof HTMLElement)) {
-      throw new Error('Expected selected layout block')
-    }
-
-    fireEvent.click(selectedBlock.querySelector('.layout-chord-block-button')!)
-
-    await waitFor(() => {
-      expect(audioMocks.playChordFretting).toHaveBeenCalled()
-    })
-
-    expect(document.querySelector('.layout-card-play-button')).toBeNull()
-  })
-
-  it('keeps chord diagram playback available while chart audio is muted', async () => {
-    render(<App />)
-
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: 'ミュート',
-      }),
-    )
 
     addCurrentChordToStock()
+    const header = within(document.querySelector('.hero') as HTMLElement)
+    fireEvent.click(header.getByRole('button', { name: 'ミュート' }))
+    expect(audioMocks.stopChordPlayback).toHaveBeenCalledTimes(1)
 
-    const dialog = openStockModal()
-    const playButton = within(dialog).getByRole('button', {
-      name: 'E を再生',
+    const chart = within(
+      screen.getByRole('region', { name: UI_TEXT.ja.layoutHeading }),
+    )
+    expect(chart.queryByRole('button', { name: 'ミュート解除' })).toBeNull()
+
+    const stockButton = within(getStockCard('E')).getByRole('button', {
+      name: 'E',
     })
+    fireEvent.click(stockButton)
+    expect(stockButton).toHaveAttribute('aria-expanded', 'true')
+    expect(audioMocks.playChordFretting).not.toHaveBeenCalled()
+    fireEvent.click(stockButton)
 
+    const chartButton = chart.getByRole('button', {
+      name: getLayoutBlockButtonName('E'),
+    })
+    fireEvent.click(chartButton)
+    expect(audioMocks.playChordFretting).not.toHaveBeenCalled()
+    expect(document.querySelector('.layout-card-play-button')).toBeNull()
+
+    const dialog = within(openEditModal())
+    const playButton = dialog.getByRole('button', { name: 'E を再生' })
+    expect(playButton).toBeDisabled()
     fireEvent.click(playButton)
+    expect(audioMocks.playChordFretting).not.toHaveBeenCalled()
 
-    await waitFor(() => {
-      expect(audioMocks.playChordFretting).toHaveBeenCalledTimes(1)
-    })
+    fireEvent.click(dialog.getByRole('button', { name: 'ミュート解除' }))
+    expect(header.getByRole('button', { name: 'ミュート' })).toBeInTheDocument()
+    expect(playButton).toBeEnabled()
+    fireEvent.click(playButton)
+    expect(audioMocks.playChordFretting).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(dialog.getByRole('button', { name: 'ミュート' }))
+    expect(audioMocks.stopChordPlayback).toHaveBeenCalledTimes(2)
+    expect(playButton).toBeDisabled()
+
+    fireEvent.click(dialog.getByRole('button', { name: UI_TEXT.ja.modalClose }))
+    fireEvent.click(header.getByRole('button', { name: 'ミュート解除' }))
+
+    fireEvent.click(chartButton)
+    fireEvent.click(stockButton)
+    expect(audioMocks.playChordFretting).toHaveBeenCalledTimes(3)
   })
 
   it('shows localized project import errors in English', async () => {

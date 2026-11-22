@@ -62,8 +62,8 @@ export interface UiText {
   layoutHeading: string
   openLayoutAddModal: string
   addRow: string
-  muteSelectedChord: string
-  unmuteSelectedChord: string
+  muteAudio: string
+  unmuteAudio: string
   removeLayoutRowAria: string
   lyricsLineLabel: (index: number) => string
   lyricsPlaceholder: string
@@ -154,8 +154,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutHeading: 'コード譜編集',
     openLayoutAddModal: 'コードを追加',
     addRow: '行を追加',
-    muteSelectedChord: 'ミュート',
-    unmuteSelectedChord: 'ミュート解除',
+    muteAudio: 'ミュート',
+    unmuteAudio: 'ミュート解除',
     removeLayoutRowAria: '行を削除',
     lyricsLineLabel: (index) => `歌詞 ${index + 1} 行`,
     lyricsPlaceholder: '歌詞を入力。スペースで位置を調整。',
@@ -279,8 +279,8 @@ export const UI_TEXT: Record<Locale, UiText> = {
     layoutHeading: 'Chord Chart Editor',
     openLayoutAddModal: 'Add chord',
     addRow: 'Add Row',
-    muteSelectedChord: 'Mute',
-    unmuteSelectedChord: 'Unmute',
+    muteAudio: 'Mute',
+    unmuteAudio: 'Unmute',
     removeLayoutRowAria: 'Delete row',
     lyricsLineLabel: (index) => `Lyrics line ${index + 1}`,
     lyricsPlaceholder: 'Enter lyrics. Use spaces to adjust alignment.',

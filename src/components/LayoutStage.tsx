@@ -32,7 +32,6 @@ interface LayoutStageProps {
   layoutRowsLength: number
   lyricsInputRefs: RefObject<Record<string, HTMLInputElement | null>>
   highlightedBlockId: string | null
-  isAudioMuted: boolean
   selectedBlockId: string | null
   selectedLayoutRowId: string
   shouldShowLayoutRowAddHint: boolean
@@ -64,7 +63,6 @@ interface LayoutStageProps {
     event: ChangeEvent<HTMLInputElement>,
   ) => void
   onMoveBlock: (direction: -1 | 1) => void
-  onToggleAudioMute: () => void
   onOpenLayoutChordModal: (rowId: string) => void
   onScheduleLayoutAddHint: (rowId: string) => void
   onScheduleLayoutHoverHint: (blockId: string) => void
@@ -98,7 +96,6 @@ function LayoutStage({
   layoutToolbarRef,
   lyricsInputRefs,
   highlightedBlockId,
-  isAudioMuted,
   selectedBlockId,
   selectedLayoutRowId,
   shouldShowLayoutRowAddHint,
@@ -119,7 +116,6 @@ function LayoutStage({
   onLyricsBlur,
   onLayoutRowInputChange,
   onMoveBlock,
-  onToggleAudioMute,
   onOpenLayoutChordModal,
   onScheduleLayoutAddHint,
   onScheduleLayoutHoverHint,
@@ -134,17 +130,6 @@ function LayoutStage({
     <section className="panel layout-panel" aria-labelledby="layout-heading">
       <div className="panel-heading">
         <h2 id="layout-heading">{text.layoutHeading}</h2>
-        {!isExportingPdf ? (
-          <button
-            className="secondary-button"
-            onClick={onToggleAudioMute}
-            type="button"
-          >
-            {isAudioMuted
-              ? text.unmuteSelectedChord
-              : text.muteSelectedChord}
-          </button>
-        ) : null}
       </div>
 
       <div className="layout-stage-frame" ref={layoutStageFrameRef}>

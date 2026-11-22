@@ -14,6 +14,7 @@ import type { ChangeEvent, FormEvent } from 'react'
 interface ChordModalProps {
   chordModalKind: 'stock' | 'layout' | 'edit'
   displayName: string
+  isAudioMuted: boolean
   isModalChordStocked: boolean
   isModalDraftStocked: boolean
   manualFretCount: number
@@ -46,12 +47,14 @@ interface ChordModalProps {
   onRootChange: (event: ChangeEvent<HTMLSelectElement>) => void
   onStringStateChange: (stringIndex: number, nextState: StringState) => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onToggleAudioMute: () => void
   onViewportSync: () => void
 }
 
 function ChordModal({
   chordModalKind,
   displayName,
+  isAudioMuted,
   isModalChordStocked,
   isModalDraftStocked,
   manualFretCount,
@@ -84,6 +87,7 @@ function ChordModal({
   onRootChange,
   onStringStateChange,
   onSubmit,
+  onToggleAudioMute,
   onViewportSync,
 }: ChordModalProps) {
   return (
@@ -107,14 +111,23 @@ function ChordModal({
               </p>
             ) : null}
           </div>
-          <button
-            aria-label={text.modalClose}
-            className="panel-icon-button"
-            onClick={onClose}
-            type="button"
-          >
-            ×
-          </button>
+          <div className="chord-modal-header-actions">
+            <button
+              className="secondary-button audio-mute-button"
+              onClick={onToggleAudioMute}
+              type="button"
+            >
+              {isAudioMuted ? text.unmuteAudio : text.muteAudio}
+            </button>
+            <button
+              aria-label={text.modalClose}
+              className="panel-icon-button"
+              onClick={onClose}
+              type="button"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         <form className="chord-modal-form" onSubmit={onSubmit}>
@@ -122,6 +135,7 @@ function ChordModal({
             chordName={valueChordName}
             displayName={displayName}
             fretting={valueFretting}
+            isAudioMuted={isAudioMuted}
             manualFretCount={manualFretCount}
             manualGridTemplate={manualGridTemplate}
             manualStartFret={manualStartFret}

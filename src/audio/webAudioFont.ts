@@ -57,6 +57,7 @@ declare global {
 
 const scriptLoaders = new Map<string, Promise<void>>()
 let playbackStatePromise: Promise<PlaybackState> | null = null
+let playbackGeneration = 0
 
 function loadScript(src: string): Promise<void> {
   const existingPromise = scriptLoaders.get(src)
@@ -147,6 +148,7 @@ async function getPlaybackState(): Promise<PlaybackState> {
 }
 
 export async function playChordFretting(fretting: Fretting): Promise<boolean> {
+  const generation = playbackGeneration
   const pitches = derivePlayableStringMidis(fretting)
 
   if (pitches.length === 0) {
@@ -155,8 +157,12 @@ export async function playChordFretting(fretting: Fretting): Promise<boolean> {
 
   const { audioContext, player, preset } = await getPlaybackState()
 
-  if (audioContext.state === 'suspended') {
+  if (audioContext.state === 'suspended' && generation === playbackGeneration) {
     await audioContext.resume()
+  }
+
+  if (generation !== playbackGeneration) {
+    return false
   }
 
   player.cancelQueue(audioContext)
@@ -174,10 +180,12 @@ export async function playChordFretting(fretting: Fretting): Promise<boolean> {
 }
 
 export async function stopChordPlayback(): Promise<void> {
+  playbackGeneration += 1
+
   if (!playbackStatePromise) {
     return
   }
 
-  const { audioContext, player } = await getPlaybackState()
-  player.cancelQueue(audioContext)
+  const state = await playbackStatePromise.catch(() => null)
+  state?.player.cancelQueue(state.audioContext)
 }

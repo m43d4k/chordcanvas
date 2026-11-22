@@ -608,7 +608,7 @@ function App() {
     setVisibleBlockToolbarId(revealToolbar ? block.id : null)
 
     if (playAudio) {
-      void handlePlayLayoutChord(block.fretting)
+      void handlePlayChord(block.fretting)
     }
   }
 
@@ -796,17 +796,11 @@ function App() {
   }
 
   function handleToggleAudioMute() {
-    hideLayoutHoverHint()
-    setVisibleBlockToolbarId(null)
-    setIsAudioMuted((current) => {
-      const next = !current
+    if (!isAudioMuted) {
+      void stopChordPlayback()
+    }
 
-      if (next) {
-        void stopChordPlayback()
-      }
-
-      return next
-    })
+    setIsAudioMuted(!isAudioMuted)
     setAppError(null)
   }
 
@@ -890,20 +884,16 @@ function App() {
   }
 
   async function handlePlayChord(fretting: Fretting) {
+    if (isAudioMuted) {
+      return
+    }
+
     try {
       setAppError(null)
       await playChordFretting(fretting)
     } catch (error) {
       setAppError(getAudioPlaybackErrorMessage(error, text))
     }
-  }
-
-  async function handlePlayLayoutChord(fretting: Fretting) {
-    if (isAudioMuted) {
-      return
-    }
-
-    await handlePlayChord(fretting)
   }
 
   async function handlePdfExport(kind: PdfExportKind) {
@@ -991,27 +981,36 @@ function App() {
             />
             <span className="visually-hidden">ChordCanvas</span>
           </h1>
-          <div
-            aria-label={text.languageToggleGroupLabel}
-            className="language-toggle"
-            role="group"
-          >
+          <div className="hero-header-controls">
             <button
-              aria-pressed={locale === 'ja'}
-              className="secondary-button"
-              onClick={() => handleLocaleChange('ja')}
+              className="secondary-button audio-mute-button"
+              onClick={handleToggleAudioMute}
               type="button"
             >
-              {text.languageJa}
+              {isAudioMuted ? text.unmuteAudio : text.muteAudio}
             </button>
-            <button
-              aria-pressed={locale === 'en'}
-              className="secondary-button"
-              onClick={() => handleLocaleChange('en')}
-              type="button"
+            <div
+              aria-label={text.languageToggleGroupLabel}
+              className="language-toggle"
+              role="group"
             >
-              {text.languageEn}
-            </button>
+              <button
+                aria-pressed={locale === 'ja'}
+                className="secondary-button"
+                onClick={() => handleLocaleChange('ja')}
+                type="button"
+              >
+                {text.languageJa}
+              </button>
+              <button
+                aria-pressed={locale === 'en'}
+                className="secondary-button"
+                onClick={() => handleLocaleChange('en')}
+                type="button"
+              >
+                {text.languageEn}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1108,7 +1107,6 @@ function App() {
         layoutToolbarRef={layoutToolbarRef}
         lyricsInputRefs={lyricsInputRefs}
         highlightedBlockId={highlightedLayoutBlockId}
-        isAudioMuted={isAudioMuted}
         onActivateBlock={activateBlock}
         onAddLayoutRow={handleAddLayoutRow}
         onDeleteBlock={handleDeleteBlock}
@@ -1122,7 +1120,6 @@ function App() {
         onLayoutRowInputChange={handleLyricsLineChange}
         onLyricsBlur={() => setEditingLyricsRowId(null)}
         onMoveBlock={handleMoveBlock}
-        onToggleAudioMute={handleToggleAudioMute}
         onOpenLayoutChordModal={openLayoutChordModal}
         onScheduleLayoutAddHint={scheduleLayoutAddHint}
         onScheduleLayoutHoverHint={scheduleLayoutHoverHint}
@@ -1145,6 +1142,7 @@ function App() {
         <ChordModal
           chordModalKind={chordModal.kind}
           displayName={modalDisplayName}
+          isAudioMuted={isAudioMuted}
           isModalChordStocked={isModalChordStocked}
           isModalDraftStocked={isModalDraftStocked}
           manualFretCount={modalDraft.manualFretCount}
@@ -1168,6 +1166,7 @@ function App() {
           onRootChange={handleChordModalRootChange}
           onStringStateChange={handleChordModalStringStateChange}
           onSubmit={handleSubmitChordModal}
+          onToggleAudioMute={handleToggleAudioMute}
           onViewportSync={handleChordModalViewportSync}
           selectedBlockDisplayName={selectedBlockDisplayName}
           selectedFormId={modalDraft.selectedFormId}

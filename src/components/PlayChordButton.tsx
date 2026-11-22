@@ -1,18 +1,23 @@
 interface PlayChordButtonProps {
   ariaLabel: string
   className?: string
+  disabled: boolean
   onClick: () => void
 }
 
 function PlayChordButton({
   ariaLabel,
   className,
+  disabled,
   onClick,
 }: PlayChordButtonProps) {
   return (
     <button
       aria-label={ariaLabel}
-      className={className ? `play-chord-button ${className}` : 'play-chord-button'}
+      className={
+        className ? `play-chord-button ${className}` : 'play-chord-button'
+      }
+      disabled={disabled}
       onClick={(event) => {
         event.stopPropagation()
         onClick()

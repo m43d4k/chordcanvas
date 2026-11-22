@@ -36,6 +36,7 @@ interface ChordComposerProps {
   summary: ChordSummary
   displayName: string
   chordName: string
+  isAudioMuted: boolean
   manualStartFret: number
   manualFretCount: number
   minManualFretCount: number
@@ -63,6 +64,7 @@ function ChordComposer({
   summary,
   displayName,
   chordName,
+  isAudioMuted,
   manualStartFret,
   manualFretCount,
   minManualFretCount,
@@ -232,6 +234,7 @@ function ChordComposer({
                 <PlayChordButton
                   ariaLabel={text.playChordAria(displayName)}
                   className="diagram-play-button"
+                  disabled={isAudioMuted}
                   onClick={onPlayChord}
                 />
               </div>
