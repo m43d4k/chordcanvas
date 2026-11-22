@@ -4,6 +4,7 @@ import {
   PITCH_CLASSES,
   detectChordCandidates,
   buildChordLabel,
+  pitchClassToName,
   spellChordNote,
   deriveBassNote,
   deriveNoteNameAtPosition,
@@ -193,6 +194,62 @@ describe('music/chords', () => {
     expect(summarizeChord(toFretting(['x', 0, 2, 0, 1, 0])).currentName).toBe(
       'Am7',
     )
+  })
+
+  it('recognizes major and minor triads above a bass in every key and voicing', () => {
+    const minorShapes = [
+      ['x', 2, 'x', 2, 2, 2], // B under A–C#–F#
+      [7, 2, 'x', 2, 2, 2], // two bass strings in unison
+      [7, 'x', 9, 6, 7, 5], // octave bass below C#–F#–A
+      [7, 9, 7, 6, 0, 'x'], // doubled bass inside the upper voices
+    ] as const
+    for (let shift = 0; shift < 12; shift++) {
+      const bass = pitchClassToName(11 + shift)
+      const minor = buildChordLabel(pitchClassToName(6 + shift), 'minor', bass)
+      const extension = buildChordLabel(
+        pitchClassToName(9 + shift),
+        '6/9',
+        bass,
+      )
+      for (const shape of minorShapes) {
+        const fretting = toFretting(
+          shape.map((fret) => (fret === 'x' ? fret : fret + shift)),
+        )
+        const summary = summarizeChord(fretting)
+        expect(summary.currentName).toBe(minor)
+        expect(
+          summary.candidates.slice(0, 2).map((candidate) => candidate.label),
+        ).toEqual([minor, extension])
+      }
+      // Same bass and string set, upper triad now major (F#–A#–C#).
+      const major = summarizeChord(
+        toFretting(['x', 2 + shift, 'x', 3 + shift, 2 + shift, 2 + shift]),
+      )
+      expect(major.currentName).toBe(
+        buildChordLabel(pitchClassToName(6 + shift), 'major', bass),
+      )
+    }
+  })
+
+  it('prefers an identifiable root-position extension to a more elaborate inversion', () => {
+    const candidates = detectChordCandidates(toFretting([0, 0, 0, 0, 0, 0]))
+    expect(candidates[0]).toMatchObject({
+      label: 'Em11',
+      omittedIntervals: [2],
+    })
+    expect(candidates).toContainEqual(
+      expect.objectContaining({ label: 'G6/9/E', matchKind: 'exact' }),
+    )
+  })
+
+  it('distinguishes a bass beneath a triad from a seventh sounding within the upper chord', () => {
+    expect(summarizeChord(toFretting(['x', 2, 2, 0, 1, 0])).currentName).toBe(
+      'C/B',
+    )
+    const doubledSeventh = detectChordCandidates(toFretting([7, 3, 2, 0, 0, 0]))
+    expect(
+      doubledSeventh.slice(0, 2).map((candidate) => candidate.label),
+    ).toEqual(['Cmaj7/B', 'C/B'])
   })
 
   it('spells chord names and chord tones according to their function', () => {

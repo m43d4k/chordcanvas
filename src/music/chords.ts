@@ -1344,141 +1344,100 @@ function analyzeFretting(fretting: Fretting): FrettingAnalysis {
 function detectChordCandidatesFromAnalysis(
   analysis: FrettingAnalysis,
 ): readonly ChordCandidate[] {
-  if (analysis.playedNotes.length === 0) {
-    return []
-  }
-
-  const matches = analysis.uniquePitchClasses.flatMap<ScoredChordCandidate>(
-    (rootPitchClass, rootIndex) => {
-      const relativeIntervals = sortUniqueNumbers(
-        analysis.uniquePitchClasses.map((pitchClass) =>
-          mod12(pitchClass - rootPitchClass),
-        ),
-      )
-
-      return CHORD_QUALITIES.flatMap((quality) => {
-        const targetIntervals = NORMALIZED_INTERVALS[quality]
-
-        if (!isSameIntervalSet(relativeIntervals, targetIntervals)) {
-          return []
-        }
-
-        const root = pitchClassToName(rootPitchClass)
-        const slashBass =
-          analysis.bassNote && analysis.bassNote !== root
-            ? analysis.bassNote
-            : null
-
-        return [
-          {
-            root,
-            quality,
-            bass: slashBass,
-            intervals: targetIntervals,
-            label: buildChordLabel(root, quality, slashBass),
-            matchKind: 'exact' as const,
-            omittedIntervals: [],
-            score:
-              CHORD_PRIORITY[quality] +
-              (slashBass ? 64 : 0) +
-              rootIndex * 0.25 +
-              Math.max(0, relativeIntervals.length - 3) * 0.5,
-          },
-        ]
-      })
-    },
-  )
-
-  // A single bass note beneath a complete triad can be written as F/G or Am/G.
   const bass = analysis.bassNote
-  if (
-    bass &&
-    analysis.uniquePitchClasses.length === 4 &&
-    analysis.playedNotes.filter((note) => note.note === bass).length === 1
-  ) {
-    const upperNotes = analysis.uniquePitchClasses.filter(
-      (pitch) => pitch !== pitchClassNameToValue(bass),
+  if (!bass) return []
+
+  const bassPitch = pitchClassNameToValue(bass)
+  const candidates: ChordCandidate[] = []
+  // Ties between symmetric voicings should resolve the same way in every key.
+  const roots = relativeIntervalsForRoot(analysis.uniquePitchClasses, bassPitch)
+  for (const distance of roots) {
+    const pitch = mod12(bassPitch + distance)
+    const root = pitchClassToName(pitch)
+    const slashBass = root === bass ? null : bass
+    const observed = relativeIntervalsForRoot(
+      analysis.uniquePitchClasses,
+      pitch,
     )
-    for (const pitch of upperNotes) {
-      const intervals = relativeIntervalsForRoot(upperNotes, pitch)
-      for (const quality of ['major', 'minor'] as const) {
-        if (isSameIntervalSet(intervals, NORMALIZED_INTERVALS[quality])) {
-          const root = pitchClassToName(pitch)
-          matches.push({
-            root,
-            quality,
-            bass,
-            intervals,
-            label: buildChordLabel(root, quality, bass),
-            matchKind: 'exact',
-            omittedIntervals: [],
-            score: 32 + CHORD_PRIORITY[quality],
-          })
-        }
-      }
+    for (const quality of CHORD_QUALITIES) {
+      const intervals = NORMALIZED_INTERVALS[quality]
+      if (!isSubset(observed, intervals)) continue
+      const omittedIntervals = intervals.filter(
+        (interval) => !observed.includes(interval),
+      )
+      if (!isSubset(omittedIntervals, NORMALIZED_OPTIONAL_INTERVALS[quality]))
+        continue
+      candidates.push({
+        root,
+        quality,
+        bass: slashBass,
+        intervals,
+        omittedIntervals,
+        label: buildChordLabel(root, quality, slashBass),
+        matchKind: omittedIntervals.length ? 'omission' : 'exact',
+      })
     }
   }
-  return toPublicCandidates(matches)
-}
 
-function detectOmissionCandidatesFromAnalysis(
-  analysis: FrettingAnalysis,
-): readonly ChordCandidate[] {
-  if (analysis.uniquePitchClasses.length < 3) {
-    return []
-  }
-
-  const exactKeys = new Set(
-    detectChordCandidatesFromAnalysis(analysis).map(candidateToKey),
+  // Count distinct pitches for the harmony, but keep register for ranking:
+  // a B doubled below an F#m triad is still a separate bass voice.
+  const upperPitches = analysis.uniquePitchClasses.filter(
+    (pitch) => pitch !== bassPitch,
   )
-  const candidates = analysis.uniquePitchClasses.flatMap<ScoredChordCandidate>(
-    (rootPitchClass, rootIndex) =>
-      CHORD_QUALITIES.flatMap((quality) => {
-        const observed = relativeIntervalsForRoot(
-          analysis.uniquePitchClasses,
-          rootPitchClass,
-        )
-        const target = NORMALIZED_INTERVALS[quality]
-        const optional = NORMALIZED_OPTIONAL_INTERVALS[quality]
-        const required = target.filter(
-          (interval) => !optional.includes(interval),
-        )
-        const omitted = target.filter(
-          (interval) => !observed.includes(interval),
-        )
-
-        if (
-          optional.length === 0 ||
-          omitted.length === 0 ||
-          !isSubset(observed, target) ||
-          !isSubset(required, observed) ||
-          !isSubset(omitted, optional)
-        ) {
-          return []
-        }
-
-        const root = pitchClassToName(rootPitchClass)
-        const bass =
-          analysis.bassNote && analysis.bassNote !== root
-            ? analysis.bassNote
-            : null
-        const candidate: ScoredChordCandidate = {
+  const lowestUpperMidi = Math.min(
+    ...analysis.playedNotes
+      .filter((note) => note.pitchClass !== bassPitch)
+      .map((note) => note.midi),
+  )
+  const bassInUpperVoices = analysis.playedNotes.some(
+    (note) => note.pitchClass === bassPitch && note.midi > lowestUpperMidi,
+  )
+  if (upperPitches.length === 3) {
+    for (const pitch of upperPitches) {
+      const intervals = relativeIntervalsForRoot(upperPitches, pitch)
+      for (const quality of ['major', 'minor'] as const) {
+        if (!isSameIntervalSet(intervals, NORMALIZED_INTERVALS[quality]))
+          continue
+        const root = pitchClassToName(pitch)
+        candidates.push({
           root,
           quality,
           bass,
-          intervals: target,
+          intervals,
+          omittedIntervals: [],
           label: buildChordLabel(root, quality, bass),
-          matchKind: 'omission',
-          omittedIntervals: omitted,
-          score:
-            CHORD_PRIORITY[quality] + omitted.length * 4 + rootIndex * 0.25,
-        }
+          matchKind: 'exact',
+        })
+      }
+    }
+  }
 
-        return exactKeys.has(candidateToKey(candidate)) ? [] : [candidate]
-      }),
+  return candidates.sort(
+    (a, b) =>
+      readingPriority(a, bassInUpperVoices) -
+        readingPriority(b, bassInUpperVoices) ||
+      a.omittedIntervals.length - b.omittedIntervals.length ||
+      CHORD_PRIORITY[a.quality] - CHORD_PRIORITY[b.quality],
   )
+}
 
-  return toPublicCandidates(candidates)
+function readingPriority(
+  candidate: ChordCandidate,
+  bassInUpperVoices: boolean,
+): number {
+  if (candidate.matchKind === 'exact') {
+    if (!candidate.bass) return 0
+    if (candidate.quality === 'major' || candidate.quality === 'minor')
+      return bassInUpperVoices ? 3 : 1
+    // Keep conventional inversions such as C7/E ahead of omission readings.
+    if (!CHORD_INTERVALS[candidate.quality].some((interval) => interval > 12))
+      return 2
+    return 5
+  }
+
+  // A root-position extension with a permitted omission is easier to read
+  // than an extended chord that also needs a slash bass (e.g. Em11 vs G6/9/E).
+  return candidate.bass ? 6 : 4
 }
 
 function detectInferredCandidatesFromAnalysis(
@@ -1488,12 +1447,6 @@ function detectInferredCandidatesFromAnalysis(
     return []
   }
 
-  const regularKeys = new Set(
-    [
-      ...detectChordCandidatesFromAnalysis(analysis),
-      ...detectOmissionCandidatesFromAnalysis(analysis),
-    ].map(candidateToKey),
-  )
   const candidates = PITCH_CLASSES.flatMap<ScoredChordCandidate>(
     (root, rootIndex) => {
       const rootPitchClass = pitchClassNameToValue(root)
@@ -1537,7 +1490,7 @@ function detectInferredCandidatesFromAnalysis(
             CHORD_PRIORITY[quality] + omitted.length * 5 + rootIndex * 0.25,
         }
 
-        return regularKeys.has(candidateToKey(candidate)) ? [] : [candidate]
+        return [candidate]
       })
     },
   )
@@ -1559,10 +1512,6 @@ function isSubset(
   superset: readonly number[],
 ): boolean {
   return subset.every((interval) => superset.includes(interval))
-}
-
-function candidateToKey(candidate: ChordCandidate): string {
-  return `${candidate.root}:${candidate.quality}:${candidate.bass ?? ''}`
 }
 
 function toPublicCandidates(
@@ -1696,20 +1645,13 @@ export function spellChordNote(
 export function detectChordCandidates(
   fretting: Fretting,
 ): readonly ChordCandidate[] {
-  const analysis = analyzeFretting(fretting)
-  return [
-    ...detectChordCandidatesFromAnalysis(analysis),
-    ...detectOmissionCandidatesFromAnalysis(analysis),
-  ]
+  return detectChordCandidatesFromAnalysis(analyzeFretting(fretting))
 }
 
 export function summarizeChord(fretting: Fretting): ChordSummary {
   const analysis = analyzeFretting(fretting)
   const viewport = deriveViewport(fretting)
-  const candidates = [
-    ...detectChordCandidatesFromAnalysis(analysis),
-    ...detectOmissionCandidatesFromAnalysis(analysis),
-  ]
+  const candidates = detectChordCandidatesFromAnalysis(analysis)
   const inferredCandidates = detectInferredCandidatesFromAnalysis(analysis)
   const currentCandidate = candidates[0]
 
