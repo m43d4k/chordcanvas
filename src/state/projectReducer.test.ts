@@ -186,17 +186,18 @@ describe('projectReducer', () => {
     })
   })
 
-  it('deletes a layout row and moves its blocks to an adjacent row', () => {
-    const nextState = reduce(createState(), {
+  it('deletes a layout row and selects a remaining block when needed', () => {
+    const state = createState()
+    const nextState = reduce(state, {
       type: 'deleteLayoutRow',
       rowId: 'row-2',
     })
 
     expect(nextState.layoutRows.map((row) => row.id)).toEqual(['row-1'])
-    expect(nextState.blocks.map((block) => block.rowId)).toEqual([
-      'row-1',
-      'row-1',
-    ])
+    expect(nextState.blocks).toEqual(
+      state.blocks.filter((block) => block.rowId === 'row-1'),
+    )
+    expect(nextState.selectedBlockId).toBe('chord-1')
     expect(nextState.selectedLayoutRowId).toBe('row-1')
   })
 

@@ -33,7 +33,7 @@ interface LayoutStageProps {
   lyricsInputRefs: RefObject<Record<string, HTMLInputElement | null>>
   highlightedBlockId: string | null
   isAudioMuted: boolean
-  selectedBlockId: string
+  selectedBlockId: string | null
   selectedLayoutRowId: string
   shouldShowLayoutRowAddHint: boolean
   showLayoutAddHint: boolean
@@ -45,7 +45,7 @@ interface LayoutStageProps {
     options?: { playAudio?: boolean; revealToolbar?: boolean },
   ) => void
   onAddLayoutRow: () => void
-  onDeleteBlock: (blockId?: string) => void
+  onDeleteBlock: (blockId: string) => void
   onDeleteLayoutRow: (rowId: string) => void
   onDuplicateBlock: () => void
   onEditSelectedChord: () => void

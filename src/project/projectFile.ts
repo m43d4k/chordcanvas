@@ -79,7 +79,7 @@ export interface ProjectSnapshot {
   layoutRows: LayoutRowState[]
   stockChords: StockChordState[]
   blocks: ChordBlockState[]
-  selectedBlockId: string
+  selectedBlockId: string | null
   selectedLayoutRowId: string
   manualStartFret: number
   manualFretCount: number
@@ -158,13 +158,17 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
     value.blocks,
     new Set(layoutRows.map((row) => row.id)),
   )
-  const selectedBlockId = parseString(value.selectedBlockId, 'selectedBlockId')
+  const selectedBlockId =
+    value.selectedBlockId === null
+      ? null
+      : parseString(value.selectedBlockId, 'selectedBlockId')
+  const selectedBlock = blocks.find((block) => block.id === selectedBlockId)
   const selectedLayoutRowId = parseString(
     value.selectedLayoutRowId,
     'selectedLayoutRowId',
   )
 
-  if (!blocks.some((block) => block.id === selectedBlockId)) {
+  if (!selectedBlock && !(blocks.length === 0 && selectedBlockId === null)) {
     throw new ProjectFileError('missingSelectedBlock')
   }
 
@@ -173,11 +177,8 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
   }
 
   const currentFretting =
-    value.currentFretting === undefined
-      ? toFretting([
-          ...(blocks.find((block) => block.id === selectedBlockId)?.fretting ??
-            blocks[0]!.fretting),
-        ])
+    value.currentFretting === undefined && selectedBlock
+      ? toFretting([...selectedBlock.fretting])
       : parseFretting(value.currentFretting, 'currentFretting')
 
   return {
@@ -270,7 +271,7 @@ function parseBlocks(
   value: unknown,
   rowIds: ReadonlySet<string>,
 ): ChordBlockState[] {
-  if (!Array.isArray(value) || value.length === 0) {
+  if (!Array.isArray(value)) {
     throw new ProjectFileError('blocksRequired')
   }
 

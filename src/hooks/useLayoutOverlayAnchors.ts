@@ -20,7 +20,7 @@ interface UseLayoutOverlayAnchorsArgs {
   hoveredLayoutAddRowId: string | null
   layoutRows: readonly LayoutRowState[]
   rowAddButtonRef: RefObject<HTMLButtonElement | null>
-  selectedBlockId: string
+  selectedBlockId: string | null
   shouldShowLayoutRowAddHint: boolean
   stageRef: RefObject<HTMLDivElement | null>
   visibleBlockToolbarId: string | null

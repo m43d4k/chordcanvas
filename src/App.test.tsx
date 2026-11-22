@@ -1161,7 +1161,7 @@ describe('App', () => {
     ).toHaveLength(1)
   })
 
-  it('deletes a layout row from its row close button and moves its blocks to an adjacent row', () => {
+  it('deletes a layout row and all its chord cards from the row close button', () => {
     render(<App />)
 
     fireEvent.click(
@@ -1170,20 +1170,16 @@ describe('App', () => {
       }),
     )
     addChordBlockToRow(2)
+    addChordBlockToRow(2)
 
-    const firstRow = getLayoutRow(1)
-    const secondRow = getLayoutRow(2)
-
+    const firstRowChord = within(getLayoutRow(1)).getByRole('button', {
+      name: layoutBlockButtonNamePattern,
+    })
     expect(
-      within(firstRow).getAllByRole('button', {
+      within(getLayoutRow(2)).getAllByRole('button', {
         name: layoutBlockButtonNamePattern,
       }),
-    ).toHaveLength(1)
-    expect(
-      within(secondRow).getAllByRole('button', {
-        name: layoutBlockButtonNamePattern,
-      }),
-    ).toHaveLength(1)
+    ).toHaveLength(2)
 
     fireEvent.click(getLayoutRowDeleteButton(2))
 
@@ -1193,10 +1189,29 @@ describe('App', () => {
       }),
     ).not.toBeInTheDocument()
     expect(
-      within(getLayoutRow(1)).getAllByRole('button', {
+      within(getLayoutRow(1)).getByRole('button', {
         name: layoutBlockButtonNamePattern,
       }),
-    ).toHaveLength(2)
+    ).toBe(firstRowChord)
+  })
+
+  it('can add a chord after deleting the only row containing chord cards', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: '行を追加' }))
+    fireEvent.click(getLayoutRowDeleteButton(1))
+
+    expect(
+      screen.queryAllByRole('button', { name: layoutBlockButtonNamePattern }),
+    ).toHaveLength(0)
+
+    addChordBlockToRow(1)
+
+    expect(
+      within(getLayoutRow(1)).getByRole('button', {
+        name: layoutBlockButtonNamePattern,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('shows stock entries inside the layout add modal and adds a stocked chord to the target row', () => {

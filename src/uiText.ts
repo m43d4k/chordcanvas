@@ -199,7 +199,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
         case 'invalidStockChords':
           return 'stockChords の形式が不正です。'
         case 'blocksRequired':
-          return 'blocks は 1 件以上必要です。'
+          return 'blocks は配列である必要があります。'
         case 'missingSelectedBlock':
           return 'selectedBlockId が blocks に存在しません。'
         case 'missingSelectedLayoutRow':
@@ -324,7 +324,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
         case 'invalidStockChords':
           return 'stockChords is invalid.'
         case 'blocksRequired':
-          return 'blocks must contain at least one entry.'
+          return 'blocks must be an array.'
         case 'missingSelectedBlock':
           return 'selectedBlockId does not reference an existing block.'
         case 'missingSelectedLayoutRow':

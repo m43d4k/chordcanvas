@@ -220,35 +220,19 @@ function App() {
     stockChords,
   } = projectState
 
-  const selectedBlock =
-    blocks.find((block) => block.id === selectedBlockId) ?? blocks[0]
-
-  if (!selectedBlock) {
-    throw new Error('At least one chord block must be present')
-  }
-
-  const activeLayoutRow = layoutRows.find(
-    (row) => row.id === selectedBlock.rowId,
-  )
-
-  if (!activeLayoutRow) {
-    throw new Error('At least one layout row must be present')
-  }
-
-  const activeLayoutRowId = activeLayoutRow.id
-  const selectedLayoutRow =
-    layoutRows.find((row) => row.id === selectedLayoutRowId) ?? activeLayoutRow
+  const selectedBlock = blocks.find((block) => block.id === selectedBlockId)
   const activeRowBlockIds = blocks
-    .filter((block) => block.rowId === activeLayoutRowId)
+    .filter((block) => block.rowId === selectedBlock?.rowId)
     .map((block) => block.id)
   const activeRowSelectionIndex = activeRowBlockIds.findIndex(
     (blockId) => blockId === selectedBlockId,
   )
-  const selectedBlockSummary = summarizeChord(selectedBlock.fretting)
-  const selectedBlockDisplayName = getDisplayName(
-    selectedBlockSummary.currentName,
-    selectedBlock.displayName,
-  )
+  const selectedBlockDisplayName = selectedBlock
+    ? getDisplayName(
+        summarizeChord(selectedBlock.fretting).currentName,
+        selectedBlock.displayName,
+      )
+    : ''
   const stockEntries = stockChords.map((stockChord) => {
     const summary = summarizeChord(stockChord.fretting)
 
@@ -731,6 +715,10 @@ function App() {
   }
 
   function openEditChordModal() {
+    if (selectedBlockId === null) {
+      return
+    }
+
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     startEditChordModal(selectedBlockId)
@@ -760,7 +748,7 @@ function App() {
     }
 
     addBlockToLayoutRow(
-      rowId ?? selectedLayoutRow.id,
+      rowId ?? selectedLayoutRowId,
       stockChord.fretting,
       stockChord.displayName,
     )
@@ -789,7 +777,7 @@ function App() {
     })
   }
 
-  function handleDeleteBlock(blockId = selectedBlockId) {
+  function handleDeleteBlock(blockId: string) {
     hideLayoutHoverHint()
     setVisibleBlockToolbarId(null)
     dispatchProjectAction({

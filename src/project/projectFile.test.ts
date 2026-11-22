@@ -45,6 +45,16 @@ describe('projectFile', () => {
     expect(parseProjectFile(serializeProjectFile(snapshot))).toEqual(snapshot)
   })
 
+  it('round-trips a project with no chord cards through JSON', () => {
+    const snapshot = {
+      ...createProjectSnapshot(),
+      blocks: [],
+      selectedBlockId: null,
+    }
+
+    expect(parseProjectFile(serializeProjectFile(snapshot))).toEqual(snapshot)
+  })
+
   it('rejects blocks that point to missing rows', () => {
     const invalidDocument = JSON.stringify({
       format: 'chordcanvas-project',

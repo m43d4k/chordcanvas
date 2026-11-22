@@ -446,7 +446,7 @@ export function projectReducer(
         ...state,
         blocks: moveBlockWithinRow(
           state.blocks,
-          state.selectedBlockId,
+          selectedBlock.id,
           selectedBlock.rowId,
           action.direction,
         ),
@@ -470,27 +470,24 @@ export function projectReducer(
         return state
       }
 
-      const selectedBlock = state.blocks.find(
-        (block) => block.id === state.selectedBlockId,
+      const blocks = state.blocks.filter(
+        (block) => block.rowId !== rowToRemove.id,
       )
-      const selectedBlockRowId = selectedBlock?.rowId ?? null
+      const selectedLayoutRowId =
+        state.selectedLayoutRowId === rowToRemove.id
+          ? fallbackRow.id
+          : state.selectedLayoutRowId
+      const selectedBlock =
+        blocks.find((block) => block.id === state.selectedBlockId) ??
+        blocks.find((block) => block.rowId === selectedLayoutRowId) ??
+        blocks[0]
 
       return {
         ...state,
-        blocks: state.blocks.map((block) =>
-          block.rowId === rowToRemove.id
-            ? {
-                ...block,
-                rowId: fallbackRow.id,
-              }
-            : block,
-        ),
+        blocks,
         layoutRows: state.layoutRows.filter((row) => row.id !== rowToRemove.id),
-        selectedLayoutRowId:
-          state.selectedLayoutRowId === rowToRemove.id ||
-          selectedBlockRowId === rowToRemove.id
-            ? fallbackRow.id
-            : state.selectedLayoutRowId,
+        selectedBlockId: selectedBlock?.id ?? null,
+        selectedLayoutRowId,
       }
     }
 
