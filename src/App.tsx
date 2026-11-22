@@ -4,6 +4,7 @@ import type {
   ChangeEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react'
+import AudioMuteButton from './components/AudioMuteButton'
 import ChordModal from './components/ChordModal'
 import LayoutStage from './components/LayoutStage'
 import StockPanel from './components/StockPanel'
@@ -1049,13 +1050,11 @@ function App() {
             />
           </div>
 
-          <button
-            className="secondary-button audio-mute-button"
-            onClick={handleToggleAudioMute}
-            type="button"
-          >
-            {isAudioMuted ? text.unmuteAudio : text.muteAudio}
-          </button>
+          <AudioMuteButton
+            isMuted={isAudioMuted}
+            onToggle={handleToggleAudioMute}
+            text={text}
+          />
 
           {appError ? (
             <p className="project-feedback error" role="alert">

@@ -131,10 +131,6 @@ button {
   margin-left: auto;
 }
 
-.audio-mute-button {
-  white-space: nowrap;
-}
-
 .language-toggle .secondary-button {
   min-width: 5.6rem;
 }

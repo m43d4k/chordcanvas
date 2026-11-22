@@ -1,3 +1,4 @@
+import AudioMuteButton from './AudioMuteButton'
 import ChordDiagram from './ChordDiagram'
 import ChordComposer, { type ManualStringEntry } from './ChordComposer'
 import type {
@@ -112,13 +113,11 @@ function ChordModal({
             ) : null}
           </div>
           <div className="chord-modal-header-actions">
-            <button
-              className="secondary-button audio-mute-button"
-              onClick={onToggleAudioMute}
-              type="button"
-            >
-              {isAudioMuted ? text.unmuteAudio : text.muteAudio}
-            </button>
+            <AudioMuteButton
+              isMuted={isAudioMuted}
+              onToggle={onToggleAudioMute}
+              text={text}
+            />
             <button
               aria-label={text.modalClose}
               className="panel-icon-button"
