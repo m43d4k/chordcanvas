@@ -79,6 +79,7 @@ export interface ProjectSnapshot {
   selectedFormId: string
   currentFretting: Fretting
   currentChordName: string
+  memo: string
   layoutRows: LayoutRowState[]
   stockChords: StockChordState[]
   blocks: ChordBlockState[]
@@ -193,6 +194,7 @@ function parseProjectSnapshot(value: unknown): ProjectSnapshot {
       value.currentChordName === undefined
         ? ''
         : parseString(value.currentChordName, 'currentChordName'),
+    memo: (parseOptionalString(value.memo, 'memo') ?? '').replace(/[\r\n]+/g, ' '),
     layoutRows,
     stockChords,
     blocks,

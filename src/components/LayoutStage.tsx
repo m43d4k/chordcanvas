@@ -31,6 +31,7 @@ interface LayoutStageProps {
   layoutToolbarRef: RefObject<HTMLDivElement | null>
   layoutRowsLength: number
   lyricsInputRefs: RefObject<Record<string, HTMLInputElement | null>>
+  memo: string
   highlightedBlockId: string | null
   selectedBlockId: string | null
   selectedLayoutRowId: string
@@ -95,6 +96,7 @@ function LayoutStage({
   layoutToolbarAnchor,
   layoutToolbarRef,
   lyricsInputRefs,
+  memo,
   highlightedBlockId,
   selectedBlockId,
   selectedLayoutRowId,
@@ -126,6 +128,8 @@ function LayoutStage({
   onShowLayoutRowAddHintImmediately,
   onStartLyricsLineEditing,
 }: LayoutStageProps) {
+  const exportMemo = isExportingPdf ? memo.trim() : ''
+
   return (
     <section className="panel layout-panel" aria-labelledby="layout-heading">
       <div className="panel-heading">
@@ -214,6 +218,7 @@ function LayoutStage({
             ref={layoutStageRef}
             style={layoutStageStyle}
           >
+            {exportMemo ? <div className="layout-memo">{exportMemo}</div> : null}
             {layoutEntries.rows.map((rowEntry, index) => {
               const rowLabel = text.layoutRowLabel(index)
               const lyricsLineLabel = text.lyricsLineLabel(index)

@@ -636,8 +636,15 @@ button {
 }
 
 .layout-panel,
+.memo-panel,
 .stock-panel {
   margin-top: 1rem;
+}
+
+.memo-panel .field {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
 }
 
 .stock-panel-heading {
@@ -981,6 +988,14 @@ button {
   padding-bottom: 4px;
   background: #ffffff;
   box-shadow: none;
+}
+
+.layout-memo {
+  min-width: 0;
+  padding: 0 0.45rem;
+  color: #3a3452;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .layout-stage[data-exporting-pdf='true'] .layout-row {

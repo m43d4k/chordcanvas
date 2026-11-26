@@ -15,6 +15,7 @@ function createProjectSnapshot(): ProjectSnapshot {
     selectedFormId: 'open-e-major',
     currentFretting: toFretting([0, 2, 2, 1, 0, 0]),
     currentChordName: 'Intro E',
+    memo: '',
     layoutRows: [
       { id: 'row-1', lyrics: 'Verse' },
       { id: 'row-2', lyrics: 'Bridge' },

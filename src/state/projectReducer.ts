@@ -106,6 +106,10 @@ export type ProjectAction =
       lyrics: string
       rowId: string
     }
+  | {
+      type: 'updateMemo'
+      memo: string
+    }
 
 function clampManualFretCount(value: number): number {
   return Math.min(
@@ -319,6 +323,9 @@ export function projectReducer(
           row.id === action.rowId ? { ...row, lyrics: action.lyrics } : row,
         ),
       }
+
+    case 'updateMemo':
+      return { ...state, memo: action.memo }
 
     case 'addBlock': {
       if (!state.layoutRows.some((row) => row.id === action.rowId)) {

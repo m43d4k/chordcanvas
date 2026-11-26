@@ -13,6 +13,7 @@ function createProjectSnapshot(): ProjectSnapshot {
     selectedFormId: 'open-e-major',
     currentFretting: toFretting([0, 2, 2, 1, 0, 0]),
     currentChordName: 'Session E',
+    memo: 'カポ2',
     layoutRows: [{ id: 'row-1', lyrics: 'Intro line' }],
     stockChords: [
       {
@@ -45,6 +46,20 @@ describe('projectFile', () => {
     expect(parseProjectFile(serializeProjectFile(snapshot))).toEqual(snapshot)
   })
 
+  it('treats a missing memo as empty when importing a legacy project', () => {
+    const document = JSON.parse(serializeProjectFile(createProjectSnapshot()))
+    delete document.state.memo
+
+    expect(parseProjectFile(JSON.stringify(document)).memo).toBe('')
+  })
+
+  it('imports a memo as a single line', () => {
+    const snapshot = { ...createProjectSnapshot(), memo: 'カポ2\r\n半音下げ' }
+
+    expect(parseProjectFile(serializeProjectFile(snapshot)).memo).toBe(
+      'カポ2 半音下げ',
+    )
+  })
   it('round-trips explicit single notes alongside legacy one-string chords', () => {
     const snapshot = createProjectSnapshot()
     const fretting = toFretting(['x', 'x', 'x', 'x', 1, 'x'])

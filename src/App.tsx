@@ -158,6 +158,7 @@ function createInitialProjectState(): ProjectSnapshot {
     selectedFormId: initialForm?.id ?? '',
     currentFretting: copyFretting(initialBlock.fretting),
     currentChordName: '',
+    memo: '',
     layoutRows: [initialRow],
     stockChords: [],
     blocks: [initialBlock],
@@ -213,6 +214,7 @@ function App() {
     layoutRows,
     manualFretCount,
     manualStartFret,
+    memo,
     selectedBlockId,
     selectedFormId,
     selectedLayoutRowId,
@@ -575,6 +577,7 @@ function App() {
       layoutRows,
       manualFretCount,
       manualStartFret,
+      memo,
       selectedBlockId,
       selectedFormId,
       selectedLayoutRowId,
@@ -1096,6 +1099,22 @@ function App() {
         text={text}
       />
 
+      <div className="panel memo-panel">
+        <label className="field">
+          <span>{text.memoLabel}</span>
+          <input
+            onChange={(event) =>
+              dispatchProjectAction({
+                type: 'updateMemo',
+                memo: event.target.value,
+              })
+            }
+            type="text"
+            value={memo}
+          />
+        </label>
+      </div>
+
       <LayoutStage
         activeRowBlockIds={activeRowBlockIds}
         activeRowSelectionIndex={activeRowSelectionIndex}
@@ -1117,6 +1136,7 @@ function App() {
         layoutToolbarAnchor={layoutToolbarAnchor}
         layoutToolbarRef={layoutToolbarRef}
         lyricsInputRefs={lyricsInputRefs}
+        memo={memo}
         highlightedBlockId={highlightedLayoutBlockId}
         onActivateBlock={activateBlock}
         onAddLayoutRow={handleAddLayoutRow}

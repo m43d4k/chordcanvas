@@ -1571,6 +1571,9 @@ describe('App', () => {
     try {
       render(<App />)
 
+      fireEvent.change(screen.getByRole('textbox', { name: 'メモ' }), {
+        target: { value: 'カポ2' },
+      })
       fireEvent.change(openLyricsLineInput(1), {
         target: { value: 'Exported line' },
       })
@@ -1590,6 +1593,7 @@ describe('App', () => {
       expect(projectDocument.format).toBe('chordcanvas-project')
       expect(projectDocument.version).toBe(1)
       expect(projectDocument.state.currentFretting).toEqual([0, 2, 2, 1, 0, 0])
+      expect(projectDocument.state.memo).toBe('カポ2')
       expect(projectDocument.state.layoutRows[0].lyrics).toBe('Exported line')
       expect(projectDocument.state.stockChords).toEqual([])
     } finally {
@@ -1612,6 +1616,7 @@ describe('App', () => {
     let capturedBlockLeft = ''
     let capturedLyricsLineTagName = ''
     let capturedLyricsText = ''
+    let capturedFirstText = ''
     let capturedRowPaddingInline = ''
     let capturedStagePaddingInline = ''
     const fakeContext = {
@@ -1640,6 +1645,7 @@ describe('App', () => {
         capturedBlockLeft = layoutBlock?.style.left ?? ''
         capturedLyricsLineTagName = lyricsLine?.tagName ?? ''
         capturedLyricsText = lyricsLine?.textContent ?? ''
+        capturedFirstText = stageElement.firstElementChild?.textContent ?? ''
 
         return exportCanvas
       },
@@ -1648,6 +1654,9 @@ describe('App', () => {
     try {
       const { container } = render(<App />)
 
+      fireEvent.change(screen.getByRole('textbox', { name: 'メモ' }), {
+        target: { value: 'カポ2' },
+      })
       fireEvent.change(openLyricsLineInput(1), {
         target: { value: '  Exported line  ' },
       })
@@ -1683,6 +1692,7 @@ describe('App', () => {
       expect(capturedBlockLeft).toBe('16px')
       expect(capturedLyricsLineTagName).toBe('DIV')
       expect(capturedLyricsText).toBe('  Exported line  ')
+      expect(capturedFirstText).toBe('カポ2')
       expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     } finally {
@@ -1695,6 +1705,7 @@ describe('App', () => {
     let capturedBlockLeft = ''
     let capturedLyricsLineTagName = ''
     let capturedLyricsText = ''
+    let capturedFirstText = ''
     let capturedRowPaddingInline = ''
     let capturedStagePaddingInline = ''
     const toDataUrlSpy = vi
@@ -1736,6 +1747,7 @@ describe('App', () => {
         capturedBlockLeft = layoutBlock?.style.left ?? ''
         capturedLyricsLineTagName = lyricsLine?.tagName ?? ''
         capturedLyricsText = lyricsLine?.textContent ?? ''
+        capturedFirstText = stageElement.firstElementChild?.textContent ?? ''
 
         return exportCanvas
       },
@@ -1744,6 +1756,9 @@ describe('App', () => {
     try {
       const { container } = render(<App />)
 
+      fireEvent.change(screen.getByRole('textbox', { name: 'メモ' }), {
+        target: { value: 'カポ2' },
+      })
       fireEvent.change(openLyricsLineInput(1), {
         target: { value: '  Exported line  ' },
       })
@@ -1798,6 +1813,7 @@ describe('App', () => {
       expect(capturedBlockLeft).toBe('16px')
       expect(capturedLyricsLineTagName).toBe('DIV')
       expect(capturedLyricsText).toBe('  Exported line  ')
+      expect(capturedFirstText).toBe('カポ2')
       expect(layoutStage).not.toHaveAttribute('data-exporting-pdf')
       expect(screen.queryByRole('status')).not.toBeInTheDocument()
     } finally {
@@ -1823,6 +1839,7 @@ describe('App', () => {
       selectedFormId: 'open-a-minor',
       currentFretting: toFretting(['x', 0, 2, 2, 1, 0]),
       currentChordName: 'Verse Am',
+      memo: 'カポ2',
       layoutRows: [
         { id: 'row-12', lyrics: 'Verse line' },
         { id: 'row-18', lyrics: 'Bridge line' },
@@ -1879,6 +1896,7 @@ describe('App', () => {
       expect(getLyricsLineButton(2)).toHaveTextContent('Bridge line')
     })
 
+    expect(screen.getByRole('textbox', { name: 'メモ' })).toHaveValue('カポ2')
     expect(
       screen.getAllByRole('button', {
         name: layoutBlockButtonNamePattern,

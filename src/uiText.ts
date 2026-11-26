@@ -71,6 +71,7 @@ export interface UiText {
   addStockChordToLayoutAria: (name: string) => string
   removeStockChordAria: (name: string) => string
   stockEmpty: string
+  memoLabel: string
   layoutHeading: string
   openLayoutAddModal: string
   addRow: string
@@ -179,6 +180,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     addStockChordToLayoutAria: (name) => `${name} をコード譜に追加`,
     removeStockChordAria: (name) => `${name} をストックから削除`,
     stockEmpty: 'ストックはまだ空です。繰り返し使うコードを追加できます。',
+    memoLabel: 'メモ',
     layoutHeading: 'コード譜編集',
     openLayoutAddModal: 'コードを追加',
     addRow: '行を追加',
@@ -320,6 +322,7 @@ export const UI_TEXT: Record<Locale, UiText> = {
     addStockChordToLayoutAria: (name) => `Add ${name} to chart`,
     removeStockChordAria: (name) => `Remove ${name} from stock`,
     stockEmpty: 'Chord stock is empty. Add chords to reuse.',
+    memoLabel: 'Memo',
     layoutHeading: 'Chord Chart Editor',
     openLayoutAddModal: 'Add chord',
     addRow: 'Add Row',
